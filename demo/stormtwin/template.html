@@ -188,14 +188,24 @@ button.tab { font: inherit; }
       <div class="panel-b">
         <div id="map"></div>
         <table class="list" id="list" aria-label="Turbines">
-          <thead><tr><th>Turbine</th><th>Verdict</th><th class="r">H<sub>max</sub>/H<sub>s</sub></th><th class="r">Peak ULS</th><th class="r">Fatigue&nbsp;d</th></tr></thead>
+          <thead><tr><th>Turbine</th><th>Verdict</th><th class="r">H<sub>max</sub>/H<sub>s</sub></th><th class="r">Peak ULS</th><th class="r">Life used</th></tr></thead>
           <tbody></tbody>
         </table>
-        <p class="cap">Fatigue d: design-life days of fatigue the storm used at the worst hot spot (6 h at peak conditions).</p>
+        <p class="cap">Life used: fatigue life consumed since commissioning at the worst hot spot, this storm included (design pace today: <span id="pace"></span>).</p>
       </div>
     </div>
     <div class="detail" id="detail"></div>
   </div>
+
+  <section class="block" id="history">
+    <div class="eyebrow">Fatigue since commissioning</div>
+    <h2>Every storm adds to the total</h2>
+    <p class="muted" id="histintro"></p>
+    <div class="two">
+      <div class="panel chart"><div class="panel-h"><h3>Sea state at the farm</h3></div><div class="panel-b"><div id="hstimeline"></div><p class="cap">Daily maximum significant wave height at the farm reference point. Named storms are marked; the last one is the storm replayed above.</p></div></div>
+      <div class="panel chart"><div class="panel-h"><h3>Life used by turbine</h3></div><div class="panel-b"><div id="lifebars"></div><p class="cap">Worst hot spot per turbine. The dashed line is the pace that would use exactly the design life by year 25.</p></div></div>
+    </div>
+  </section>
 
   <section class="block" id="how">
     <div class="eyebrow">How it works</div>
@@ -283,6 +293,14 @@ button.tab { font: inherit; }
     const days = Math.max(f.flange_bolts.days, f.door_frame.days, f.mudline_weld.days);
     return { uls, days };
   };
+  const HOTS = ["flange_bolts", "door_frame", "mudline_weld"];
+  const HOTNAME = { flange_bolts: "Flange bolts", door_frame: "Door frame", mudline_weld: "Mudline weld" };
+  const HOTVAR = { flange_bolts: "--accent", door_frame: "--warn", mudline_weld: "--crit" };
+  function lifeUsed(t) {
+    let best = { k: null, v: -1 };
+    HOTS.forEach((k) => { const v = t.history.hot[k].total; if (v > best.v) best = { k, v }; });
+    return best;
+  }
   function hotspotStatus(t) {
     const f = t.final;
     const s = (uls, days) => uls >= 0.9 ? "red" : (uls >= 0.7 || days >= D.meta.fatigue_days_inspect) ? "amber" : "green";
@@ -359,7 +377,7 @@ button.tab { font: inherit; }
       const tr = el("tr", { class: i === sel ? "sel" : "", tabindex: 0 },
         `<td>${t.spec.name}${t.condition ? ' <span style="color:var(--warn)" title="Known condition">◆</span>' : ""}</td>` +
         `<td><span class="pill ${t.status}">${statusText[t.status]}</span></td>` +
-        `<td class="r">${fmt(t.Hmax / t.Hs, 2)}</td><td class="r">${fmt(w.uls, 2)}</td><td class="r">${fmt(w.days, 0)}</td>`);
+        `<td class="r">${fmt(t.Hmax / t.Hs, 2)}</td><td class="r">${fmt(w.uls, 2)}</td><td class="r">${t.history ? fmt(lifeUsed(t).v, 1) + "%" : "–"}</td>`);
       tr.addEventListener("click", () => select(i));
       tr.addEventListener("keydown", (e) => { if (e.key === "Enter") select(i); });
       tb.append(tr);
@@ -532,6 +550,8 @@ button.tab { font: inherit; }
       marks: [{ x: r.t[iC], y: r.eta[iC], label: `${fmt(t.Hmax, 1)} m wave` }], label: "Surface elevation record",
     });
 
+    if (t.history) historyCard(host, t);
+
     if (!t.deep) {
       host.append(el("div", { class: "note" }, "Screening only. Nothing triggered a deep-dive for this turbine, so its verdict comes from the full-record screening run."));
       return;
@@ -570,6 +590,72 @@ button.tab { font: inherit; }
     });
   }
 
+  function historyCard(host, t) {
+    const H = D.history, h = t.history;
+    const card = el("div", { class: "panel chart" });
+    card.innerHTML = `<div class="panel-h"><h3>Fatigue history at ${t.spec.name} since ${H.commissioned}</h3><span class="muted mono" style="font-size:0.8rem">exposure ${fmt(h.exposure * 100, 0)}% of farm reference</span></div>` +
+      `<div class="panel-b"><div></div><div class="grid2" style="margin-top:12px"><div class="tbl-wrap" id="hstbl"></div><div class="tbl-wrap" id="projtbl"></div></div></div>`;
+    host.append(card);
+    const yrs = h.years, pace = yrs.map((y) => 100 * y / D.meta.design_life);
+    const series = HOTS.map((k) => ({ x: yrs, y: h.hot[k].used, color: HOTVAR[k], width: 2 }));
+    series.push({ x: yrs, y: pace, color: "--muted", dash: "5 4", width: 1.5 });
+    const storms = H.storms.map((st) => ({ x: (new Date(st.date) - new Date(H.commissioned)) / (365.25 * 864e5), label: st.current ? "this storm" : "" }));
+    chart(card.querySelector(".panel-b > div"), {
+      series, xl: "years in service", yl: "fatigue life used (%)", h: 230,
+      vlines: storms.map((v) => ({ x: v.x, color: v.label ? "--crit" : "--line", label: v.label })),
+      legend: HOTS.map((k) => ({ label: HOTNAME[k], color: HOTVAR[k] })).concat([{ label: "design pace", color: "--muted", dash: "5 4" }]),
+      label: "Fatigue life used over time",
+    });
+    // storms ranked by damage at the worst hot spot
+    const worstK = lifeUsed(t).k;
+    const rows = H.storms.map((st, i) => ({ date: st.date, hs: st.hs * h.exposure, d: h.hot[worstK].storm_days[i], cur: st.current }))
+      .sort((a, b) => b.d - a.d).slice(0, 5);
+    card.querySelector("#hstbl").innerHTML = `<table class="hstable"><thead><tr><th>Storm</th><th class="r">Peak H<sub>s</sub></th><th class="r">Design-life days</th></tr></thead><tbody>` +
+      rows.map((r) => `<tr><td class="mono">${r.date}${r.cur ? ' <span class="pill amber">replayed</span>' : ""}</td><td class="num" style="text-align:right">${fmt(r.hs, 1)} m</td><td class="num" style="text-align:right">${fmt(r.d, 0)}</td></tr>`).join("") +
+      `</tbody></table><p class="cap">Most damaging storms at the ${HOTNAME[worstK].toLowerCase()}.</p>`;
+    card.querySelector("#projtbl").innerHTML = `<table class="hstable"><thead><tr><th>Hot spot</th><th class="r">Used</th><th class="r">Projected life</th></tr></thead><tbody>` +
+      HOTS.map((k) => { const p = h.hot[k].projected_life; const c = p < D.meta.design_life ? "var(--crit)" : p < 1.25 * D.meta.design_life ? "var(--warn)" : "inherit";
+        return `<tr><td>${HOTNAME[k]}</td><td class="num" style="text-align:right">${fmt(h.hot[k].total, 1)}%</td><td class="num" style="text-align:right;color:${c}">${p > 200 ? "> 200" : fmt(p, 0)} y</td></tr>`; }).join("") +
+      `</tbody></table><p class="cap">At the average rate since commissioning, against a ${D.meta.design_life}-year design life.</p>`;
+  }
+
+  function farmHistory() {
+    const H = D.history;
+    if (!H) { document.getElementById("history").hidden = true; return; }
+    document.getElementById("histintro").textContent =
+      `The twin keeps a running fatigue total for every hot spot. Between storms it accumulates damage from the measured sea state; during storms it uses the detailed chain above. ${fmt(H.years_in_service, 1)} years in service, ${H.storms.length} named storms.`;
+    const storms = H.storms.map((st) => ({ x: (new Date(st.date) - new Date(H.commissioned)) / (365.25 * 864e5), y: st.hs, cur: st.current, date: st.date }));
+    chart(document.getElementById("hstimeline"), {
+      series: [{ x: H.days, y: H.hs_daily_max, color: "--sea", width: 1 }],
+      xl: "years since commissioning (" + H.commissioned + ")", yl: "daily max Hs (m)", h: 230,
+      marks: storms.map((s) => ({ x: s.x, y: s.y, label: s.cur ? "replayed storm" : "", color: s.cur ? "--crit" : "--warn" })),
+      label: "Sea state history",
+    });
+    // life bars
+    const items = T.filter((t) => t.history).map((t) => ({ n: t.spec.name, v: lifeUsed(t).v, k: lifeUsed(t).k, s: t.status }));
+    const pace = 100 * H.years_in_service / D.meta.design_life;
+    const W = 640, Hh = 26 * items.length + 40, L = 52, R = 50;
+    const vmax = Math.max(pace * 1.6, ...items.map((i) => i.v)) * 1.05;
+    const X = (v) => L + v / vmax * (W - L - R);
+    const sv = svg("svg", { viewBox: `0 0 ${W} ${Hh}`, role: "img", "aria-label": "Life used by turbine" });
+    ticks(0, vmax, 5).forEach((v) => {
+      sv.append(svg("line", { x1: X(v), x2: X(v), y1: 6, y2: Hh - 26, stroke: css("--grid") }));
+      const tx = svg("text", { x: X(v), y: Hh - 10, "text-anchor": "middle", "font-size": 10.5, fill: css("--muted"), "font-family": "IBM Plex Mono, monospace" }); tx.textContent = v + "%"; sv.append(tx);
+    });
+    items.forEach((it, i) => {
+      const y = 10 + i * 26;
+      const lab = svg("text", { x: L - 8, y: y + 12, "text-anchor": "end", "font-size": 11, fill: css("--ink"), "font-family": "IBM Plex Mono, monospace" }); lab.textContent = it.n; sv.append(lab);
+      sv.append(svg("rect", { x: L, y, width: Math.max(1, X(it.v) - L), height: 16, rx: 2, fill: css(HOTVAR[it.k]), opacity: 0.85 }));
+      const vt = svg("text", { x: X(it.v) + 5, y: y + 12, "font-size": 10.5, fill: css("--muted"), "font-family": "IBM Plex Mono, monospace" }); vt.textContent = fmt(it.v, 1) + "%"; sv.append(vt);
+    });
+    sv.append(svg("line", { x1: X(pace), x2: X(pace), y1: 4, y2: Hh - 26, stroke: css("--ink"), "stroke-dasharray": "5 4" }));
+    const pl = svg("text", { x: X(pace) + 4, y: Hh - 30, "font-size": 10, fill: css("--ink") }); pl.textContent = "design pace " + fmt(pace, 1) + "%"; sv.append(pl);
+    const lb = document.getElementById("lifebars"); lb.innerHTML = ""; lb.append(sv);
+    const leg = el("div", { class: "legend", style: "margin-top:6px" }, HOTS.map((k) => `<span><i class="dot" style="background:var(${HOTVAR[k]});border-radius:2px"></i>${HOTNAME[k]}</span>`).join(""));
+    lb.append(leg);
+    const paceEl = document.getElementById("pace"); if (paceEl) paceEl.textContent = fmt(pace, 1) + "%";
+  }
+
   function boltCurve() {
     chart(document.getElementById("boltcurve"), {
       series: [{ x: D.bolt_curve.Z, y: D.bolt_curve.F, color: "--accent", width: 2 }, { x: D.bolt_curve_80.Z, y: D.bolt_curve_80.F, color: "--warn", width: 2, dash: "5 3" }],
@@ -585,10 +671,11 @@ button.tab { font: inherit; }
   let current = Math.max(0, T.findIndex((t) => t.status === "red"));
   if (T[current].status !== "red") current = Math.max(0, T.findIndex((t) => t.status === "amber"));
   function select(i) { current = i; drawMap(i); drawList(i); detail(i); }
+  farmHistory();
   select(current);
   boltCurve();
   const mq = window.matchMedia("(prefers-color-scheme: dark)");
-  const redraw = () => { select(current); boltCurve(); };
+  const redraw = () => { farmHistory(); select(current); boltCurve(); };
   if (mq.addEventListener) mq.addEventListener("change", redraw);
   new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 })();

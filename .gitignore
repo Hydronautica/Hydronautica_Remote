@@ -7,3 +7,4 @@ dist/
 figures/
 demo/stormtwin/demo_data.json
 demo/stormtwin/farm.log
+demo/stormtwin/history.log

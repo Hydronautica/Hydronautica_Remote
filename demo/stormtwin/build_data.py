@@ -54,8 +54,8 @@ for r in range(3):
             Hs=round(8.0 + 0.4 * (3 - c) + 0.2 * r, 2),
             seed=100 + i, scour=0.0, preload=1.0))
 FARM[4]["scour"] = 3.5           # T05: scour found in the last survey
-FARM[9]["preload"] = 0.80        # T10: 80% bolt preload at the last campaign
-CONDITION = {"T05": "Scour 3.5 m (last survey)", "T10": "Flange bolt preload 80% (last campaign)"}
+FARM[1]["preload"] = 0.80        # T02: 80% bolt preload at the last campaign
+CONDITION = {"T05": "Scour 3.5 m (last survey)", "T02": "Flange bolt preload 80% (last campaign)"}
 
 
 def zero_crossing(t, eta):
@@ -67,8 +67,8 @@ def zero_crossing(t, eta):
     return waves
 
 
-def nls_sea(spec):
-    dw = nls.DeepWater(spec["Hs"] / (2 * np.sqrt(2)), period=TP)
+def nls_sea(spec, Tp=TP):
+    dw = nls.DeepWater(spec["Hs"] / (2 * np.sqrt(2)), period=Tp)
     kw = REL_BANDWIDTH / (np.sqrt(2) * dw.eps)
     solver = nls.NLSSolver(L=200, N=4096)
     psi0 = nls.random_wave_field(solver.x, k_width=kw, mean_amplitude=1.0, seed=spec["seed"])
@@ -392,6 +392,13 @@ if __name__ == "__main__":
     specs = [s for s in FARM if not only or s["name"] in only]
     with ProcessPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(process, specs))
+    path = os.path.join(HERE, "demo_data.json")
+    if only and os.path.exists(path):
+        # re-run of selected turbines: merge into the existing farm results
+        with open(path) as fh:
+            old = {t["spec"]["name"]: t for t in json.load(fh)["turbines"]}
+        old.update({t["spec"]["name"]: t for t in results})
+        results = [old[s["name"]] for s in FARM if s["name"] in old]
     tb_ref = Turbine()
     data = dict(
         meta=dict(Tp=TP, record_s=RECORD, storm_peak_hours=STORM_PEAK_HOURS,
