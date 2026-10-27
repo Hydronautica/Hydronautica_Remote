@@ -174,6 +174,28 @@ if __name__ == "__main__":
         storms.append(dict(date=t_pk.strftime("%Y-%m-%d"), hs=h_pk))
     storms.append(dict(date=STORM_PEAK.strftime("%Y-%m-%d"), hs=REF_HS, current=True))
 
+    # Demonstration scaling of the background (between-storm) fatigue rates so
+    # that life used lands near the design pace. The demo's base runs omit
+    # several load-reducing effects (diffraction, directional spreading,
+    # wind-wave misalignment statistics), so unscaled totals run high.
+    pace = 100 * storm_years / 25
+    raw = []
+    for t in data["turbines"]:
+        name, spec = t["spec"]["name"], t["spec"]
+        if name in table:
+            expo = spec["Hs"] / REF_HS
+            worst = max(np.sum(interp_rate(np.array(HS_BINS), np.array([table[name][h][k] for h in HS_BINS]),
+                                           hs_ref * expo)) * bd.DFF[k] * 100 for k in HOT)
+            raw.append(worst)
+    demo_scale = float(0.9 * pace / np.median(raw)) if raw else 1.0
+    if only and "demo_scale" in data.get("history", {}):
+        demo_scale = data["history"]["demo_scale"]
+    for name in table:
+        for h in HS_BINS:
+            for k in HOT:
+                table[name][h][k] *= demo_scale
+    print(f"demo fatigue scale {demo_scale:.3g}", flush=True)
+
     for t in data["turbines"]:
         name, spec = t["spec"]["name"], t["spec"]
         if name not in table:
@@ -232,7 +254,7 @@ if __name__ == "__main__":
         days=r2(years[daily], 4), hs_mean=float(hs_ref.mean()),
         base=dict(U=U_BINS, zeta=[0.015 + aero_damping(u) for u in U_BINS],
                   thrust=[thrust(u, Turbine(**TURB)) for u in U_BINS]),
-        tp_coef=CFG["tp_coef"],
+        tp_coef=CFG["tp_coef"], demo_scale=demo_scale,
         hs_daily_max=r2([hs_ref[i:i + 24].max() for i in daily], 2))
     with open(bd.OUT, "w") as fh:
         json.dump(data, fh, separators=(",", ":"))

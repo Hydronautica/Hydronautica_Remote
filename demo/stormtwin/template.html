@@ -1192,7 +1192,8 @@ button.tab { font: inherit; }
   function assumptions() {
     document.getElementById("assumptions").textContent =
       `Assumptions for ${D.meta.farm.name}: storm carrier period ${D.meta.Tp} s; ${D.meta.record_s / 60}-minute record per turbine, scaled to ${D.meta.storm_peak_hours} h at peak for fatigue; design life ${D.meta.design_life} years; design fatigue factors ${Object.entries(D.meta.dff).map(([k, v]) => k.replace("_", " ") + " " + v).join(", ")}. ` +
-      `Fatigue stress concentration: door frame ${D.meta.scf.door_frame}, mudline weld ${D.meta.scf.mudline_weld}. Deep-water NLS dynamics are applied at intermediate depth (kd above 1.36, where modulational instability exists); the production chain uses finite-depth evolution.`;
+      `Fatigue stress concentration: door frame ${D.meta.scf.door_frame}, mudline weld ${D.meta.scf.mudline_weld}. Deep-water NLS dynamics are applied at intermediate depth (kd above 1.36, where modulational instability exists); the production chain uses finite-depth evolution.` +
+      (D.history && D.history.demo_scale ? ` Between-storm fatigue rates are scaled by ${D.history.demo_scale.toPrecision(2)} for this demonstration, because the demo base runs leave out load-reducing effects such as diffraction and directional spreading.` : "");
   }
   let current = 0;
   function defaultTurbine() {
