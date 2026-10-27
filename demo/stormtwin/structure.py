@@ -48,6 +48,10 @@ class Turbine:
     z_door: float = 21.0
     z_platform: float = 20.0         # underside of the access platform
     fy: float = 355e6
+    rated_thrust: float = 2.4e6      # N at rated wind
+    rated_U: float = 10.6            # m/s
+    rotor_D: float = 240.0
+    label: str = "15 MW class"
     name: str = "T00"
 
     def diameter(self, z):
@@ -256,15 +260,19 @@ class Model:
         return m * G
 
 
-def thrust(U):
-    """15 MW-class rotor thrust (N): cut-in 3, rated 10.6, cut-out 25 m/s, then idling."""
+def thrust(U, tb=None):
+    """Rotor thrust (N): cut-in 3 m/s, peak at rated wind, cut-out 25 m/s, then
+    idling (feathered drag). Scaled to the turbine's rated thrust."""
+    Tr = tb.rated_thrust if tb else 2.4e6
+    Ur = tb.rated_U if tb else 10.6
+    idle = tb.mean_thrust if tb else 0.8e6          # storm idling thrust at ~35 m/s
     if U < 3:
-        return 2e4 * U * U / 9
-    if U <= 10.6:
-        return 2.4e6 * (U / 10.6) ** 2
+        return 2e4 * U * U / 9 * Tr / 2.4e6
+    if U <= Ur:
+        return Tr * (U / Ur) ** 2
     if U <= 25:
-        return 2.4e6 * (10.6 / U) ** 1.1
-    return 0.8e6 * (U / 35) ** 2
+        return Tr * (Ur / U) ** 1.1
+    return idle * (U / 35) ** 2
 
 
 def aero_damping(U):

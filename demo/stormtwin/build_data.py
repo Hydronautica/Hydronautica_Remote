@@ -1,6 +1,8 @@
-"""Run the StormTwin demo chain on a synthetic storm and write demo_data.json.
+"""Run the StormTwin demo chain on a synthetic storm and write demo_data_<farm>.json.
 
-For each of 12 turbines:
+The farm (layout, turbine type, storm, conditions) comes from farms.py, chosen
+with the environment variable STORMTWIN_FARM (A, B or C; default A).
+For each turbine:
   1. Sea: NLS-evolved random sea at the turbine (20 min at the storm peak).
   2. Rogue detection: zero-crossing analysis of the 2nd-order surface record.
   3. Screening: narrow-band kinematics (Wheeler) -> Morison -> nonlinear global
@@ -10,7 +12,7 @@ For each of 12 turbines:
   5. Verdict: red / amber / green from pre-agreed rules, with actions.
 
 Everything is synthetic: the storm, the farm and the turbine are illustrative.
-Run from this directory:  python build_data.py   (a few minutes, 4 processes)
+Run:  STORMTWIN_FARM=B python build_data.py   (a few minutes, 4 processes)
 """
 
 import json
@@ -29,11 +31,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "..")))
 sys.path.insert(0, HERE)
 
+import farms  # noqa: E402
 import nls  # noqa: E402
 from structure import (G, Model, Turbine, bolt_damage, bolt_force, miner_damage,  # noqa: E402
                        morison_nodal, rainflow, section, segment_force, slam_nodal)
 
-TP = 11.0                # spectral peak / carrier period (s)
+CFG = farms.current()
+TURB = farms.TURBINES[CFG["turbine"]]
+OUT = os.path.join(HERE, f"demo_data_{CFG['id']}.json")
+TP = CFG["Tp"]           # spectral peak / carrier period (s)
 REL_BANDWIDTH = 0.30     # Gaussian spectral width in k, relative to k0 (storm sea)
 RECORD = 1200.0          # s at the storm peak
 DT = 0.05                # structural time step (s)
@@ -43,19 +49,8 @@ DFF = {"flange_bolts": 2.0, "door_frame": 2.0, "mudline_weld": 3.0}
 SCF = {"door_frame": 2.5, "mudline_weld": 1.2}         # fatigue hot-spot factors
 SCF_ULS = {"door_frame": 1.5, "mudline_weld": 1.0}     # net-section factors for ULS
 
-# Farm layout (synthetic): 4 x 3 grid, depth and storm severity vary across it.
-FARM = []
-for r in range(3):
-    for c in range(4):
-        i = 4 * r + c
-        FARM.append(dict(
-            name=f"T{i + 1:02d}", x=c * 1.8, y=r * 1.6,
-            depth=round(41.0 + 2.5 * c + 1.2 * r, 1),
-            Hs=round(8.0 + 0.4 * (3 - c) + 0.2 * r, 2),
-            seed=100 + i, scour=0.0, preload=1.0))
-FARM[4]["scour"] = 3.5           # T05: scour found in the last survey
-FARM[1]["preload"] = 0.60        # T02: 60% bolt preload found at the last campaign
-CONDITION = {"T05": "Scour 3.5 m (last survey)", "T02": "Flange bolt preload 60% (last campaign)"}
+FARM = CFG["farm"]
+CONDITION = CFG["condition"]
 
 
 def zero_crossing(t, eta):
@@ -231,7 +226,7 @@ def r2(x, n=3):
 def process(spec):
     import warnings
     warnings.filterwarnings("ignore")
-    tb = Turbine(depth=spec["depth"], scour=spec["scour"], preload_frac=spec["preload"],
+    tb = Turbine(**TURB, depth=spec["depth"], scour=spec["scour"], preload_frac=spec["preload"],
                  name=spec["name"])
     model = Model(tb)
     f_cal = model.setup_damping()
@@ -392,27 +387,36 @@ if __name__ == "__main__":
     specs = [s for s in FARM if not only or s["name"] in only]
     with ProcessPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(process, specs))
-    path = os.path.join(HERE, "demo_data.json")
+    path = OUT
     if only and os.path.exists(path):
         # re-run of selected turbines: merge into the existing farm results
         with open(path) as fh:
             old = {t["spec"]["name"]: t for t in json.load(fh)["turbines"]}
         old.update({t["spec"]["name"]: t for t in results})
         results = [old[s["name"]] for s in FARM if s["name"] in old]
-    tb_ref = Turbine()
+    tb_ref = Turbine(**TURB)
     data = dict(
         meta=dict(Tp=TP, record_s=RECORD, storm_peak_hours=STORM_PEAK_HOURS,
                   design_life=DESIGN_LIFE, dff=DFF, scf=SCF, scf_uls=SCF_ULS,
                   fatigue_days_inspect=FATIGUE_DAYS_INSPECT, fatigue_days_rbi=FATIGUE_DAYS_RBI,
                   bandwidth=REL_BANDWIDTH,
+                  farm=dict(id=CFG["id"], name=CFG["name"], region=CFG["region"],
+                            storm_name=CFG["storm_name"],
+                            storm_peak=CFG["storm_peak"].strftime("%Y-%m-%d"),
+                            commissioned=CFG["commissioned"].strftime("%Y-%m-%d")),
                   turbine=dict(D_pile=tb_ref.D_pile, z_hub=tb_ref.z_hub, m_rna=tb_ref.m_rna,
-                               n_bolts=tb_ref.n_bolts, bolt="M72 10.9",
+                               n_bolts=tb_ref.n_bolts, bolt=f"M{round(tb_ref.bolt_d * 1000)} 10.9",
                                z_interface=tb_ref.z_interface, z_door=tb_ref.z_door,
-                               z_platform=tb_ref.z_platform)),
+                               z_platform=tb_ref.z_platform, D_tower_top=tb_ref.D_tower_top,
+                               t_tower_base=tb_ref.t_tower_base, t_tower_top=tb_ref.t_tower_top,
+                               t_pile=tb_ref.t_pile, embedment=tb_ref.embedment,
+                               rotor_D=tb_ref.rotor_D, rated_thrust=tb_ref.rated_thrust,
+                               rated_U=tb_ref.rated_U, idle_thrust=tb_ref.mean_thrust,
+                               label=tb_ref.label)),
         bolt_curve=bolt_curve(tb_ref),
-        bolt_curve_low=bolt_curve(Turbine(preload_frac=min(f["preload"] for f in FARM))),
+        bolt_curve_low=bolt_curve(Turbine(**TURB, preload_frac=min(f["preload"] for f in FARM))),
         low_preload=min(f["preload"] for f in FARM),
         turbines=results)
-    with open(os.path.join(HERE, "demo_data.json"), "w") as fh:
+    with open(OUT, "w") as fh:
         json.dump(data, fh, separators=(",", ":"))
-    print("wrote demo_data.json", os.path.getsize(os.path.join(HERE, "demo_data.json")) // 1024, "kB")
+    print("wrote", os.path.basename(OUT), os.path.getsize(OUT) // 1024, "kB")

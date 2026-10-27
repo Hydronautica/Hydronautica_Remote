@@ -1,13 +1,20 @@
-"""Inject demo_data.json into template.html and write index.html."""
+"""Inject the farm datasets (demo_data_A/B/C.json) into template.html -> index.html."""
 
+import glob
+import json
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+farms = []
+for path in sorted(glob.glob(os.path.join(HERE, "demo_data_*.json"))):
+    with open(path) as fh:
+        d = json.load(fh)
+    if "history" in d:
+        farms.append(d)
 with open(os.path.join(HERE, "template.html")) as fh:
     page = fh.read()
-with open(os.path.join(HERE, "demo_data.json")) as fh:
-    data = fh.read().replace("</", "<\\/")
+data = json.dumps({"farms": farms}, separators=(",", ":")).replace("</", "<\\/")
 with open(os.path.join(HERE, "index.html"), "w") as fh:
     fh.write(page.replace("__DATA__", data))
-print("wrote index.html", os.path.getsize(os.path.join(HERE, "index.html")) // 1024, "kB")
+print("wrote index.html with", len(farms), "farms,", os.path.getsize(os.path.join(HERE, "index.html")) // 1024, "kB")

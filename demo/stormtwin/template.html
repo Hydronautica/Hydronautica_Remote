@@ -64,6 +64,15 @@ p { margin: 0; max-width: 68ch; }
 .brand b { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; letter-spacing: 0.02em; }
 .badge { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--warn); color: var(--warn); border-radius: 3px; }
 
+.portfolio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-block: 16px 0; }
+.farmcard { text-align: left; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; cursor: pointer; display: grid; gap: 6px; }
+.farmcard:hover { border-color: var(--accent); }
+.farmcard.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.farmcard .fn { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; }
+.farmcard .fr { font-size: 0.8rem; color: var(--muted); }
+.farmcard .fc { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.8rem; }
+.farmcard .lu { font-family: var(--font-data); font-size: 0.8rem; }
+@media (max-width: 800px) { .portfolio { grid-template-columns: minmax(0, 1fr); } }
 .hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; padding-block: 28px 24px; align-items: end; }
 .hero p { margin-top: 12px; color: var(--muted); font-size: 1.02rem; }
 .storm { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
@@ -196,12 +205,13 @@ button.tab { font: inherit; }
 <div class="wrap">
   <header class="topbar">
     <div class="brand"><b>StormTwin</b><span class="muted">Storm-to-hot-spot assessment for offshore wind monopiles</span></div>
-    <span class="badge">Demonstration · synthetic storm and farm</span>
+    <span class="badge">Demonstration · synthetic storms and farms</span>
   </header>
+  <div class="portfolio" id="portfolio" role="tablist" aria-label="Farms in the portfolio"></div>
 
   <div class="hero">
     <div>
-      <div class="eyebrow">Post-storm report · storm peak replay</div>
+      <div class="eyebrow" id="eyebrow">Post-storm report · storm peak replay</div>
       <h1>Which turbines need a vessel after the storm, and what should the crew check?</h1>
       <p>StormTwin takes the sea measured during a storm, finds and reconstructs the extreme wave groups, runs each turbine's global structural model, drives local models of the hot spots, and returns a verdict with the inspection it implies. Select a turbine to follow the chain.</p>
     </div>
@@ -318,7 +328,7 @@ button.tab { font: inherit; }
   </section>
 
   <footer>
-    <div><b>About this demonstration.</b> The storm, farm, turbine and condition data are synthetic. The turbine is a 15 MW-class monopile design sized loosely after public reference turbines; it is not a real asset. Waves come from NLS simulations of a random sea; loads, global response and hot-spot results come from demo-grade models (Morison loading, a nonlinear beam on API p-y springs, Schmidt–Neuper-type bolt law, stress concentration factors, DNV-RP-C203 and EN 1993-1-9 S-N curves) standing in for the production global and local finite-element models.</div>
+    <div><b>About this demonstration.</b> The farms, storms, turbines and condition data are synthetic. The turbines are 15 MW- and 10 MW-class monopile designs sized loosely after public reference turbines; they are not real assets. Waves come from NLS simulations of a random sea; loads, global response and hot-spot results come from demo-grade models (Morison loading, a nonlinear beam on API p-y springs, Schmidt–Neuper-type bolt law, stress concentration factors, DNV-RP-C203 and EN 1993-1-9 S-N curves) standing in for the production global and local finite-element models.</div>
     <div id="assumptions"></div>
   </footer>
 </div>
@@ -326,8 +336,8 @@ button.tab { font: inherit; }
 <script type="application/json" id="data">__DATA__</script>
 <script>
 (function () {
-  const D = JSON.parse(document.getElementById("data").textContent);
-  const T = D.turbines;
+  const ALL = JSON.parse(document.getElementById("data").textContent).farms;
+  let FI = 0, D = ALL[0], T = D.turbines;
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const statusVar = { red: "--crit", amber: "--warn", green: "--ok", rbi: "--accent" };
   const statusText = { red: "Act now", amber: "Inspect", green: "No action", rbi: "Update RBI" };
@@ -369,16 +379,40 @@ button.tab { font: inherit; }
   }
 
   // ---------- storm summary ----------
-  const counts = { red: 0, amber: 0, green: 0 };
-  T.forEach((t) => counts[t.status]++);
-  const rogues = T.filter((t) => t.rogue).length;
-  const deep = T.filter((t) => t.deep).length;
-  const maxHs = Math.max(...T.map((t) => t.Hs));
-  const maxH = Math.max(...T.map((t) => t.Hmax));
-  const storm = document.getElementById("storm");
-  [["Turbines to act on", counts.red, "crit"], ["To inspect", counts.amber, "warn"], ["No action", counts.green, "ok"],
-   ["Peak H<sub>s</sub> (m)", fmt(maxHs, 1), ""], ["Largest wave (m)", fmt(maxH, 1), ""], ["Rogue waves · deep-dives", rogues + " · " + deep, ""]]
-    .forEach(([k, v, c]) => storm.append(el("div", {}, `<div class="k">${k}</div><div class="v ${c}">${v}</div>`)));
+  function drawStorm() {
+    const counts = { red: 0, amber: 0, green: 0 };
+    T.forEach((t) => counts[t.status]++);
+    const rogues = T.filter((t) => t.rogue).length;
+    const deep = T.filter((t) => t.deep).length;
+    const maxHs = Math.max(...T.map((t) => t.Hs));
+    const maxH = Math.max(...T.map((t) => t.Hmax));
+    const storm = document.getElementById("storm");
+    storm.innerHTML = "";
+    [["Turbines to act on", counts.red, "crit"], ["To inspect", counts.amber, "warn"], ["No action", counts.green, "ok"],
+     ["Peak H<sub>s</sub> (m)", fmt(maxHs, 1), ""], ["Largest wave (m)", fmt(maxH, 1), ""], ["Rogue waves · deep-dives", rogues + " · " + deep, ""]]
+      .forEach(([k, v, c]) => storm.append(el("div", {}, `<div class="k">${k}</div><div class="v ${c}">${v}</div>`)));
+    const F = D.meta.farm;
+    document.getElementById("eyebrow").textContent = `Post-storm report · ${F.name} · ${F.storm_name}, ${F.storm_peak}`;
+  }
+  function drawPortfolio() {
+    const host = document.getElementById("portfolio");
+    host.innerHTML = "";
+    ALL.forEach((d, i) => {
+      const F = d.meta.farm, c = { red: 0, amber: 0, green: 0 };
+      d.turbines.forEach((t) => c[t.status]++);
+      let worst = 0, pace = 0;
+      if (d.history) {
+        pace = 100 * d.history.years_in_service / d.meta.design_life;
+        d.turbines.forEach((t) => { if (t.history) HOTS.forEach((k) => { worst = Math.max(worst, t.history.hot[k].total); }); });
+      }
+      const b = el("button", { class: "farmcard" + (i === FI ? " on" : ""), type: "button", role: "tab", "aria-selected": i === FI ? "true" : "false" },
+        `<span class="fn">${F.name}</span><span class="fr">${F.region} · ${d.turbines.length} × ${d.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}</span>` +
+        `<span class="fc">${c.red ? `<span class="pill red">${c.red} act now</span>` : ""}${c.amber ? `<span class="pill amber">${c.amber} inspect</span>` : ""}<span class="pill green">${c.green} no action</span><span class="fr">${F.storm_name} ${F.storm_peak}</span></span>` +
+        (d.history ? `<span class="lu">worst life used ${fmt(worst, 1)}% · design pace ${fmt(pace, 1)}%</span>` : ""));
+      b.addEventListener("click", () => loadFarm(i));
+      host.append(b);
+    });
+  }
 
   // ---------- map ----------
   function drawMap(sel) {
@@ -681,7 +715,7 @@ button.tab { font: inherit; }
   }
 
   // ---------- interactive turbine model ----------
-  const GEO = { Dtop: 6.5, tb: 0.042, tt: 0.022, tp: 0.095, embed: 42, rotorD: 240, Cd: 1.0, Cm: 2.0 };
+  const geo = () => { const m = D.meta.turbine; return { Dtop: m.D_tower_top, tb: m.t_tower_base, tt: m.t_tower_top, tp: m.t_pile, embed: m.embedment, rotorD: m.rotor_D, Cd: 1.0, Cm: 2.0 }; };
   let partSel = "flange";
   const kv = (rows) => `<div class="kv">${rows.map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}</div>`;
   function hotRows(t, k) {
@@ -714,6 +748,7 @@ button.tab { font: inherit; }
   }
   function inspector(t, part) {
     const host = document.getElementById("insp"); if (!host) return;
+    const GEO = geo();
     const M = D.meta.turbine, f = t.final, dd = t.deep, hst = hotspotStatus(t);
     const air = Math.min(t.airgap, dd ? dd.airgap : 99);
     const pill = (st) => `<span class="pill ${st}">${statusText[st]}</span>`;
@@ -722,7 +757,7 @@ button.tab { font: inherit; }
     if (part === "rna") {
       const r = t.whatif && D.history ? whatif(t, WI) : null;
       html = `<h3>Rotor and nacelle</h3>` + kv([["Hub height", "+" + M.z_hub + " m"], ["Rotor diameter (assumed)", GEO.rotorD + " m"], ["RNA mass", fmt(M.m_rna / 1e3, 0) + " t"], ["First natural frequency", fmt(t.f1, 3) + " Hz"]]) +
-        sec("This storm", kv([["State", "idling, feathered"], ["Mean thrust used", "0.8 MN"], ["Aerodynamic damping", "≈ 0.3%"]]), true) +
+        sec("This storm", kv([["State", "idling, feathered"], ["Mean thrust used", fmt(M.idle_thrust / 1e6, 2) + " MN"], ["Aerodynamic damping", "≈ 0.3%"]]), true) +
         sec("What-if now", r ? kv([["Wind at hub", WI.u.toFixed(1) + " m/s"], ["State", r.op ? "operating" : "idling"], ["Mean thrust", fmt(r.T / 1e6, 2) + " MN"], ["Aerodynamic damping fore-aft", r.op ? "≈ 3.5%" : "≈ 0.3%"], ["Thrust moment at tower base", fmt(r.T * (M.z_hub - M.z_interface) / 1e6, 0) + " MN·m"]]) : "", false);
     } else if (part === "tower") {
       html = `<h3>Tower</h3>` + kv([["Base / top diameter", `${fmt(M.D_pile, 1)} / ${fmt(GEO.Dtop, 1)} m`], ["Base / top wall", `${GEO.tb * 1000} / ${GEO.tt * 1000} mm`], ["Length", fmt(M.z_hub - M.z_interface, 0) + " m"], ["First natural frequency", fmt(t.f1, 3) + " Hz"], ["Door elevation", "+" + M.z_door + " m"]]) +
@@ -762,6 +797,7 @@ button.tab { font: inherit; }
   }
   function drawModel(t, hst) {
     const host = document.getElementById("elev"); if (!host) return;
+    const GEO = geo();
     const M = D.meta.turbine, d = t.spec.depth, toe = -d - GEO.embed, top = M.z_hub + GEO.rotorD / 2;
     const W = 260, H = 640, Y = (z) => 12 + (top - z) / (top - toe) * (H - 24);
     const ex = 2.2, cx = 120, half = (Dm) => Dm * ex * (H - 24) / (top - toe) / 2 * 1.0 + 3;
@@ -822,7 +858,7 @@ button.tab { font: inherit; }
 
   // ---------- what-if model (browser-side, anchored to the base runs) ----------
   const DOOR_AZ = 135;                       // door faces south-east (degrees from north)
-  const tpTyp = (hs) => Math.max(5.5, 3.6 * Math.sqrt(hs));
+  const tpTyp = (hs) => Math.max(4.5, ((D.history && D.history.tp_coef) || 3.6) * Math.sqrt(hs));
   const lin = (xs, ys, x) => {
     if (x <= xs[0]) return ys[0] + (ys[1] - ys[0]) * (x - xs[0]) / (xs[1] - xs[0]);
     for (let i = 1; i < xs.length; i++) if (x <= xs[i]) return ys[i - 1] + (ys[i] - ys[i - 1]) * (x - xs[i - 1]) / (xs[i] - xs[i - 1]);
@@ -842,11 +878,12 @@ button.tab { font: inherit; }
     }
     return Math.sqrt(num / den);
   }
-  function thrust(U) {                        // 15 MW-class thrust curve (N), cut-in 3, rated 10.6, cut-out 25
-    if (U < 3) return 2e4 * U * U / 9;
-    if (U <= 10.6) return 2.4e6 * (U / 10.6) ** 2;
-    if (U <= 25) return 2.4e6 * Math.pow(10.6 / U, 1.1);
-    return 0.8e6 * (U / 35) ** 2;             // idling, feathered
+  function thrust(U) {                        // thrust curve (N): cut-in 3, rated, cut-out 25, then idling
+    const m = D.meta.turbine, Tr = m.rated_thrust, Ur = m.rated_U;
+    if (U < 3) return 2e4 * U * U / 9 * Tr / 2.4e6;
+    if (U <= Ur) return Tr * (U / Ur) ** 2;
+    if (U <= 25) return Tr * Math.pow(Ur / U, 1.1);
+    return m.idle_thrust * (U / 35) ** 2;     // idling, feathered
   }
   const operating = (U) => U >= 3 && U <= 25;
   function snDamage(ranges, probs, curve, t) { // DNV-RP-C203 bilinear, ranges in Pa
@@ -898,7 +935,7 @@ button.tab { font: inherit; }
     const rfa = specResp(inp.tp, zfa, w.f1) / R0, rss = specResp(inp.tp, zss, w.f1) / R0;
     const dl = rad(inp.wdir - inp.udir);
     const waveFac = Math.sqrt(Math.cos(dl) ** 2 * rfa * rfa + Math.sin(dl) ** 2 * rss * rss);
-    const T = thrust(inp.u), TI = 0.05 + 0.4 / Math.max(inp.u, 2), g = op ? (inp.u < 10.6 ? 1 : 0.35) : 1;
+    const T = thrust(inp.u), TI = 0.05 + 0.4 / Math.max(inp.u, 2), g = op ? (inp.u < D.meta.turbine.rated_U ? 1 : 0.35) : 1;
     const sT = T * 2 * TI * g;
     const out = {}; let gap = "closed";
     HOTS.forEach((k) => {
@@ -1045,20 +1082,31 @@ button.tab { font: inherit; }
     });
   }
 
-  document.getElementById("assumptions").textContent =
-    `Assumptions: carrier period ${D.meta.Tp} s; ${D.meta.record_s / 60}-minute record per turbine, scaled to ${D.meta.storm_peak_hours} h at peak for fatigue; design life ${D.meta.design_life} years; design fatigue factors ${Object.entries(D.meta.dff).map(([k, v]) => k.replace("_", " ") + " " + v).join(", ")}. ` +
-    `Fatigue stress concentration: door frame ${D.meta.scf.door_frame}, mudline weld ${D.meta.scf.mudline_weld}. Deep-water NLS dynamics are applied at intermediate depth (kd ≈ 1.4–1.7); the production chain uses finite-depth evolution.`;
-
-  let current = Math.max(0, T.findIndex((t) => t.status === "red"));
-  if (T[current].status !== "red") current = Math.max(0, T.findIndex((t) => t.status === "amber"));
+  function assumptions() {
+    document.getElementById("assumptions").textContent =
+      `Assumptions for ${D.meta.farm.name}: storm carrier period ${D.meta.Tp} s; ${D.meta.record_s / 60}-minute record per turbine, scaled to ${D.meta.storm_peak_hours} h at peak for fatigue; design life ${D.meta.design_life} years; design fatigue factors ${Object.entries(D.meta.dff).map(([k, v]) => k.replace("_", " ") + " " + v).join(", ")}. ` +
+      `Fatigue stress concentration: door frame ${D.meta.scf.door_frame}, mudline weld ${D.meta.scf.mudline_weld}. Deep-water NLS dynamics are applied at intermediate depth (kd above 1.36, where modulational instability exists); the production chain uses finite-depth evolution.`;
+  }
+  let current = 0;
+  function defaultTurbine() {
+    let i = T.findIndex((t) => t.status === "red");
+    if (i < 0) i = T.findIndex((t) => t.status === "amber");
+    if (i < 0) i = T.findIndex((t) => t.condition);
+    return Math.max(0, i);
+  }
   function select(i) { current = i; drawMap(i); drawList(i); detail(i); if (D.history) drawWhatif(); }
-  farmHistory();
+  function renderAll() { drawPortfolio(); drawStorm(); farmHistory(); assumptions(); select(current); boltCurve(); }
+  function loadFarm(i) {
+    FI = i; D = ALL[i]; T = D.turbines; current = defaultTurbine();
+    const hs = Math.min(4, Math.max(1.5, (D.history ? D.history.hs_mean : 2) * 2));
+    setWIsilent({ hs: hs.toFixed(1), tp: tpTyp(hs).toFixed(1) });
+    renderAll();
+  }
+  function setWIsilent(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); readWI(); }
   readWI();
-  select(current);
-  boltCurve();
+  loadFarm(0);
   const mq = window.matchMedia("(prefers-color-scheme: dark)");
-  const redraw = () => { farmHistory(); select(current); boltCurve(); };
-  if (mq.addEventListener) mq.addEventListener("change", redraw);
-  new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (mq.addEventListener) mq.addEventListener("change", renderAll);
+  new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 })();
 </script>

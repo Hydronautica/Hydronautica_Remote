@@ -35,20 +35,23 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import build_data as bd  # noqa: E402
+import farms  # noqa: E402
 from structure import (Model, Turbine, aero_damping, bolt_damage, miner_damage,  # noqa: E402
                        rainflow, thrust)
 
 HS_BINS = [1.5, 3.0, 4.5, 6.0, 7.5, 9.0]
 U_BINS = [8.0, 11.0, 15.0, 20.0, 27.0, 32.0]   # typical hub wind for each sea state
-COMMISSIONED = datetime(2019, 3, 1)
-STORM_PEAK = datetime(2026, 1, 14, 6)        # the storm replayed on the page
+CFG = farms.current()
+TURB = farms.TURBINES[CFG["turbine"]]
+COMMISSIONED = CFG["commissioned"]
+STORM_PEAK = CFG["storm_peak"]               # the storm replayed on the page
 HOT = ("flange_bolts", "door_frame", "mudline_weld")
-REF_HS = 9.2                                 # farm-reference Hs of the replayed storm
+REF_HS = CFG["farm"][0]["Hs"]                # Hs of the replayed storm at the reference turbine
 
 
 def tp_of(hs):
-    """Peak period from a typical wind-sea steepness relation."""
-    return max(5.5, 3.6 * np.sqrt(hs))
+    """Peak period from a typical wind-sea steepness relation for the site."""
+    return max(4.5, CFG["tp_coef"] * np.sqrt(hs))
 
 
 def damage_rates(args):
@@ -57,8 +60,10 @@ def damage_rates(args):
     warnings.filterwarnings("ignore")
     spec, hs = args
     U = U_BINS[HS_BINS.index(hs)]
-    tb = Turbine(depth=spec["depth"], scour=spec["scour"], preload_frac=spec["preload"],
-                 name=spec["name"], damping_ratio=0.015 + aero_damping(U), mean_thrust=thrust(U))
+    tb0 = Turbine(**TURB)
+    tb = Turbine(**dict(TURB, mean_thrust=thrust(U, tb0)), depth=spec["depth"], scour=spec["scour"],
+                 preload_frac=spec["preload"], name=spec["name"],
+                 damping_ratio=0.015 + aero_damping(U))
     model = Model(tb)
     model.setup_damping()
     s = dict(spec, Hs=hs, seed=spec["seed"] + int(10 * hs))
@@ -99,26 +104,17 @@ def damage_rates(args):
 
 # --- synthetic sea-state history ----------------------------------------------------
 
-NAMED_STORMS = [  # (peak time, peak Hs at the farm reference, half-width in hours)
-    (datetime(2019, 12, 9, 3), 7.4, 20),
-    (datetime(2020, 2, 15, 18), 8.6, 26),
-    (datetime(2020, 2, 23, 9), 7.1, 16),
-    (datetime(2021, 1, 28, 12), 7.8, 22),
-    (datetime(2022, 2, 18, 15), 8.9, 24),
-    (datetime(2023, 11, 2, 6), 7.6, 18),
-    (datetime(2024, 12, 7, 21), 8.2, 22),
-    (datetime(2025, 10, 30, 0), 6.9, 16),
-]
+NAMED_STORMS = CFG["named_storms"]   # (peak time, peak Hs at the reference, half-width h)
 
 
-def hs_history(seed=7):
+def hs_history(seed=CFG["history_seed"]):
     """Hourly Hs at the farm reference point from commissioning to the storm peak
     (the replayed storm itself is added separately from its detailed run)."""
     rng = np.random.default_rng(seed)
     n = int((STORM_PEAK - COMMISSIONED).total_seconds() // 3600) - 12
     times = np.array([COMMISSIONED + timedelta(hours=h) for h in range(n)])
     doy = np.array([tt.timetuple().tm_yday for tt in times])
-    mean = np.log(1.55) + 0.42 * np.cos(2 * np.pi * (doy - 20) / 365.25)
+    mean = np.log(CFG["climate_median"]) + CFG["seasonal"] * np.cos(2 * np.pi * (doy - 20) / 365.25)
     x = np.empty(n)
     x[0] = 0.0
     phi = 0.985
@@ -152,7 +148,7 @@ def r2(x, n=4):
 
 
 if __name__ == "__main__":
-    with open(os.path.join(HERE, "demo_data.json")) as fh:
+    with open(bd.OUT) as fh:
         data = json.load(fh)
     only = sys.argv[1:]          # optional: re-run selected turbines, keep the others
     specs = [t["spec"] for t in data["turbines"] if not only or t["spec"]["name"] in only]
@@ -203,7 +199,7 @@ if __name__ == "__main__":
                            storm_days=r2(per_storm, 1),
                            projected_life=float(storm_years / max(total / 100, 1e-9)),
                            rates=r2(d_tab, 12))
-        tb = Turbine(depth=spec["depth"], scour=spec["scour"], preload_frac=spec["preload"])
+        tb = Turbine(**TURB, depth=spec["depth"], scour=spec["scour"], preload_frac=spec["preload"])
         mdl = Model(tb)
         z_mw = props[name]["z_mw"]
         from structure import section, bolt_force
@@ -235,8 +231,9 @@ if __name__ == "__main__":
         storms=storms,
         days=r2(years[daily], 4), hs_mean=float(hs_ref.mean()),
         base=dict(U=U_BINS, zeta=[0.015 + aero_damping(u) for u in U_BINS],
-                  thrust=[thrust(u) for u in U_BINS]),
+                  thrust=[thrust(u, Turbine(**TURB)) for u in U_BINS]),
+        tp_coef=CFG["tp_coef"],
         hs_daily_max=r2([hs_ref[i:i + 24].max() for i in daily], 2))
-    with open(os.path.join(HERE, "demo_data.json"), "w") as fh:
+    with open(bd.OUT, "w") as fh:
         json.dump(data, fh, separators=(",", ":"))
-    print("updated demo_data.json", os.path.getsize(os.path.join(HERE, "demo_data.json")) // 1024, "kB")
+    print("updated", os.path.basename(bd.OUT), os.path.getsize(bd.OUT) // 1024, "kB")
