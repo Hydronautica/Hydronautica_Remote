@@ -6,3 +6,4 @@ build/
 dist/
 figures/
 demo/stormtwin/demo_data.json
+demo/stormtwin/farm.log
