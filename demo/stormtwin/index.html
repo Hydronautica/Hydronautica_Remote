@@ -3,9 +3,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: instrument-panel replay. Farm overview on the left, the selected
-   turbine's chain (sea -> global -> hot spot -> verdict) on the right, then
-   how it works, confidence, standards and ways to start. */
+/* Layout: explorer shell. Tree on the left, the 3D farm in the middle, and an
+   analysis drawer on the right that only opens when something is picked. */
 :root {
   --bg: #eef2f5;
   --surface: #ffffff;
@@ -48,14 +47,7 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body {
-  background: var(--bg); color: var(--ink); font-family: var(--font-body);
-  font-size: 15px; line-height: 1.5;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 0 48px;
-}
-.wrap { max-width: 1280px; margin: 0 auto; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
 h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
 h1 { font-size: 2.6rem; line-height: 1.05; }
 h2 { font-size: 1.75rem; line-height: 1.15; }
@@ -65,58 +57,6 @@ p { margin: 0; max-width: 68ch; }
 .mono, .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 .eyebrow { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
 
-/* top bar */
-.topbar { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; padding-block: 20px 14px; border-bottom: 1px solid var(--line); }
-.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.brand b { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; letter-spacing: 0.02em; }
-.badge { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--warn); color: var(--warn); border-radius: 3px; }
-
-.dash-head { display: grid; gap: 10px; padding-block: 18px 12px; }
-.dash-head h1 { font-size: 2rem; }
-.dash-head .storm { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.dash-head .storm .v { font-size: 1.1rem; }
-.dash { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-.vp-col { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); }
-.viewport { position: relative; height: min(76vh, 640px); min-height: 420px; overflow: hidden; background: var(--sky); }
-#three { position: absolute; inset: 0; }
-#three canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-.vp-ui { position: absolute; left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; pointer-events: none; }
-.vp-ui > * { pointer-events: auto; }
-.vp-ui.top { top: 10px; justify-content: space-between; }
-.vp-ui.bot { bottom: 10px; justify-content: space-between; }
-.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-.seg button { font: inherit; font-size: 0.78rem; padding: 5px 10px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
-.seg button + button { border-left: 1px solid var(--line); }
-.seg button.on { background: var(--accent); color: var(--surface); }
-.vp-chip { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; font-size: 0.78rem; }
-.vp-msg { position: absolute; left: 50%; top: 56px; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--crit); color: var(--ink); border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; pointer-events: none; max-width: calc(100% - 20px); }
-.vp-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.76rem; }
-.vp-fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
-.side { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.tabs { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 2; }
-.tabs button { font: inherit; font-size: 0.88rem; padding: 9px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); cursor: pointer; }
-.tabs button.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
-.pane { display: flex; flex-direction: column; gap: 12px; }
-.side .grid2, .side .verdict, .side .two { grid-template-columns: minmax(0, 1fr); }
-.side .chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.side .model { grid-template-columns: minmax(0, 170px) minmax(0, 1fr); }
-.side .wiout { grid-template-columns: minmax(0, 1fr); }
-@media (max-width: 1000px) {
-  .dash { grid-template-columns: minmax(0, 1fr); }
-  .vp-col { position: relative; top: 0; }
-  .viewport { height: 62vh; min-height: 340px; }
-  .dash-head .storm { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (max-width: 560px) { .side .model { grid-template-columns: minmax(0, 1fr); } }
-.portfolio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-block: 16px 0; }
-.farmcard { text-align: left; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; cursor: pointer; display: grid; gap: 6px; }
-.farmcard:hover { border-color: var(--accent); }
-.farmcard.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.farmcard .fn { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; }
-.farmcard .fr { font-size: 0.8rem; color: var(--muted); }
-.farmcard .fc { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.8rem; }
-.farmcard .lu { font-family: var(--font-data); font-size: 0.8rem; }
-@media (max-width: 800px) { .portfolio { grid-template-columns: minmax(0, 1fr); } }
 .hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; padding-block: 28px 24px; align-items: end; }
 .hero p { margin-top: 12px; color: var(--muted); font-size: 1.02rem; }
 .storm { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
@@ -255,183 +195,276 @@ button.tab { font: inherit; }
 @media (prefers-reduced-motion: no-preference) {
   .list tr td, .farm circle { transition: background 0.15s, stroke-width 0.15s; }
 }
+/* ---------- app shell ---------- */
+.app { display: grid; grid-template-columns: 272px minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "top top top" "tree stage drawer"; height: 100vh; height: 100dvh; overflow: hidden; }
+.topbar { grid-area: top; display: flex; align-items: center; gap: 14px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); background: var(--surface); min-width: 0; }
+.brand b { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; letter-spacing: 0.02em; }
+.badge { margin-left: auto; font-family: var(--font-data); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 7px; border: 1px solid var(--warn); color: var(--warn); border-radius: 3px; white-space: nowrap; }
+.crumbs { display: flex; align-items: center; gap: 6px; font-size: 0.86rem; color: var(--muted); min-width: 0; overflow: hidden; white-space: nowrap; }
+.crumbs button { font: inherit; background: none; border: 0; padding: 2px 4px; color: var(--muted); cursor: pointer; border-radius: 3px; }
+.crumbs button:hover { color: var(--accent); }
+.crumbs button:last-child { color: var(--ink); font-weight: 600; }
+.crumbs .sep { opacity: 0.5; }
+#tree-toggle { display: none; }
+
+.explorer { grid-area: tree; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-right: 1px solid var(--line); }
+.ex-h { font-family: var(--font-data); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 12px 14px 6px; }
+.tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+.tree { flex: 1; overflow-y: auto; padding: 0 6px 12px; }
+.tree ul { margin-left: 13px; border-left: 1px solid var(--grid); }
+.node { width: 100%; display: flex; align-items: center; gap: 6px; font: inherit; font-size: 0.88rem; text-align: left; color: var(--ink); background: none; border: 0; border-radius: 5px; padding: 4px 6px; cursor: pointer; min-width: 0; }
+.node:hover { background: var(--accent-soft); }
+.node.on { background: var(--accent); color: var(--surface); }
+.node.on .meta, .node.on .tw { color: var(--surface); }
+.node .tw { width: 14px; flex: none; color: var(--muted); font-size: 0.7rem; text-align: center; transition: transform 0.12s; }
+.node[aria-expanded="true"] .tw { transform: rotate(90deg); }
+.node .ic { width: 16px; flex: none; text-align: center; color: var(--muted); font-size: 0.82rem; }
+.node.on .ic { color: var(--surface); }
+.node .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.node .meta { flex: none; font-family: var(--font-data); font-size: 0.72rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
+.node .sd { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px var(--surface); }
+.node.farm-n .nm { font-weight: 600; }
+.ex-f { border-top: 1px solid var(--line); padding: 6px; }
+
+.stage { grid-area: stage; position: relative; min-width: 0; min-height: 0; }
+.viewport { position: absolute; inset: 0; overflow: hidden; background: var(--sky); }
+#three { position: absolute; inset: 0; }
+#three canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.vp-ui { position: absolute; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; justify-content: space-between; pointer-events: none; }
+.vp-ui > * { pointer-events: auto; }
+.vp-ui.top { top: 12px; }
+.vp-ui.bot { bottom: 12px; align-items: flex-end; }
+.vp-chip { background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; backdrop-filter: blur(4px); }
+.vp-farm b { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; margin-right: 6px; }
+.vp-farm .pill { margin-left: 4px; }
+.vp-tools, .vp-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.sel { display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--muted); background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 6px; padding: 3px 4px 3px 9px; }
+.sel select { font: inherit; font-size: 0.8rem; color: var(--ink); background: transparent; border: 0; padding: 2px; cursor: pointer; }
+.vp-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.76rem; }
+.vp-msg { position: absolute; left: 50%; top: 58px; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--crit); color: var(--ink); border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; pointer-events: none; max-width: calc(100% - 24px); }
+.vp-cap { position: absolute; right: 12px; bottom: 52px; max-width: min(460px, calc(100% - 24px)); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 0.78rem; color: var(--muted); margin: 0; }
+.vp-hint { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); font-size: 0.82rem; color: var(--ink); background: color-mix(in srgb, var(--surface) 80%, transparent); border-radius: 999px; padding: 5px 14px; pointer-events: none; white-space: nowrap; transition: opacity 0.4s; }
+.vp-hint.gone { opacity: 0; }
+.vp-fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
+.btn.icon { padding: 4px 8px; }
+.vp-btns .btn { background: color-mix(in srgb, var(--surface) 88%, transparent); }
+
+.drawer { grid-area: drawer; width: min(500px, 42vw); display: flex; flex-direction: column; min-height: 0; background: var(--bg); border-left: 1px solid var(--line); }
+.dr-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px 10px; background: var(--surface); }
+.dr-h h2 { font-size: 1.5rem; }
+.drawer .tabs { display: flex; gap: 0; padding: 0 10px; background: var(--surface); border-bottom: 1px solid var(--line); overflow-x: auto; }
+.drawer .tabs button { font: inherit; font-size: 0.86rem; padding: 8px 10px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.drawer .tabs button.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.dr-b { flex: 1; overflow-y: auto; padding: 14px 16px 32px; }
+.pane { display: flex; flex-direction: column; gap: 12px; }
+.drawer .grid2, .drawer .verdict, .drawer .two, .drawer .wiout { grid-template-columns: minmax(0, 1fr); }
+.drawer .chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.drawer .storm { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.drawer .storm .v { font-size: 1.1rem; }
+.drawer .chain { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.drawer .chain .step { border-bottom: 1px solid var(--line); }
+.drawer .chain .step:nth-child(2n) { border-right: 0; }
+.portfolio { display: grid; gap: 10px; }
+.farmcard { text-align: left; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; cursor: pointer; display: grid; gap: 6px; }
+.farmcard:hover { border-color: var(--accent); }
+.farmcard.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.farmcard .fn { font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; }
+.farmcard .fr { font-size: 0.8rem; color: var(--muted); }
+.farmcard .fc { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.8rem; }
+.farmcard .lu { font-family: var(--font-data); font-size: 0.8rem; }
+.insp > h3 { display: none; }
+.hstable tr[data-part] { cursor: pointer; }
+.hstable tr[data-part]:hover td { background: var(--accent-soft); }
+.drawer .offers, .drawer .meas, .drawer .portfolio { grid-template-columns: minmax(0, 1fr); }
+.drawer #history { display: flex; flex-direction: column; gap: 12px; }
+details.sec { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+details.sec > summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1.08rem; }
+details.sec[open] > summary { margin-bottom: 8px; }
+details.sec > * + * { margin-top: 8px; }
+.insp .kv { margin-top: 2px; }
+.insp summary { list-style-position: inside; }
+.insp .lead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 4px; }
+
+@media (max-width: 1100px) { .app { grid-template-columns: 236px minmax(0, 1fr) auto; } .drawer { width: min(440px, 46vw); } }
+@media (max-width: 860px) {
+  .app { display: block; height: auto; overflow: visible; }
+  .topbar { position: sticky; top: 0; z-index: 20; flex-wrap: wrap; row-gap: 4px; }
+  .crumbs { order: 5; flex-basis: 100%; }
+  #tree-toggle { display: inline-flex; }
+  .explorer { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; width: min(300px, 86vw); transform: translateX(-102%); transition: transform 0.2s; }
+  .app.tree-open .explorer { transform: none; }
+  .app.tree-open::after { content: ""; position: fixed; inset: 0; z-index: 25; background: rgba(0, 0, 0, 0.4); }
+  .stage { height: 58vh; min-height: 320px; }
+  .drawer { width: auto; border-left: 0; border-top: 1px solid var(--line); }
+  .dr-b { overflow: visible; }
+  .vp-hint { white-space: normal; text-align: center; width: max-content; max-width: calc(100% - 32px); }
+}
 </style>
 
-<div class="wrap">
+<div class="app" id="app">
   <header class="topbar">
-    <div class="brand"><b>StormTwin</b><span class="muted">Storm-to-hot-spot assessment for offshore wind monopiles</span></div>
-    <span class="badge">Demonstration · synthetic storms and farms</span>
+    <button class="btn icon" type="button" id="tree-toggle" aria-controls="explorer" aria-expanded="false">☰ Explorer</button>
+    <div class="brand"><b>StormTwin</b></div>
+    <nav class="crumbs" id="crumbs" aria-label="Location"></nav>
+    <span class="badge">Demo · synthetic data</span>
   </header>
-  <div class="portfolio" id="portfolio" role="tablist" aria-label="Farms in the portfolio"></div>
 
-  <div class="dash-head">
-    <div><div class="eyebrow" id="eyebrow">Post-storm report</div><h1 id="dash-title">Storm replay</h1></div>
-    <div class="storm" id="storm"></div>
-  </div>
-
-  <section class="dash" aria-label="Farm dashboard">
-    <div class="vp-col">
-      <div class="panel viewport" id="viewport">
-        <div id="three" role="img" aria-label="3D view of the farm and sea; click a turbine to analyse it"></div>
-        <div class="vp-ui top">
-          <div class="seg" role="group" aria-label="Colour turbines by"><button type="button" data-color="verdict" class="on">Verdict</button><button type="button" data-color="life">Life used</button><button type="button" data-color="alarms">Frequency alarms</button></div>
-          <div class="seg" role="group" aria-label="Sea state shown"><button type="button" data-sea="storm" class="on">Storm replay</button><button type="button" data-sea="whatif">What-if sea</button></div>
-        </div>
-        <div class="vp-msg" id="vp-msg" hidden></div>
-        <div class="vp-ui bot">
-          <div class="vp-chip vp-legend" id="vp-legend"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn" type="button" id="vp-rogue">Replay largest wave</button>
-            <button class="btn" type="button" id="vp-play">Pause</button>
-            <button class="btn" type="button" id="vp-reset">Reset view</button>
-          </div>
-        </div>
-        <div class="vp-fallback" id="vp-fallback" hidden><p>3D view needs WebGL, which this browser has turned off. Use the farm map in the Overview tab.</p></div>
-      </div>
-      <p class="cap" id="vp-cap">Drag to orbit, scroll or pinch to zoom, right-drag to pan. Click a turbine to analyse it.</p>
+  <aside class="explorer" id="explorer" aria-label="Explorer">
+    <div class="ex-h">Explorer</div>
+    <ul class="tree" id="tree" role="tree" aria-label="Farms, turbines and components"></ul>
+    <div class="ex-f">
+      <button class="node about-node" type="button" id="about-node"><span class="tw"></span><span class="ic">ⓘ</span><span class="nm">About StormTwin</span></button>
     </div>
+  </aside>
 
-    <aside class="side">
-      <div class="tabs" role="tablist" aria-label="Turbine analysis">
-        <button type="button" role="tab" data-tab="overview" class="on">Overview</button>
-        <button type="button" role="tab" data-tab="structure">Structure</button>
-        <button type="button" role="tab" data-tab="fatigue">Fatigue</button>
-        <button type="button" role="tab" data-tab="frequency">Frequencies</button>
-        <button type="button" role="tab" data-tab="event">Event</button>
-      </div>
-      <div class="pane" id="pane-overview">
-        <div class="pane" id="pane-ov-t"></div>
-        <div class="panel farm">
-          <div class="panel-h"><h3>Farm overview</h3><div class="legend"><span><i class="dot" style="background:var(--crit)"></i>Act now</span><span><i class="dot" style="background:var(--warn)"></i>Inspect</span><span><i class="dot" style="background:var(--ok)"></i>No action</span></div></div>
-          <div class="panel-b">
-            <div id="map"></div>
-            <div class="tbl-wrap"><table class="list" id="list" aria-label="Turbines">
-              <thead><tr><th>Turbine</th><th>Verdict</th><th class="r">H<sub>max</sub>/H<sub>s</sub></th><th class="r">Peak ULS</th><th class="r">Life used</th></tr></thead>
-              <tbody></tbody>
-            </table></div>
-            <p class="cap">Life used: fatigue life consumed since commissioning at the worst hot spot, this storm included (design pace today: <span id="pace"></span>). ◆ known condition · <span style="color:var(--crit)">∿</span> natural-frequency alarm.</p>
-          </div>
+  <main class="stage">
+    <div class="viewport" id="viewport">
+      <div id="three" role="img" aria-label="3D view of the farm and sea; click a turbine to analyse it"></div>
+      <div class="vp-ui top">
+        <div class="vp-chip vp-farm" id="vp-farm"></div>
+        <div class="vp-tools">
+          <label class="sel">Colour<select id="vp-color" aria-label="Colour turbines by"><option value="verdict">Verdict</option><option value="life">Life used</option><option value="alarms">Frequency alarms</option></select></label>
+          <label class="sel">Sea<select id="vp-sea" aria-label="Sea state shown"><option value="storm">Storm replay</option><option value="whatif">What-if</option></select></label>
         </div>
       </div>
-      <div class="pane" id="pane-structure" hidden></div>
+      <div class="vp-msg" id="vp-msg" hidden></div>
+      <div class="vp-ui bot">
+        <div class="vp-chip vp-legend" id="vp-legend"></div>
+        <div class="vp-btns">
+          <button class="btn" type="button" id="vp-rogue" hidden>Replay largest wave</button>
+          <button class="btn" type="button" id="vp-play">Pause</button>
+          <button class="btn" type="button" id="vp-reset">Reset view</button>
+          <button class="btn icon" type="button" id="vp-info" aria-describedby="vp-cap" title="">ⓘ</button>
+        </div>
+      </div>
+      <p class="vp-cap" id="vp-cap" role="tooltip" hidden></p>
+      <div class="vp-hint" id="vp-hint">Click a turbine, or pick something in the explorer</div>
+      <div class="vp-fallback" id="vp-fallback" hidden><p>The 3D view needs WebGL, which this browser has turned off. Use the explorer on the left.</p></div>
+    </div>
+  </main>
+
+  <aside class="drawer" id="drawer" aria-label="Analysis" hidden>
+    <div class="dr-h">
+      <div><div class="eyebrow" id="dr-eyebrow"></div><h2 id="dr-title"></h2></div>
+      <button class="btn icon" type="button" id="dr-close" aria-label="Close panel">✕</button>
+    </div>
+    <div class="tabs" id="dr-tabs" role="tablist" hidden></div>
+    <div class="dr-b" id="dr-body">
+
+      <!-- portfolio -->
+      <div class="pane" id="pane-portfolio" hidden>
+        <div class="portfolio" id="portfolio"></div>
+      </div>
+
+      <!-- farm -->
+      <div class="pane" id="pane-farm" hidden>
+        <div class="storm" id="storm"></div>
+        <div class="panel"><div class="panel-h"><h3>Turbines</h3></div><div class="panel-b">
+          <div class="tbl-wrap"><table class="list" id="list" aria-label="Turbines">
+            <thead><tr><th>Turbine</th><th>Verdict</th><th class="r">H<sub>max</sub>/H<sub>s</sub></th><th class="r">Peak ULS</th><th class="r">Life used</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <p class="cap">Life used: fatigue life consumed since commissioning at the worst hot spot, this storm included (design pace today: <span id="pace"></span>). ◆ known condition · <span style="color:var(--crit)">∿</span> natural-frequency alarm.</p>
+        </div></div>
+        <div id="history">
+          <p class="muted" id="histintro"></p>
+          <div class="panel chart"><div class="panel-h"><h3>Sea state at the farm</h3></div><div class="panel-b"><div id="hstimeline"></div><p class="cap">Daily maximum significant wave height at the farm reference point. Named storms are marked; the last one is the replayed storm.</p></div></div>
+          <div class="panel chart"><div class="panel-h"><h3>Life used by turbine</h3></div><div class="panel-b"><div id="lifebars"></div><p class="cap">Worst hot spot per turbine. The dashed line is the pace that would use exactly the design life by year 25.</p></div></div>
+        </div>
+      </div>
+
+      <!-- turbine -->
+      <div class="pane" id="pane-overview" hidden></div>
       <div class="pane" id="pane-fatigue" hidden></div>
       <div class="pane" id="pane-frequency" hidden></div>
       <div class="pane" id="pane-event" hidden></div>
-    </aside>
-  </section>
+      <div class="pane" id="pane-whatif" hidden>
+        <section id="whatif" class="pane">
+          <p class="muted">How sea state, wind and direction drive damage at <b id="wi-name"></b>. Anchored to this turbine's base runs and scaled physically: dynamic amplification of the first mode for T<sub>p</sub>, rotor damping and thrust for wind, and each hot spot's position on the circumference for direction. Set the 3D sea to <i>What-if</i> to see these conditions.</p>
+          <div class="panel"><div class="panel-b ctl" style="padding-top:14px">
+            <label for="wi-hs"><span>Significant wave height H<sub>s</sub></span><span class="v" id="wi-hs-v"></span><input type="range" id="wi-hs" min="0.5" max="12" step="0.1" value="4"></label>
+            <label for="wi-tp"><span>Peak period T<sub>p</sub></span><span class="v" id="wi-tp-v"></span><input type="range" id="wi-tp" min="4" max="16" step="0.1" value="7.2"></label>
+            <label for="wi-wdir"><span>Wave direction (from)</span><span class="v" id="wi-wdir-v"></span><input type="range" id="wi-wdir" min="0" max="355" step="5" value="240"></label>
+            <label for="wi-u"><span>Wind speed at hub height</span><span class="v" id="wi-u-v"></span><input type="range" id="wi-u" min="0" max="40" step="0.5" value="12"></label>
+            <label for="wi-udir"><span>Wind direction (from)</span><span class="v" id="wi-udir-v"></span><input type="range" id="wi-udir" min="0" max="355" step="5" value="240"></label>
+            <label for="wi-dur"><span>Hold these conditions for</span><span class="v" id="wi-dur-v"></span><input type="range" id="wi-dur" min="0" max="96" step="1" value="12"></label>
+            <label for="wi-clim"><span>Future sea-state climate</span><span class="v" id="wi-clim-v"></span><input type="range" id="wi-clim" min="-20" max="20" step="1" value="0"></label>
+            <div class="row"><button class="btn" id="wi-tptyp" type="button">Typical T<sub>p</sub> for H<sub>s</sub></button><button class="btn" id="wi-calm" type="button">Calm, operating</button><button class="btn" id="wi-storm" type="button">Storm, idling</button><button class="btn" id="wi-mis" type="button">Misaligned swell</button></div>
+          </div></div>
+          <div class="panel"><div class="panel-h"><h3>Instantaneous damage rate</h3><span class="state" id="wi-state"></span></div>
+            <div class="panel-b wiout"><div id="wi-compass"></div><div class="tbl-wrap" id="wi-table"></div></div></div>
+          <div class="panel chart"><div class="panel-h"><h3>Cumulative fatigue: history and projection</h3></div><div class="panel-b"><div id="wi-proj"></div><div class="tbl-wrap" id="wi-life" style="margin-top:8px"></div><p class="cap">Solid: measured history to today. After today: the chosen conditions held for the set duration, then the average rate since commissioning scaled by the future climate. Thin dashed: the same without the what-if event. Grey dashed: design pace.</p></div></div>
+        </section>
+      </div>
 
-  <section class="block" id="history">
-    <div class="eyebrow">Fatigue since commissioning</div>
-    <h2>Every storm adds to the total</h2>
-    <p class="muted" id="histintro"></p>
-    <div class="two">
-      <div class="panel chart"><div class="panel-h"><h3>Sea state at the farm</h3></div><div class="panel-b"><div id="hstimeline"></div><p class="cap">Daily maximum significant wave height at the farm reference point. Named storms are marked; the last one is the storm replayed above.</p></div></div>
-      <div class="panel chart"><div class="panel-h"><h3>Life used by turbine</h3></div><div class="panel-b"><div id="lifebars"></div><p class="cap">Worst hot spot per turbine. The dashed line is the pace that would use exactly the design life by year 25.</p></div></div>
-    </div>
-  </section>
+      <!-- component -->
+      <div class="pane" id="pane-component" hidden><div class="insp" id="insp"></div></div>
 
-  <section class="block" id="whatif">
-    <div class="eyebrow">What-if</div>
-    <h2>Change the weather, watch the damage</h2>
-    <p class="muted">Explore how sea state, wind and direction drive damage at <b id="wi-name"></b> (select another turbine above). The panel is anchored to that turbine's base runs and scales them physically: dynamic amplification of the first mode for Tp, rotor damping and thrust for wind, and the position of each hot spot on the circumference for direction.</p>
-    <div class="wi">
-      <div class="panel"><div class="panel-b ctl" style="padding-top:14px">
-        <label for="wi-hs">Significant wave height H<sub>s</sub><span class="v" id="wi-hs-v"></span><input type="range" id="wi-hs" min="0.5" max="12" step="0.1" value="4"></label>
-        <label for="wi-tp">Peak period T<sub>p</sub><span class="v" id="wi-tp-v"></span><input type="range" id="wi-tp" min="4" max="16" step="0.1" value="7.2"></label>
-        <label for="wi-wdir">Wave direction (from)<span class="v" id="wi-wdir-v"></span><input type="range" id="wi-wdir" min="0" max="355" step="5" value="240"></label>
-        <label for="wi-u">Wind speed at hub height<span class="v" id="wi-u-v"></span><input type="range" id="wi-u" min="0" max="40" step="0.5" value="12"></label>
-        <label for="wi-udir">Wind direction (from)<span class="v" id="wi-udir-v"></span><input type="range" id="wi-udir" min="0" max="355" step="5" value="240"></label>
-        <label for="wi-dur">Hold these conditions for<span class="v" id="wi-dur-v"></span><input type="range" id="wi-dur" min="0" max="96" step="1" value="12"></label>
-        <label for="wi-clim">Future sea-state climate<span class="v" id="wi-clim-v"></span><input type="range" id="wi-clim" min="-20" max="20" step="1" value="0"></label>
-        <div class="row"><button class="btn" id="wi-tptyp" type="button">Typical T<sub>p</sub> for H<sub>s</sub></button><button class="btn" id="wi-calm" type="button">Calm, operating</button><button class="btn" id="wi-storm" type="button">Storm, idling</button><button class="btn" id="wi-mis" type="button">Misaligned swell</button></div>
-      </div></div>
-      <div class="detail">
-        <div class="panel"><div class="panel-h"><h3>Instantaneous damage rate</h3><span class="state" id="wi-state"></span></div>
-          <div class="panel-b wiout"><div id="wi-compass"></div><div class="tbl-wrap" id="wi-table"></div></div></div>
-        <div class="panel chart"><div class="panel-h"><h3>Cumulative fatigue: history and projection</h3></div><div class="panel-b"><div id="wi-proj"></div><div class="tbl-wrap" id="wi-life" style="margin-top:8px"></div><p class="cap">Solid: measured history to today. After today: the chosen conditions held for the set duration, then the average rate since commissioning scaled by the future climate. Thin dashed: the same without the what-if event. Grey dashed: design pace.</p></div></div>
+      <!-- about -->
+      <div class="pane" id="pane-about" hidden>
+        <p class="muted">Every turbine is screened over the full storm record. Turbines that are flagged, or that carry a known condition such as scour or low preload, get a deep-dive on their largest wave group.</p>
+        <div class="chain">
+          <div class="step"><span class="n">1</span><h3>Sea state</h3><p>Buoy, radar or hindcast data at each position, evolved with the nonlinear Schrödinger equation.</p><span class="tag">NLS · Dysthe</span></div>
+          <div class="step"><span class="n">2</span><h3>Extreme groups</h3><p>Rogue-wave detection, then a second-order reconstruction of the largest group with crest kinematics.</p><span class="tag">2nd-order · breaking check</span></div>
+          <div class="step"><span class="n">3</span><h3>Loads</h3><p>Morison loading along the pile, plus a slamming impulse when the crest is breaking.</p><span class="tag">Morison · Wienke–Oumeraci</span></div>
+          <div class="step"><span class="n">4</span><h3>Global model</h3><p>Beam tower, RNA and blades on a hybrid shell monopile with nonlinear p-y soil springs.</p><span class="tag">Nonlinear dynamics</span></div>
+          <div class="step"><span class="n">5</span><h3>Hot spots</h3><p>Section forces drive local finite-element models of flange bolts, door frames and welds.</p><span class="tag">Local FE · S-N</span></div>
+          <div class="step"><span class="n">6</span><h3>Verdict</h3><p>Pre-agreed rules turn utilisation and fatigue into a red, amber or green call with actions.</p><span class="tag">Inspection scope</span></div>
+        </div>
+        <details class="sec"><summary>Global to local: the tower-base flange</summary>
+          <p class="muted">The global model gives the bending moment at the flange. The local flange model turns it into the force in each bolt. Below a threshold the joint stays closed and the bolt barely feels the load. Once the gap opens the bolt picks up load fast, through prying, and that is where storm fatigue and preload loss happen. Lost preload moves the curve and makes every later storm worse.</p>
+          <div class="chart" id="boltcurve"></div>
+          <p class="cap">Bolt force against tension per bolt segment. Demo model: Schmidt–Neuper-type trilinear law standing in for the local FE flange segment with contact.</p>
+        </details>
+        <details class="sec"><summary>How much to trust each wave model</summary>
+          <p class="muted">The same wave height gives different crest kinematics depending on the wave theory. StormTwin reports that spread and flags results outside a model's valid range. From our sweep towards breaking (T = 10 s, d = 100 m):</p>
+          <div class="tbl-wrap"><table class="std" style="margin-top:10px">
+            <thead><tr><th>Wave height</th><th>What we found</th></tr></thead>
+            <tbody>
+              <tr><td>up to 0.4 H<sub>b</sub></td><td>Second-order NLS and Dysthe agree with the fully nonlinear stream function to about 15% on crest velocity and acceleration.</td></tr>
+              <tr><td>0.5 to 0.8 H<sub>b</sub></td><td>The choice of crest extrapolation matters more than the wave theory. Second-order models with Taylor extrapolation run well above the stream function.</td></tr>
+              <tr><td>0.9 H<sub>b</sub> and up</td><td>Every focused-wave model predicts the crest breaks (particle speed above wave speed). Use a slamming load model, not finer kinematics.</td></tr>
+            </tbody>
+          </table></div>
+        </details>
+        <details class="sec"><summary>What else the twin watches</summary>
+          <div class="meas">
+            <div><b>Natural frequencies</b>Tower and blade modes from accelerometers (operational modal analysis). Foundation stiffness, scour, flange and blade damage show up as shifts once temperature and operation are normalised out.</div>
+            <div><b>Tilt and rotation</b>Inclinometers at the interface: permanent tilt after storms against the serviceability limit.</div>
+            <div><b>Strain</b>Gauges at the tower base calibrate the virtual sensors that estimate stress where no gauge can go, such as below the seabed.</div>
+            <div><b>Bolt tension</b>Ultrasonic or instrumented bolts feed preload into the flange model, which changes every later storm assessment.</div>
+            <div><b>Damping and mode shapes</b>Damping estimates check the aerodynamic and soil damping in the model; mode-shape changes help locate damage.</div>
+            <div><b>Corrosion, scour, marine growth</b>Cathodic-protection potentials, scour sonar and ROV growth surveys update wall thickness, embedment and added mass.</div>
+          </div>
+        </details>
+        <details class="sec"><summary>What it reports against</summary>
+          <div class="tbl-wrap"><table class="std">
+            <thead><tr><th>Document</th><th>What it asks for</th><th>What StormTwin supplies</th></tr></thead>
+            <tbody>
+              <tr><td>DNV-RP-A204</td><td>Assurance of digital twins: confidence in data and models, risk of relying on outputs, operation and maintenance of the twin.</td><td>Validation record per module, model-spread bands, versioned and reproducible reports.</td></tr>
+              <tr><td>IEC TS 61400-28:2025</td><td>Through-life management: condition and remaining-life assessments, phased inspections.</td><td>Event-triggered assessments between campaigns; fatigue totals per hot spot.</td></tr>
+              <tr><td>DNV-ST-0262</td><td>Lifetime extension of wind turbines, assessing the whole structure.</td><td>Load history and remaining fatigue life from measured storms instead of design assumptions.</td></tr>
+              <tr><td>DNV-RP-C210</td><td>Probabilistic inspection planning for fatigue cracks, updated with new information.</td><td>Storm fatigue increments that update inspection timing.</td></tr>
+              <tr><td>DNV-RP-C203 · ST-0126 · IEC 61400-3-1</td><td>S-N curves, design checks and wave-load models in the design basis.</td><td>Hot-spot checks in the same format, with the code wave model shown beside the higher-fidelity result.</td></tr>
+              <tr><td>US self-inspection (30 CFR 585.824, now BSEE Part 285)</td><td>Annual self-inspection plan and report.</td><td>A documented, risk-based reason for each year's inspection scope.</td></tr>
+            </tbody>
+          </table></div>
+        </details>
+        <details class="sec"><summary>Ways to start</summary>
+          <div class="offers">
+            <div class="offer"><span class="who">Operators · 6–10 weeks</span><h3>Storm hindcast pilot</h3><ul><li>Pick a past storm and the inspections that followed</li><li>We run StormTwin on the data from the time, without seeing the findings</li><li>Compare our calls with what the crews found</li></ul></div>
+            <div class="offer"><span class="who">Operators · insurers · per event</span><h3>Post-storm assessment</h3><ul><li>Report within 48 hours of the storm peak</li><li>Red, amber, green per turbine with inspection scope</li><li>Evidence pack for insurers and certifiers</li></ul></div>
+            <div class="offer"><span class="who">Asset owners · per turbine per year</span><h3>Fleet twin</h3><ul><li>Continuous fatigue and foundation tracking</li><li>Inspection intervals updated from measured loads</li><li>Life-extension evidence built up year by year</li></ul></div>
+          </div>
+        </details>
+        <details class="sec"><summary>About this demonstration</summary>
+          <p class="cap">The farms, storms, turbines and condition data are synthetic. The turbines are 15 MW- and 10 MW-class monopile designs sized loosely after public reference turbines; they are not real assets. Waves come from NLS simulations of a random sea; loads, global response and hot-spot results come from demo-grade models (Morison loading, a nonlinear beam on API p-y springs, Schmidt–Neuper-type bolt law, stress concentration factors, DNV-RP-C203 and EN 1993-1-9 S-N curves) standing in for the production global and local finite-element models.</p>
+          <p class="cap" id="assumptions"></p>
+        </details>
       </div>
     </div>
-  </section>
-
-  <section class="block" id="how">
-    <div class="eyebrow">How it works</div>
-    <h2>One chain from the sea surface to a bolt</h2>
-    <p class="muted">Every turbine is screened over the full storm record. Turbines that are flagged, or that carry a known condition such as scour or low preload, get a deep-dive on their largest wave group.</p>
-    <div class="chain">
-      <div class="step"><span class="n">1</span><h3>Sea state</h3><p>Buoy, radar or hindcast data at each position, evolved with the nonlinear Schrödinger equation.</p><span class="tag">NLS · Dysthe</span></div>
-      <div class="step"><span class="n">2</span><h3>Extreme groups</h3><p>Rogue-wave detection, then a second-order reconstruction of the largest group with crest kinematics.</p><span class="tag">2nd-order · breaking check</span></div>
-      <div class="step"><span class="n">3</span><h3>Loads</h3><p>Morison loading along the pile, plus a slamming impulse when the crest is breaking.</p><span class="tag">Morison · Wienke–Oumeraci</span></div>
-      <div class="step"><span class="n">4</span><h3>Global model</h3><p>Beam tower, RNA and blades on a hybrid shell monopile with nonlinear p-y soil springs.</p><span class="tag">Nonlinear dynamics</span></div>
-      <div class="step"><span class="n">5</span><h3>Hot spots</h3><p>Section forces drive local finite-element models of flange bolts, door frames and welds.</p><span class="tag">Local FE · S-N</span></div>
-      <div class="step"><span class="n">6</span><h3>Verdict</h3><p>Pre-agreed rules turn utilisation and fatigue into a red, amber or green call with actions.</p><span class="tag">Inspection scope</span></div>
-    </div>
-  </section>
-
-  <section class="block">
-    <div class="two">
-      <div class="panel"><div class="panel-h"><h3>Global to local: the tower-base flange</h3></div><div class="panel-b">
-        <p class="muted">The global model gives the bending moment at the flange. The local flange model turns it into the force in each bolt. Below a threshold the joint stays closed and the bolt barely feels the load. Once the gap opens the bolt picks up load fast, through prying, and that is where storm fatigue and preload loss happen. Lost preload moves the curve and makes every later storm worse.</p>
-        <div class="chart" id="boltcurve"></div>
-        <p class="cap">Bolt force against tension per bolt segment. Demo model: Schmidt–Neuper-type trilinear law standing in for the local FE flange segment with contact.</p>
-      </div></div>
-      <div class="panel"><div class="panel-h"><h3>How much to trust each wave model</h3></div><div class="panel-b">
-        <p class="muted">The same wave height gives different crest kinematics depending on the wave theory. StormTwin reports that spread and flags results outside a model's valid range. From our sweep towards breaking (T = 10 s, d = 100 m):</p>
-        <div class="tbl-wrap"><table class="std" style="margin-top:10px">
-          <thead><tr><th>Wave height</th><th>What we found</th></tr></thead>
-          <tbody>
-            <tr><td>up to 0.4 H<sub>b</sub></td><td>Second-order NLS and Dysthe agree with the fully nonlinear stream function to about 15% on crest velocity and acceleration.</td></tr>
-            <tr><td>0.5 to 0.8 H<sub>b</sub></td><td>The choice of crest extrapolation matters more than the wave theory. Second-order models with Taylor extrapolation run well above the stream function.</td></tr>
-            <tr><td>0.9 H<sub>b</sub> and up</td><td>Every focused-wave model predicts the crest breaks (particle speed above wave speed). Use a slamming load model, not finer kinematics.</td></tr>
-          </tbody>
-        </table></div>
-      </div></div>
-    </div>
-  </section>
-
-  <section class="block">
-    <div class="eyebrow">Beyond storms</div>
-    <h2>What else the twin watches</h2>
-    <p class="muted">The same model ingests the monitoring data operators already collect, and turns each signal into a statement about a component.</p>
-    <div class="meas">
-      <div><b>Natural frequencies</b>Tower and blade modes from accelerometers (operational modal analysis). Foundation stiffness, scour, flange and blade damage show up as shifts once temperature and operation are normalised out.</div>
-      <div><b>Tilt and rotation</b>Inclinometers at the interface: permanent tilt after storms against the serviceability limit.</div>
-      <div><b>Strain</b>Gauges at the tower base calibrate the virtual sensors that estimate stress where no gauge can go, such as below the seabed.</div>
-      <div><b>Bolt tension</b>Ultrasonic or instrumented bolts feed preload into the flange model, which changes every later storm assessment.</div>
-      <div><b>Damping and mode shapes</b>Damping estimates check the aerodynamic and soil damping in the model; mode-shape changes help locate damage.</div>
-      <div><b>Corrosion, scour, marine growth</b>Cathodic-protection potentials, scour sonar and ROV growth surveys update wall thickness, embedment and added mass.</div>
-    </div>
-  </section>
-
-  <section class="block">
-    <div class="eyebrow">Where it fits</div>
-    <h2>What it reports against</h2>
-    <div class="tbl-wrap"><table class="std">
-      <thead><tr><th>Document</th><th>What it asks for</th><th>What StormTwin supplies</th></tr></thead>
-      <tbody>
-        <tr><td>DNV-RP-A204</td><td>Assurance of digital twins: confidence in data and models, risk of relying on outputs, operation and maintenance of the twin.</td><td>Validation record per module, model-spread bands, versioned and reproducible reports.</td></tr>
-        <tr><td>IEC TS 61400-28:2025</td><td>Through-life management: condition and remaining-life assessments, phased inspections.</td><td>Event-triggered assessments between campaigns; fatigue totals per hot spot.</td></tr>
-        <tr><td>DNV-ST-0262</td><td>Lifetime extension of wind turbines, assessing the whole structure.</td><td>Load history and remaining fatigue life from measured storms instead of design assumptions.</td></tr>
-        <tr><td>DNV-RP-C210</td><td>Probabilistic inspection planning for fatigue cracks, updated with new information.</td><td>Storm fatigue increments that update inspection timing.</td></tr>
-        <tr><td>DNV-RP-C203 · ST-0126 · IEC 61400-3-1</td><td>S-N curves, design checks and wave-load models in the design basis.</td><td>Hot-spot checks in the same format, with the code wave model shown beside the higher-fidelity result.</td></tr>
-        <tr><td>US self-inspection (30 CFR 585.824, now BSEE Part 285)</td><td>Annual self-inspection plan and report.</td><td>A documented, risk-based reason for each year's inspection scope.</td></tr>
-      </tbody>
-    </table></div>
-  </section>
-
-  <section class="block">
-    <div class="eyebrow">Ways to start</div>
-    <h2>Prove it on a storm you have already had</h2>
-    <div class="offers">
-      <div class="offer"><span class="who">Operators · 6–10 weeks</span><h3>Storm hindcast pilot</h3><ul><li>Pick a past storm and the inspections that followed</li><li>We run StormTwin on the data from the time, without seeing the findings</li><li>Compare our calls with what the crews found</li></ul></div>
-      <div class="offer"><span class="who">Operators · insurers · per event</span><h3>Post-storm assessment</h3><ul><li>Report within 48 hours of the storm peak</li><li>Red, amber, green per turbine with inspection scope</li><li>Evidence pack for insurers and certifiers</li></ul></div>
-      <div class="offer"><span class="who">Asset owners · per turbine per year</span><h3>Fleet twin</h3><ul><li>Continuous fatigue and foundation tracking</li><li>Inspection intervals updated from measured loads</li><li>Life-extension evidence built up year by year</li></ul></div>
-    </div>
-  </section>
-
-  <footer>
-    <div><b>About this demonstration.</b> The farms, storms, turbines and condition data are synthetic. The turbines are 15 MW- and 10 MW-class monopile designs sized loosely after public reference turbines; they are not real assets. Waves come from NLS simulations of a random sea; loads, global response and hot-spot results come from demo-grade models (Morison loading, a nonlinear beam on API p-y springs, Schmidt–Neuper-type bolt law, stress concentration factors, DNV-RP-C203 and EN 1993-1-9 S-N curves) standing in for the production global and local finite-element models.</div>
-    <div id="assumptions"></div>
-  </footer>
+  </aside>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -495,9 +528,6 @@ button.tab { font: inherit; }
     [["Act now", counts.red, "crit"], ["Inspect", counts.amber, "warn"], ["No action", counts.green, "ok"],
      ["Peak H<sub>s</sub>", fmt(maxHs, 1) + " m", ""], ["Largest wave", fmt(maxH, 1) + " m", ""], ["Rogue · deep-dives", rogues + " · " + deep, ""]]
       .forEach(([k, v, c]) => storm.append(el("div", {}, `<div class="k">${k}</div><div class="v ${c}">${v}</div>`)));
-    const F = D.meta.farm;
-    document.getElementById("eyebrow").textContent = `Post-storm report · ${F.region} · ${T.length} × ${D.meta.turbine.label}`;
-    document.getElementById("dash-title").textContent = `${F.name} after the ${F.storm_name.toLowerCase()} of ${F.storm_peak}`;
   }
   function drawPortfolio() {
     const host = document.getElementById("portfolio");
@@ -510,51 +540,14 @@ button.tab { font: inherit; }
         pace = 100 * d.history.years_in_service / d.meta.design_life;
         d.turbines.forEach((t) => { if (t.history) HOTS.forEach((k) => { worst = Math.max(worst, t.history.hot[k].total); }); });
       }
-      const b = el("button", { class: "farmcard" + (i === FI ? " on" : ""), type: "button", role: "tab", "aria-selected": i === FI ? "true" : "false" },
+      const b = el("button", { class: "farmcard" + (i === FI ? " on" : ""), type: "button" },
         `<span class="fn">${F.name}</span><span class="fr">${F.region} · ${d.turbines.length} × ${d.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}</span>` +
         `<span class="fc">${c.red ? `<span class="pill red">${c.red} act now</span>` : ""}${c.amber ? `<span class="pill amber">${c.amber} inspect</span>` : ""}<span class="pill green">${c.green} no action</span><span class="fr">${F.storm_name} ${F.storm_peak}</span></span>` +
         (d.history ? `<span class="lu">worst life used ${fmt(worst, 1)}% · design pace ${fmt(pace, 1)}%</span>` : "") +
         `<span class="lu">${d.turbines.filter((t) => t.modal && t.modal.alarms.length).length} turbine(s) with frequency alarms</span>`);
-      b.addEventListener("click", () => loadFarm(i));
+      b.addEventListener("click", () => go({ type: "farm", farm: i }));
       host.append(b);
     });
-  }
-
-  // ---------- map ----------
-  function drawMap(sel) {
-    const host = document.getElementById("map");
-    host.innerHTML = "";
-    const W = 360, H = 270, pad = 34;
-    const xs = T.map((t) => t.spec.x), ys = T.map((t) => t.spec.y);
-    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-    const X = (x) => pad + (x - x0) / (x1 - x0) * (W - 2 * pad);
-    const Y = (y) => pad - 6 + (y - y0) / (y1 - y0) * (H - 2 * pad - 34);
-    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Farm map coloured by verdict" });
-    // depth shading: deeper to the east
-    const grad = svg("linearGradient", { id: "dg", x1: "0", x2: "1", y1: "0", y2: "0" });
-    grad.append(svg("stop", { offset: "0", "stop-color": css("--accent-soft") }), svg("stop", { offset: "1", "stop-color": css("--sea"), "stop-opacity": "0.35" }));
-    const defs = svg("defs"); defs.append(grad); s.append(defs);
-    s.append(svg("rect", { x: 8, y: 8, width: W - 16, height: H - 34, rx: 6, fill: "url(#dg)" }));
-    const lab = svg("text", { x: 14, y: H - 8, "font-size": 10, fill: css("--muted"), "font-family": "IBM Plex Mono, monospace" });
-    lab.textContent = `depth ${Math.min(...T.map(t => t.spec.depth)).toFixed(0)} m → ${Math.max(...T.map(t => t.spec.depth)).toFixed(0)} m · storm from the west`;
-    s.append(lab);
-    T.forEach((t, i) => {
-      const g = svg("g", { tabindex: 0, role: "button", "aria-label": `${t.spec.name}, ${statusText[t.status]}`, style: "cursor:pointer" });
-      const cx = X(t.spec.x), cy = Y(t.spec.y);
-      g.append(svg("circle", { cx, cy, r: i === sel ? 15 : 12, fill: css(statusVar[t.status]), stroke: i === sel ? css("--ink") : css("--surface"), "stroke-width": i === sel ? 3 : 2 }));
-      const tx = svg("text", { x: cx, y: cy + 27, "text-anchor": "middle", "font-size": 11, fill: css("--ink"), "font-family": "IBM Plex Mono, monospace", "font-weight": i === sel ? 600 : 400 });
-      tx.textContent = t.spec.name;
-      g.append(tx);
-      if (t.condition) {
-        const w = svg("text", { x: cx + 11, y: cy - 9, "font-size": 12, fill: css("--warn"), "font-weight": 700 });
-        w.textContent = "◆";
-        g.append(w);
-      }
-      g.addEventListener("click", () => select(i));
-      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(i); } });
-      s.append(g);
-    });
-    host.append(s);
   }
 
   // ---------- list ----------
@@ -567,8 +560,8 @@ button.tab { font: inherit; }
         `<td>${t.spec.name}${t.condition ? ' <span style="color:var(--warn)" title="Known condition">◆</span>' : ""}${t.modal && t.modal.alarms.length ? ' <span style="color:var(--crit)" title="Natural-frequency alarm">∿</span>' : ""}</td>` +
         `<td><span class="pill ${t.status}">${statusText[t.status]}</span></td>` +
         `<td class="r">${fmt(t.Hmax / t.Hs, 2)}</td><td class="r">${fmt(w.uls, 2)}</td><td class="r">${t.history ? fmt(lifeUsed(t).v, 1) + "%" : "–"}</td>`);
-      tr.addEventListener("click", () => select(i));
-      tr.addEventListener("keydown", (e) => { if (e.key === "Enter") select(i); });
+      tr.addEventListener("click", () => go({ type: "turbine", farm: FI, t: i }));
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter") go({ type: "turbine", farm: FI, t: i }); });
       tb.append(tr);
     });
   }
@@ -648,14 +641,14 @@ button.tab { font: inherit; }
   // ---------- detail ----------
   function detail(i) {
     const t = T[i], f = t.final;
-    const P = { ov: document.getElementById("pane-ov-t"), st: document.getElementById("pane-structure"),
-      fa: document.getElementById("pane-fatigue"), fr: document.getElementById("pane-frequency"), ev: document.getElementById("pane-event") };
+    const P = { ov: document.getElementById("pane-overview"), fa: document.getElementById("pane-fatigue"),
+      fr: document.getElementById("pane-frequency"), ev: document.getElementById("pane-event") };
     Object.values(P).forEach((p) => { p.innerHTML = ""; });
     const host = P.ov;
     const hst = hotspotStatus(t);
-    const head = el("div", { class: `panel dhead ${t.status}` });
-    head.innerHTML = `<h2>${t.spec.name}</h2><span class="pill ${t.status}">${statusText[t.status]}</span>` +
-      `<span class="muted mono">depth ${fmt(t.spec.depth, 1)} m · f₁ ${fmt(t.f1, 3)} Hz</span>` +
+    const head = el("div", { class: `dhead ${t.status}` });
+    head.style.padding = "10px 14px";
+    head.innerHTML = `<span class="muted mono">depth ${fmt(t.spec.depth, 1)} m · f₁ ${fmt(t.f1, 3)} Hz</span>` +
       (t.condition ? `<span class="cond">◆ ${t.condition}</span>` : "");
     const card = el("div", { class: "panel" });
     card.append(head);
@@ -673,20 +666,12 @@ button.tab { font: inherit; }
       `<div><h3>Recommended action</h3><table class="actions">${t.actions.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</table></div></div>`;
     host.append(vd);
     const goto = el("div", { class: "row", style: "display:flex;gap:8px;flex-wrap:wrap" },
-      ["structure:Structure and hot spots", "fatigue:Fatigue history", "frequency:Natural frequencies", "event:Storm event"].map((x) => `<button class="btn" type="button" data-goto="${x.split(":")[0]}">${x.split(":")[1]} →</button>`).join(""));
+      ["fatigue:Fatigue history", "frequency:Natural frequencies", "event:Storm event", "whatif:What-if"].map((x) => `<button class="btn" type="button" data-goto="${x.split(":")[0]}">${x.split(":")[1]} →</button>`).join(""));
     goto.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
-    host.append(goto);
-
-    // interactive turbine model
-    const mp = el("div", { class: "panel" });
-    mp.innerHTML = `<div class="panel-h"><h3>Inspect the turbine</h3><span class="hint">Click any part of the model</span></div><div class="panel-b model"><div id="elev"></div><div class="insp" id="insp"></div></div>`;
-    P.st.append(mp);
-    drawModel(t, hst);
-    inspector(t, partSel);
 
     // hot spots
     const hs = el("div", { class: "panel" });
-    hs.innerHTML = `<div class="panel-h"><h3>Hot spots</h3><span class="muted" style="font-size:0.8rem">ULS: utilisation (review 0.7, act 0.9) · Fatigue d: design-life days used by this storm (inspect from 60; RBI update from 90 where not inspectable)</span></div>`;
+    hs.innerHTML = `<div class="panel-h"><h3>Hot spots</h3><span class="hint">click a row to open the component</span></div>`;
     const body = el("div", { class: "panel-b" });
     const rows = [
       ["flange_bolts", "Tower-base flange bolts", `${D.meta.turbine.n_bolts} × ${D.meta.turbine.bolt}; gap opened ${f.flange_bolts.gap_opening}× in 20 min`],
@@ -696,19 +681,22 @@ button.tab { font: inherit; }
     let tbl = `<table class="hstable"><thead><tr><th>Hot spot</th><th>ULS</th><th class="r">Fatigue d</th><th>Status</th></tr></thead><tbody>`;
     rows.forEach(([k, name, sub]) => {
       const u = f[k].uls, w = Math.min(100, u / 1.2 * 100);
-      tbl += `<tr><td><div class="hsname">${name}</div><div class="hssub">${sub}</div></td>` +
+      tbl += `<tr data-part="${PARTOF[k]}"><td><div class="hsname">${name}</div><div class="hssub">${sub}</div></td>` +
         `<td><div class="num" style="font-size:0.8rem">${fmt(u, 2)}</div><div class="bar"><i style="width:${w}%;background:var(${statusVar[hst[k]]})"></i><b style="left:${0.9 / 1.2 * 100}%"></b></div></td>` +
         `<td class="num" style="text-align:right">${fmt(f[k].days, 0)}</td><td><span class="pill ${hst[k]}">${statusText[hst[k]]}</span></td></tr>`;
     });
-    tbl += `<tr><td><div class="hsname">Foundation</div><div class="hssub">peak rotation ${fmt(f.foundation.rot_peak, 2)}°, f₁ ${fmt(t.freq_drop, 1)}% lower at peak</div></td><td></td><td></td><td><span class="pill ${hst.foundation}">${statusText[hst.foundation]}</span></td></tr>`;
-    tbl += `<tr><td><div class="hsname">Platform and boat landing</div><div class="hssub">crest clearance ${fmt(air, 1)} m${t.deep && t.deep.slam ? "; slamming" : ""}</div></td><td></td><td></td><td><span class="pill ${hst.platform}">${statusText[hst.platform]}</span></td></tr>`;
+    tbl += `<tr data-part="soil"><td><div class="hsname">Foundation</div><div class="hssub">peak rotation ${fmt(f.foundation.rot_peak, 2)}°, f₁ ${fmt(t.freq_drop, 1)}% lower at peak</div></td><td></td><td></td><td><span class="pill ${hst.foundation}">${statusText[hst.foundation]}</span></td></tr>`;
+    tbl += `<tr data-part="platform"><td><div class="hsname">Platform and boat landing</div><div class="hssub">crest clearance ${fmt(air, 1)} m${t.deep && t.deep.slam ? "; slamming" : ""}</div></td><td></td><td></td><td><span class="pill ${hst.platform}">${statusText[hst.platform]}</span></td></tr>`;
     tbl += `</tbody></table>`;
     const right = el("div", {}, tbl);
     right.style.minWidth = "0";
     right.querySelector("table").parentElement.classList.add("tbl-wrap");
+    right.querySelectorAll("tr[data-part]").forEach((r) => r.addEventListener("click", () => go({ type: "component", farm: FI, t: i, part: r.dataset.part })));
     body.append(right);
+    body.append(el("p", { class: "cap" }, "ULS: utilisation (review 0.7, act 0.9). Fatigue d: design-life days used by this storm (inspect from 60; RBI update from 90 where not inspectable)."));
     hs.append(body);
-    P.st.append(hs);
+    P.ov.append(hs);
+    host.append(goto);
 
     // sea record
     const sea = el("div", { class: "panel chart" });
@@ -879,7 +867,6 @@ button.tab { font: inherit; }
 
   // ---------- interactive turbine model ----------
   const geo = () => { const m = D.meta.turbine; return { Dtop: m.D_tower_top, tb: m.t_tower_base, tt: m.t_tower_top, tp: m.t_pile, embed: m.embedment, rotorD: m.rotor_D, Cd: 1.0, Cm: 2.0 }; };
-  let partSel = "flange";
   const kv = (rows) => `<div class="kv">${rows.map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}</div>`;
   function hotRows(t, k) {
     const f = t.final[k];
@@ -894,7 +881,7 @@ button.tab { font: inherit; }
     const days = r[k].rate * D.meta.dff[k] * D.meta.design_life * 365;
     return kv([["Conditions", `H<sub>s</sub> ${WI.hs.toFixed(1)} m, T<sub>p</sub> ${WI.tp.toFixed(1)} s, wind ${WI.u.toFixed(1)} m/s`],
       ["Damage rate", (days < 0.01 ? days.toExponential(1) : fmt(days, 2)) + " d/h"], ["Relative to average", fmt(r[k].rate / avg, 2) + "×"]]) +
-      `<p class="hint" style="margin-top:4px">Change the conditions in the What-if section below.</p>`;
+      `<p class="hint" style="margin-top:4px">Change the conditions in the turbine's What-if tab.</p>`;
   }
   function pyCurves(host) {
     const D0 = D.meta.turbine.D_pile, depths = [2, 6, 12, 24], series = [];
@@ -975,6 +962,15 @@ button.tab { font: inherit; }
     } else if (part === "weld") {
       html = `<h3>Mudline circumferential weld ${pill(hst.mudline_weld)}</h3>` + kv([["Elevation", fmt(t.z_mudline_weld, 1) + " m (largest moment)"], ["Inspectable", "no (below the seabed)"], ["SCF", D.meta.scf.mudline_weld], ["S-N curve", "DNV-RP-C203 D, seawater with CP"], ["Design fatigue factor", D.meta.dff.mudline_weld]]) +
         sec("This storm", kv(hotRows(t, "mudline_weld")), true) + sec("What-if now", liveRows(t, "mudline_weld"), false);
+    } else if (part.startsWith("blade_")) {
+      const b = part.slice(-1), md = t.modal && t.modal.modes[part];
+      html = `<h3>Blade ${b}</h3>` + kv([["Length (approx.)", fmt(GEO.rotorD / 2 - 3, 0) + " m"], ["Pitch bearing position", { A: "0°", B: "120°", C: "240°" }[b]],
+        ["1st edgewise frequency, first year", md ? fmt(md.pred[0], 3) + " Hz" : "–"], ["Latest estimate", md ? fmt(md.f[md.f.length - 1], 3) + " Hz" : "–"],
+        ["Blade-to-blade alarm", md && md.alarm_b2b ? md.alarm_b2b : "none"]]) +
+        (md && md.alarm_b2b ? `<div class="alerts" style="margin-top:8px"><div class="alert"><b>${md.alarm_b2b}</b><span>Edgewise frequency has drifted away from the other two blades. ${MODE_ACTION.blade}.</span></div></div>` : "") +
+        (md ? sec("Edgewise frequency against the other blades", `<div id="insp-modal"></div>`, true) : "") +
+        sec("Why blades are compared with each other", `<p class="hint">Temperature, icing and rotor speed move all three blades together. A crack, a lightning strike or water ingress changes one blade only, so the deviation from the other two blades is a sharper damage indicator than the raw frequency.</p>`, false);
+      after = () => { const h = host.querySelector("#insp-modal"); if (h && md) modalChart(h, t, part, { b2b: true, w: 460, h1: 150, h2: 140 }); };
     } else if (part === "soil") {
       html = `<h3>Foundation and soil ${pill(hst.foundation)}</h3>` + kv([["Embedment", GEO.embed + " m"], ["Scour", t.spec.scour > 0 ? fmt(t.spec.scour, 1) + " m ◆" : "none recorded"], ["Soil model", "API sand p-y, φ′ = 35°, cyclic"], ["First natural frequency", fmt(t.f1, 3) + " Hz"]]) +
         sec("This storm", kv([["Peak mudline rotation", fmt(f.foundation.rot_peak, 2) + "°"], ["First-frequency drop at peak", fmt(t.freq_drop, 1) + "%"], ["Action trigger", "rotation 0.25° or drop 3%"]]), true) +
@@ -989,67 +985,6 @@ button.tab { font: inherit; }
     host.innerHTML = html;
     if (after) after();
   }
-  function drawModel(t, hst) {
-    const host = document.getElementById("elev"); if (!host) return;
-    const GEO = geo();
-    const M = D.meta.turbine, d = t.spec.depth, toe = -d - GEO.embed, top = M.z_hub + GEO.rotorD / 2;
-    const W = 260, H = 640, Y = (z) => 12 + (top - z) / (top - toe) * (H - 24);
-    const ex = 2.2, cx = 120, half = (Dm) => Dm * ex * (H - 24) / (top - toe) / 2 * 1.0 + 3;
-    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, class: "elev", role: "group", "aria-label": "Turbine model" });
-    s.append(svg("rect", { x: 0, y: Y(0), width: W, height: Y(-d) - Y(0), fill: css("--accent-soft") }));
-    s.append(svg("rect", { x: 0, y: Y(-d), width: W, height: H - Y(-d), fill: css("--grid") }));
-    s.append(svg("line", { x1: 0, x2: W, y1: Y(0), y2: Y(0), stroke: css("--sea"), "stroke-width": 1.5 }));
-    const statusCol = (st) => css(statusVar[st] || "--muted");
-    const part = (id, label, build) => {
-      const g = svg("g", { class: "part" + (partSel === id ? " on" : ""), tabindex: 0, role: "button", "aria-label": label });
-      build(g);
-      const pick = () => { partSel = id; drawModel(t, hst); inspector(t, id); };
-      g.addEventListener("click", pick);
-      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
-      s.append(g);
-    };
-    const hp = half(M.D_pile), ht = half(GEO.Dtop);
-    // foundation (embedded pile + soil)
-    part("soil", "Foundation and soil", (g) => {
-      g.append(svg("rect", { x: 8, y: Y(-d), width: W - 16, height: Y(toe) - Y(-d) + 6, fill: "transparent", class: "hl", stroke: "transparent" }));
-      g.append(svg("rect", { x: cx - hp, y: Y(-d), width: 2 * hp, height: Y(toe) - Y(-d), fill: css("--surface"), stroke: css("--muted"), class: "hl" }));
-      for (let z = -d - 4; z > toe + 2; z -= 7) { g.append(svg("line", { x1: cx - hp - 14, x2: cx - hp, y1: Y(z), y2: Y(z), stroke: css("--muted"), "stroke-dasharray": "2 2" })); g.append(svg("line", { x1: cx + hp, x2: cx + hp + 14, y1: Y(z), y2: Y(z), stroke: css("--muted"), "stroke-dasharray": "2 2" })); }
-      if (t.spec.scour > 0) g.append(svg("path", { d: `M${cx - hp - 30} ${Y(-d)} Q ${cx - hp - 4} ${Y(-d - t.spec.scour)} ${cx - hp} ${Y(-d - t.spec.scour)} M${cx + hp} ${Y(-d - t.spec.scour)} Q ${cx + hp + 4} ${Y(-d - t.spec.scour)} ${cx + hp + 30} ${Y(-d)}`, fill: "none", stroke: css("--warn"), "stroke-width": 2 }));
-      g.append(svg("circle", { cx: cx + hp + 22, cy: Y(-d - 12), r: 5, fill: statusCol(hst.foundation) }));
-    });
-    part("weld", "Mudline weld", (g) => {
-      g.append(svg("rect", { x: cx - hp - 3, y: Y(t.z_mudline_weld) - 3, width: 2 * hp + 6, height: 6, fill: statusCol(hst.mudline_weld), class: "hl", stroke: "transparent" }));
-    });
-    part("splash", "Monopile in the water column", (g) => {
-      g.append(svg("rect", { x: cx - hp, y: Y(M.z_interface), width: 2 * hp, height: Y(-d) - Y(M.z_interface), fill: css("--surface"), stroke: css("--muted"), class: "hl" }));
-    });
-    part("platform", "Platform and boat landing", (g) => {
-      g.append(svg("rect", { x: cx + hp, y: Y(M.z_platform) - 3, width: 34, height: 6, fill: statusCol(hst.platform), class: "hl", stroke: "transparent" }));
-      g.append(svg("line", { x1: cx - hp - 10, x2: cx - hp, y1: Y(2), y2: Y(2), stroke: css("--muted"), "stroke-width": 3 }));
-    });
-    part("tower", "Tower", (g) => {
-      g.append(svg("path", { d: `M${cx - hp} ${Y(M.z_interface)} L${cx - ht} ${Y(M.z_hub - 4)} L${cx + ht} ${Y(M.z_hub - 4)} L${cx + hp} ${Y(M.z_interface)} Z`, fill: css("--surface"), stroke: css("--muted"), class: "hl" }));
-    });
-    part("door", "Door frame", (g) => {
-      g.append(svg("rect", { x: cx - 4, y: Y(M.z_door + 3), width: 8, height: Y(M.z_door - 1) - Y(M.z_door + 3), fill: statusCol(hst.door_frame), class: "hl", stroke: "transparent", rx: 2 }));
-    });
-    part("flange", "Tower-base flange", (g) => {
-      g.append(svg("rect", { x: cx - hp - 6, y: Y(M.z_interface) - 3, width: 2 * hp + 12, height: 6, fill: statusCol(hst.flange_bolts), class: "hl", stroke: "transparent" }));
-    });
-    part("rna", "Rotor and nacelle", (g) => {
-      g.append(svg("rect", { x: cx - 16, y: Y(M.z_hub) - 7, width: 40, height: 14, rx: 3, fill: css("--surface"), stroke: css("--muted"), class: "hl" }));
-      g.append(svg("line", { x1: cx - 20, x2: cx - 20, y1: Y(M.z_hub + GEO.rotorD / 2), y2: Y(M.z_hub - GEO.rotorD / 2), stroke: css("--muted"), "stroke-width": 3, class: "hl" }));
-      g.append(svg("circle", { cx: cx - 20, cy: Y(M.z_hub), r: 5, fill: css("--ink") }));
-    });
-    // labels
-    const mono = "IBM Plex Mono, monospace";
-    [[M.z_hub, "hub +" + M.z_hub], [M.z_interface, "flange +" + M.z_interface], [0, "MSL"], [-d, "seabed " + fmt(-d, 0)], [toe, "toe " + fmt(toe, 0)]].forEach(([z, l]) => {
-      const tx = svg("text", { x: W - 4, y: Y(z) - 3, "text-anchor": "end", "font-size": 9.5, fill: css("--muted"), "font-family": mono }); tx.textContent = l + " m"; s.append(tx);
-    });
-    host.innerHTML = ""; host.append(s);
-    host.append(el("p", { class: "cap" }, "Widths drawn ×2.2 for clarity. Coloured parts carry this storm's status."));
-  }
-
   // ---------- what-if model (browser-side, anchored to the base runs) ----------
   const DOOR_AZ = 135;                       // door faces south-east (degrees from north)
   const tpTyp = (hs) => Math.max(4.5, ((D.history && D.history.tp_coef) || 3.6) * Math.sqrt(hs));
@@ -1212,11 +1147,12 @@ button.tab { font: inherit; }
   }
 
   function drawWhatif() {
+    if (current < 0) return;
     const t = T[current];
     const ins = document.getElementById("insp");
-    if (ins) {                                        // keep the open sections, refresh live values
+    if (ins && NAV.type === "component") {            // keep the open sections, refresh live values
       const open = [...ins.querySelectorAll("details")].map((d) => d.open);
-      inspector(t, partSel);
+      inspector(t, NAV.part);
       ins.querySelectorAll("details").forEach((d, i) => { if (open[i] !== undefined) d.open = open[i]; });
     }
     const sec = document.getElementById("whatif");
@@ -1363,6 +1299,8 @@ button.tab { font: inherit; }
     const white = new THREE.MeshStandardMaterial({ color: 0xe9edf0, roughness: 0.55, metalness: 0.1 });
     const yellow = new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.6 });
     const grey = new THREE.MeshStandardMaterial({ color: 0x8b98a3, roughness: 0.7 });
+    const hiMat = new THREE.MeshStandardMaterial({ color: 0x0a6a8a, emissive: 0x0a6a8a, emissiveIntensity: 0.55, roughness: 0.5 });
+    let lit = [];
     function label(text) {
       const c = document.createElement("canvas"); c.width = 128; c.height = 48;
       const g = c.getContext("2d"); g.font = "600 30px IBM Plex Mono, monospace"; g.textAlign = "center"; g.textBaseline = "middle";
@@ -1380,11 +1318,17 @@ button.tab { font: inherit; }
       const yaw = new THREE.Group(); yaw.position.y = zh; g.add(yaw);
       const nac = new THREE.Mesh(new THREE.BoxGeometry(rt * 2.2, rt * 2.2, rt * 6), white); nac.position.z = -rt * 1.6; yaw.add(nac);
       const rotor = new THREE.Group(); rotor.position.z = rt * 1.8; yaw.add(rotor);
-      rotor.add(new THREE.Mesh(new THREE.SphereGeometry(rt * 1.1, 16, 12), white));
+      const hub = new THREE.Mesh(new THREE.SphereGeometry(rt * 1.1, 16, 12), white); rotor.add(hub);
+      const blades = [];
       for (let b = 0; b < 3; b++) {
         const blade = new THREE.Mesh(new THREE.BoxGeometry(R * 0.07, R, R * 0.02), white);
-        blade.geometry.translate(0, R / 2, 0); blade.rotation.z = (b * 2 * Math.PI) / 3; rotor.add(blade);
+        blade.geometry.translate(0, R / 2, 0); blade.rotation.z = (b * 2 * Math.PI) / 3; rotor.add(blade); blades.push(blade);
       }
+      const az = DOOR_AZ * Math.PI / 180, rd = rp - (rp - rt) * (m.z_door - m.z_interface) / (m.z_hub - m.z_interface);
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.42, 0.12), grey);
+      door.position.set(Math.sin(az) * rd, m.z_door / U, -Math.cos(az) * rd); door.rotation.y = -az; g.add(door);
+      const parts = { rna: [nac, hub, ...blades], blade_A: [blades[0]], blade_B: [blades[1]], blade_C: [blades[2]], tower: [tower], door: [door],
+        flange: [tp], platform: [plat], splash: [pile], weld: [pile], soil: [pile] };
       const ring = new THREE.Mesh(new THREE.TorusGeometry(rp * 2.6, 0.32, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffffff }));
       ring.rotation.x = Math.PI / 2; ring.position.y = 0.6; g.add(ring);
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, zh + R + 6, 8, 1, true), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0, depthWrite: false }));
@@ -1393,8 +1337,10 @@ button.tab { font: inherit; }
       g.position.set((t.spec.x * 1000 / U) - center.x, 0, (t.spec.y * 1000 / U) - center.z);
       g.scale.setScalar(TS);
       g.traverse((o) => { o.userData.idx = i; });
+      [["rna", [nac, hub]], ["blade_A", [blades[0]]], ["blade_B", [blades[1]]], ["blade_C", [blades[2]]], ["tower", [tower]], ["door", [door]], ["flange", [tp]], ["platform", [plat]], ["splash", [pile]]]
+        .forEach(([k, ms]) => ms.forEach((o) => { o.userData.part = k; }));
       farmGroup.add(g);
-      return { g, yaw, rotor, ring, beam, lab };
+      return { g, yaw, rotor, ring, beam, lab, parts };
     }
     function colourFor(t) {
       if (colorMode === "life" && t.history) {
@@ -1458,7 +1404,7 @@ button.tab { font: inherit; }
       const yawA = (wind.from) * Math.PI / 180;
       turbines.forEach((o) => { o.yaw.rotation.y = Math.PI - yawA; });
       const cap = document.getElementById("vp-cap");
-      cap.textContent = `${seaMode === "storm" ? "Storm replay" : "What-if sea"}: Hs ${fmt(q.Hs, 1)} m, Tp ${fmt(q.Tp, 1)} s, waves from ${q.wdir}°, wind ${fmt(q.U, 0)} m/s from ${q.udir}° (rotors ${op ? "operating" : "idling"}). Waves drawn ${VE}× taller, turbines ${TS}× larger. Drag to orbit, scroll to zoom, right-drag to pan; click a turbine.`;
+      cap.textContent = `${seaMode === "storm" ? "Storm replay" : "What-if sea"}: Hs ${fmt(q.Hs, 1)} m, Tp ${fmt(q.Tp, 1)} s, waves from ${q.wdir}°, wind ${fmt(q.U, 0)} m/s from ${q.udir}° (rotors ${op ? "operating" : "idling"}). Waves drawn ${VE}× taller, turbines ${TS}× larger. Drag to orbit, scroll to zoom, right-drag to pan. Click a turbine to analyse it; click it again on a part (blade, nacelle, tower, flange, platform) to open that component.`;
     }
     // camera
     let fly = null;
@@ -1468,11 +1414,23 @@ button.tab { font: inherit; }
       if (!animate) { camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
       fly = { t0: performance.now(), p0: camera.position.clone(), q0: controls.target.clone(), p1: pos, q1: tgt };
     }
-    function flyTo(i) {
+    function highlight(i, part) {
+      lit.forEach((o) => { o.material = o.userData.orig; }); lit = [];
+      const o = turbines[i]; if (!o || !part || !o.parts[part]) return;
+      o.parts[part].forEach((ms) => { ms.userData.orig = ms.userData.orig || ms.material; ms.material = hiMat; lit.push(ms); });
+    }
+    function partHeight(part) {
+      const m = D.meta.turbine;
+      const z = { rna: m.z_hub, blade_A: m.z_hub + m.rotor_D / 4, blade_B: m.z_hub, blade_C: m.z_hub, tower: (m.z_hub + m.z_interface) / 2,
+        door: m.z_door, flange: m.z_interface, platform: m.z_platform, splash: 4, weld: 0, soil: 0 }[part];
+      return z === undefined ? null : z / U * TS;
+    }
+    function flyTo(i, part) {
       const o = turbines[i]; if (!o) return;
-      const tgt = o.g.position.clone(); tgt.y = 25;
+      const zp = partHeight(part), close = zp !== null && part !== "tower" && part !== "rna" && !String(part).startsWith("blade");
+      const tgt = o.g.position.clone(); tgt.y = zp === null ? 25 : zp;
       const dir = camera.position.clone().sub(controls.target).normalize();
-      const pos = tgt.clone().add(dir.multiplyScalar(170)); pos.y = Math.max(pos.y, 45);
+      const pos = tgt.clone().add(dir.multiplyScalar(zp === null ? 200 : close ? 90 : 140)); pos.y = Math.max(pos.y, tgt.y + (close ? 14 : 15), 10);
       fly = { t0: performance.now(), p0: camera.position.clone(), q0: controls.target.clone(), p1: pos, q1: tgt };
     }
     // rogue replay
@@ -1493,14 +1451,14 @@ button.tab { font: inherit; }
     }
     // picking
     const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(); let down = null;
-    renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
+    renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; document.getElementById("vp-hint").classList.add("gone"); });
     renderer.domElement.addEventListener("pointerup", (e) => {
       if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
       const r = renderer.domElement.getBoundingClientRect();
       mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(mouse, camera);
       const hit = ray.intersectObjects(farmGroup.children, true).find((h) => h.object.userData.idx !== undefined);
-      if (hit) { select(hit.object.userData.idx); flyTo(hit.object.userData.idx); }
+      if (hit) onPick(hit.object.userData.idx, hit.object.userData.part);
     });
     renderer.domElement.addEventListener("pointermove", (e) => {
       const r = renderer.domElement.getBoundingClientRect();
@@ -1557,17 +1515,18 @@ button.tab { font: inherit; }
     function toggle() { playing = !playing; document.getElementById("vp-play").textContent = playing ? "Pause" : "Play"; }
     document.getElementById("vp-play").textContent = playing ? "Pause" : "Play";
     document.getElementById("vp-play").addEventListener("click", toggle);
-    document.getElementById("vp-reset").addEventListener("click", () => resetView(true));
+    document.getElementById("vp-reset").addEventListener("click", () => { highlight(-1); resetView(true); });
     document.getElementById("vp-rogue").addEventListener("click", rogue);
-    document.querySelectorAll("[data-color]").forEach((b) => b.addEventListener("click", () => {
-      colorMode = b.dataset.color; document.querySelectorAll("[data-color]").forEach((x) => x.classList.toggle("on", x === b)); recolour(); }));
-    document.querySelectorAll("[data-sea]").forEach((b) => b.addEventListener("click", () => {
-      seaMode = b.dataset.sea; document.querySelectorAll("[data-sea]").forEach((x) => x.classList.toggle("on", x === b)); sea();
-      if (seaMode === "whatif") document.getElementById("whatif").scrollIntoView({ behavior: "smooth", block: "start" }); }));
+    document.getElementById("vp-color").addEventListener("change", (e) => { colorMode = e.target.value; recolour(); });
+    document.getElementById("vp-sea").addEventListener("change", (e) => {
+      seaMode = e.target.value; sea();
+      if (seaMode === "whatif" && current >= 0) go({ type: "turbine", farm: FI, t: current, tab: "whatif" });
+    });
     theme(); resize(); requestAnimationFrame(frame);
     return {
-      setFarm, theme, sea: () => { if (seaMode === "whatif") sea(); },
-      select: (i) => { sel = i; recolour(); document.getElementById("vp-rogue").textContent = `Replay largest wave at ${T[i].spec.name}`; },
+      setFarm, theme, sea: () => { if (seaMode === "whatif") sea(); }, reset: () => { highlight(-1); resetView(true); },
+      select: (i) => { sel = i; recolour(); const b = document.getElementById("vp-rogue"); b.hidden = i < 0; if (i >= 0) b.textContent = `Replay largest wave at ${T[i].spec.name}`; },
+      focus: (i, part) => { highlight(i, part); flyTo(i, part); },
     };
   }
 
@@ -1577,31 +1536,213 @@ button.tab { font: inherit; }
       `Fatigue stress concentration: door frame ${D.meta.scf.door_frame}, mudline weld ${D.meta.scf.mudline_weld}. Deep-water NLS dynamics are applied at intermediate depth (kd above 1.36, where modulational instability exists); the production chain uses finite-depth evolution.` +
       (D.history && D.history.demo_scale ? ` Between-storm fatigue rates are scaled by ${D.history.demo_scale.toPrecision(2)} for this demonstration, because the demo base runs leave out load-reducing effects such as diffraction and directional spreading.` : "");
   }
-  let current = 0;
-  function defaultTurbine() {
-    let i = T.findIndex((t) => t.status === "red");
-    if (i < 0) i = T.findIndex((t) => t.status === "amber");
-    if (i < 0) i = T.findIndex((t) => t.condition);
-    return Math.max(0, i);
+  // ---------- explorer, navigation and drawer ----------
+  let current = -1;
+  let NAV = { type: "none" };
+  const PARTOF = { flange_bolts: "flange", door_frame: "door", mudline_weld: "weld", foundation: "soil", platform: "platform" };
+  const PARTS = [
+    { id: "rna", name: "Rotor and nacelle", ic: "✣", kids: ["blade_A", "blade_B", "blade_C"] },
+    { id: "tower", name: "Tower", ic: "▕", kids: ["door"] },
+    { id: "flange", name: "Tower-base flange", ic: "═" },
+    { id: "platform", name: "Platform and boat landing", ic: "▭" },
+    { id: "splash", name: "Monopile", ic: "▮", kids: ["weld"] },
+    { id: "soil", name: "Foundation and soil", ic: "▦" },
+  ];
+  const PARTNAME = { door: "Door frame", weld: "Mudline weld", blade_A: "Blade A", blade_B: "Blade B", blade_C: "Blade C" };
+  PARTS.forEach((p) => { PARTNAME[p.id] = p.name; });
+  const PARENT = {}; PARTS.forEach((p) => (p.kids || []).forEach((k) => { PARENT[k] = p.id; }));
+  const KIDIC = { door: "▯", weld: "◌", blade_A: "╱", blade_B: "╱", blade_C: "╱" };
+  const expanded = new Set(["root", "f0"]);
+
+  function partStatus(t, part) {          // "red" | "amber" | "green" | "rbi" | "alarm" | null
+    const h = hotspotStatus(t), md = t.modal ? t.modal.modes : null;
+    const fromHot = { flange: h.flange_bolts, door: h.door_frame, weld: h.mudline_weld, soil: h.foundation, platform: h.platform }[part];
+    if (fromHot) return fromHot;
+    if (!md) return null;
+    if (part.startsWith("blade_")) return md[part].alarm_b2b ? "alarm" : null;
+    if (part === "rna") return ["A", "B", "C"].some((b) => md["blade_" + b].alarm_b2b) ? "alarm" : null;
+    if (part === "tower") return ["tower_fa", "tower_ss", "tower_2"].some((k) => md[k].alarm) ? "alarm" : null;
+    return null;
   }
-  function select(i) { current = i; drawMap(i); drawList(i); detail(i); if (D.history) drawWhatif(); if (S3) S3.select(i); }
+  const dotFor = (st) => st === "alarm" ? `<span class="meta" title="frequency alarm" style="color:var(--crit)">∿</span>`
+    : st && st !== "green" ? `<span class="sd" style="background:var(${statusVar[st]})" title="${statusText[st]}"></span>` : "";
+
+  function treeNode(key, o) {
+    const li = el("li", { role: "treeitem" });
+    if (o.kids) li.setAttribute("aria-expanded", expanded.has(key) ? "true" : "false");
+    const b = el("button", { class: "node" + (o.cls ? " " + o.cls : "") + (o.on ? " on" : ""), type: "button" },
+      `<span class="tw">${o.kids ? "▶" : ""}</span><span class="ic">${o.ic || ""}</span><span class="nm">${o.name}</span><span class="meta">${o.meta || ""}</span>`);
+    if (o.kids) b.setAttribute("aria-expanded", expanded.has(key) ? "true" : "false");
+    b.querySelector(".tw").addEventListener("click", (e) => { if (!o.kids) return; e.stopPropagation(); expanded.has(key) ? expanded.delete(key) : expanded.add(key); drawTree(); });
+    b.addEventListener("click", () => {
+      if (o.on && o.kids) { expanded.has(key) ? expanded.delete(key) : expanded.add(key); drawTree(); return; }
+      if (o.kids) expanded.add(key);
+      go(o.nav);
+    });
+    li.append(b);
+    if (o.kids && expanded.has(key)) {
+      const ul = el("ul", { role: "group" });
+      o.kids().forEach(([k, c]) => ul.append(treeNode(k, c)));
+      li.append(ul);
+    }
+    return li;
+  }
+  function drawTree() {
+    const host = document.getElementById("tree"); host.innerHTML = "";
+    const isOn = (n) => NAV.type === n.type && (n.farm === undefined || n.farm === NAV.farm) && (n.t === undefined || n.t === NAV.t) && (n.part === undefined || n.part === NAV.part);
+    const partNodes = (fi, ti, t, ids) => ids.map((id) => {
+      const p = PARTS.find((x) => x.id === id);
+      const n = { type: "component", farm: fi, t: ti, part: id };
+      return [`f${fi}t${ti}:${id}`, { name: PARTNAME[id], ic: p ? p.ic : KIDIC[id], meta: dotFor(partStatus(t, id)), nav: n, on: isOn(n),
+        kids: p && p.kids ? () => partNodes(fi, ti, t, p.kids) : null }];
+    });
+    const farms = () => ALL.map((d, fi) => {
+      const c = { red: 0, amber: 0 }; d.turbines.forEach((t) => { if (c[t.status] !== undefined) c[t.status]++; });
+      const n = { type: "farm", farm: fi };
+      return [`f${fi}`, { name: d.meta.farm.name, ic: "⌖", cls: "farm-n", nav: n, on: isOn(n),
+        meta: (c.red ? `<span class="sd" style="background:var(--crit)"></span>${c.red}` : "") + (c.amber ? `<span class="sd" style="background:var(--warn)"></span>${c.amber}` : "") + (!c.red && !c.amber ? `<span class="sd" style="background:var(--ok)"></span>` : ""),
+        kids: () => d.turbines.map((t, ti) => {
+          const n2 = { type: "turbine", farm: fi, t: ti };
+          return [`f${fi}t${ti}`, { name: t.spec.name, ic: "⚲", nav: n2, on: isOn(n2),
+            meta: (t.condition ? `<span title="known condition" style="color:var(--warn)">◆</span>` : "") + (t.modal && t.modal.alarms.length ? `<span title="frequency alarm" style="color:var(--crit)">∿</span>` : "") +
+              `<span class="sd" style="background:var(${statusVar[t.status]})" title="${statusText[t.status]}"></span>`,
+            kids: () => partNodes(fi, ti, t, PARTS.map((p) => p.id)) }];
+        }) }];
+    });
+    const rootNav = { type: "portfolio" };
+    host.append(treeNode("root", { name: "Portfolio", ic: "◫", meta: ALL.length + " farms", nav: rootNav, on: isOn(rootNav), kids: farms }));
+    document.getElementById("about-node").classList.toggle("on", NAV.type === "about");
+    const on = host.querySelector(".node.on"); if (on && on.scrollIntoViewIfNeeded) on.scrollIntoViewIfNeeded(false);
+  }
+
+  function drawCrumbs() {
+    const c = document.getElementById("crumbs"); c.innerHTML = "";
+    const items = [["Portfolio", { type: "portfolio" }]];
+    if (NAV.type === "about") items.push(["About", { type: "about" }]);
+    if (["farm", "turbine", "component"].includes(NAV.type)) items.push([D.meta.farm.name, { type: "farm", farm: FI }]);
+    if (["turbine", "component"].includes(NAV.type)) items.push([T[NAV.t].spec.name, { type: "turbine", farm: FI, t: NAV.t }]);
+    if (NAV.type === "component") {
+      if (PARENT[NAV.part]) items.push([PARTNAME[PARENT[NAV.part]], { type: "component", farm: FI, t: NAV.t, part: PARENT[NAV.part] }]);
+      items.push([PARTNAME[NAV.part], NAV]);
+    }
+    items.forEach(([name, n], k) => {
+      if (k) c.append(el("span", { class: "sep" }, "›"));
+      const b = el("button", { type: "button" }, name); b.addEventListener("click", () => go(n)); c.append(b);
+    });
+  }
+
+  const PANES = ["portfolio", "farm", "overview", "fatigue", "frequency", "event", "whatif", "component", "about"];
+  const TTABS = [["overview", "Overview"], ["fatigue", "Fatigue"], ["frequency", "Frequencies"], ["event", "Storm event"], ["whatif", "What-if"]];
+  function showPane(name) { PANES.forEach((n) => { document.getElementById("pane-" + n).hidden = n !== name; }); }
   function showTab(name) {
-    document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
-    ["overview", "structure", "fatigue", "frequency", "event"].forEach((n) => { document.getElementById("pane-" + n).hidden = n !== name; });
+    NAV.tab = name;
+    document.querySelectorAll("#dr-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+    showPane(name);
+    if (name === "whatif") drawWhatif();
   }
-  document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
-  function renderAll() { drawPortfolio(); drawStorm(); farmHistory(); assumptions(); if (S3) { S3.theme(); S3.setFarm(); } select(current); boltCurve(); }
+  function drawDrawer() {
+    const dr = document.getElementById("drawer"), tabs = document.getElementById("dr-tabs");
+    const ey = document.getElementById("dr-eyebrow"), ti = document.getElementById("dr-title");
+    dr.hidden = !drawerOpen || NAV.type === "none";
+    tabs.hidden = NAV.type !== "turbine"; tabs.innerHTML = "";
+    if (dr.hidden) return;
+    const F = D.meta.farm, pill = (st) => st && st !== "green" ? ` <span class="pill ${st === "alarm" ? "red" : st}">${st === "alarm" ? "frequency alarm" : statusText[st]}</span>` : "";
+    if (NAV.type === "portfolio") {
+      ey.textContent = "One owner · " + ALL.length + " farms · " + ALL.reduce((a, d) => a + d.turbines.length, 0) + " turbines"; ti.textContent = "Portfolio";
+      drawPortfolio(); showPane("portfolio");
+    } else if (NAV.type === "farm") {
+      ey.textContent = `${F.region} · ${T.length} × ${D.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}`;
+      ti.innerHTML = `${F.name}<div class="muted" style="font-family:var(--font-body);font-size:0.86rem;font-weight:400;margin-top:2px">After the ${F.storm_name.toLowerCase()} of ${F.storm_peak}</div>`;
+      drawStorm(); drawList(-1); farmHistory(); showPane("farm");
+    } else if (NAV.type === "turbine") {
+      const t = T[NAV.t];
+      ey.textContent = `${F.name} · ${D.meta.turbine.label}`; ti.innerHTML = t.spec.name + ` <span class="pill ${t.status}">${statusText[t.status]}</span>`;
+      TTABS.forEach(([k, l]) => { const b = el("button", { type: "button", role: "tab", "data-tab": k }, l); b.addEventListener("click", () => showTab(k)); tabs.append(b); });
+      detail(NAV.t); showTab(NAV.tab || "overview");
+    } else if (NAV.type === "component") {
+      const t = T[NAV.t];
+      ey.textContent = `${F.name} · ${t.spec.name}${PARENT[NAV.part] ? " · " + PARTNAME[PARENT[NAV.part]] : ""}`;
+      ti.innerHTML = PARTNAME[NAV.part] + pill(partStatus(t, NAV.part));
+      inspector(t, NAV.part); showPane("component");
+      const kids = (PARTS.find((p) => p.id === NAV.part) || {}).kids;
+      if (kids) {
+        const row = el("div", { class: "chips2", style: "margin-top:4px" });
+        kids.forEach((k) => { const b = el("button", { class: "chip" + (partStatus(t, k) === "alarm" ? " al" : ""), type: "button" }, PARTNAME[k] + " →"); b.addEventListener("click", () => go({ type: "component", farm: FI, t: NAV.t, part: k })); row.append(b); });
+        document.getElementById("insp").prepend(row);
+      }
+    } else if (NAV.type === "about") {
+      ey.textContent = "How it works"; ti.textContent = "One chain from the sea surface to a bolt";
+      boltCurve(); assumptions(); showPane("about");
+    }
+    document.getElementById("dr-body").scrollTop = 0;
+  }
+
+  let drawerOpen = false;
+  function go(n) {
+    if (n.farm !== undefined && n.farm !== FI) {
+      [...expanded].forEach((k) => { if (k.startsWith("f")) expanded.delete(k); });
+      loadFarm(n.farm);
+    }
+    const prev = NAV;
+    NAV = Object.assign({}, n);
+    if (n.farm !== undefined) expanded.add("root"), expanded.add("f" + FI);
+    if (n.t !== undefined) {
+      [...expanded].forEach((k) => { if (/^f\d+t\d+/.test(k) && !k.startsWith(`f${FI}t${n.t}`)) expanded.delete(k); });
+      expanded.add(`f${FI}t${n.t}`);
+    }
+    if (n.part && PARENT[n.part]) expanded.add(`f${FI}t${n.t}:${PARENT[n.part]}`);
+    current = n.t !== undefined ? n.t : -1;
+    drawerOpen = true;
+    drawTree(); drawCrumbs(); drawDrawer();
+    document.getElementById("app").classList.remove("tree-open");
+    document.getElementById("vp-hint").classList.add("gone");
+    if (S3) {
+      S3.select(current);
+      if (n.type === "component") S3.focus(current, n.part);
+      else if (n.type === "turbine" && !(prev.type === "turbine" && prev.t === n.t)) S3.focus(current, null);
+      else if (n.type === "farm" || n.type === "portfolio") S3.reset();
+    }
+  }
+  function onPick(i, part) {
+    if (part && current === i) go({ type: "component", farm: FI, t: i, part });
+    else go({ type: "turbine", farm: FI, t: i });
+  }
+
+  function farmChip() {
+    const F = D.meta.farm, c = { red: 0, amber: 0, green: 0 }; T.forEach((t) => c[t.status]++);
+    document.getElementById("vp-farm").innerHTML = `<b>${F.name}</b><span class="muted">${F.storm_name} ${F.storm_peak}</span>` +
+      (c.red ? `<span class="pill red">${c.red} act now</span>` : "") + (c.amber ? `<span class="pill amber">${c.amber} inspect</span>` : "") + `<span class="pill green">${c.green} ok</span>`;
+  }
+  function renderAll() {
+    farmChip();
+    if (S3) S3.theme();
+    drawTree(); drawCrumbs(); drawDrawer();
+  }
   function loadFarm(i) {
-    FI = i; D = ALL[i]; T = D.turbines; current = defaultTurbine();
+    FI = i; D = ALL[i]; T = D.turbines; current = -1;
     const hs = Math.min(4, Math.max(1.5, (D.history ? D.history.hs_mean : 2) * 2));
     setWIsilent({ hs: hs.toFixed(1), tp: tpTyp(hs).toFixed(1) });
-    renderAll();
+    farmChip();
+    if (S3) { S3.setFarm(); S3.theme(); }
   }
   function setWIsilent(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); readWI(); }
+
+  document.getElementById("dr-close").addEventListener("click", () => { drawerOpen = false; drawDrawer(); });
+  document.getElementById("about-node").addEventListener("click", () => go({ type: "about" }));
+  document.getElementById("tree-toggle").addEventListener("click", () => {
+    const app = document.getElementById("app"); app.classList.toggle("tree-open");
+    document.getElementById("tree-toggle").setAttribute("aria-expanded", app.classList.contains("tree-open") ? "true" : "false");
+  });
+  document.getElementById("app").addEventListener("click", (e) => { if (e.target.id === "app") e.target.classList.remove("tree-open"); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { document.getElementById("app").classList.remove("tree-open"); if (drawerOpen) { drawerOpen = false; drawDrawer(); } } });
+  const info = document.getElementById("vp-info"), cap = document.getElementById("vp-cap");
+  info.addEventListener("click", () => { cap.hidden = !cap.hidden; });
+
   readWI();
   S3 = makeScene();
-  if (!S3) { document.getElementById("vp-fallback").hidden = false; document.querySelectorAll(".vp-ui").forEach((e) => { e.hidden = true; }); }
+  if (!S3) { document.getElementById("vp-fallback").hidden = false; document.querySelectorAll(".vp-ui, #vp-hint").forEach((e) => { e.hidden = true; }); }
   loadFarm(0);
+  drawTree(); drawCrumbs(); drawDrawer();
   const mq = window.matchMedia("(prefers-color-scheme: dark)");
   if (mq.addEventListener) mq.addEventListener("change", renderAll);
   new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
