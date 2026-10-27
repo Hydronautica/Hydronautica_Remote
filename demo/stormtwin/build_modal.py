@@ -44,7 +44,7 @@ SCENARIOS = {
     "A": [("A07", "blade_crack", "B", datetime(2024, 5, 10), 0.028),
           ("A02", "preload_loss", None, datetime(2025, 3, 1), 0.012),
           ("A05", "scour", None, None, None)],
-    "B": [("B06", "lightning", "C", datetime(2025, 8, 17), 0.012),
+    "B": [("B06", "lightning", "C", datetime(2025, 8, 17), 0.025),
           ("B03", "scour", None, None, None)],
     "C": [("C02", "blade_crack", "A", datetime(2023, 4, 1), 0.022),
           ("C04", "preload_loss", None, datetime(2024, 9, 1), 0.012)],
