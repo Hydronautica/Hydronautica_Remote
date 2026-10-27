@@ -34,7 +34,7 @@ from structure import (G, Model, Turbine, bolt_damage, bolt_force, miner_damage,
                        morison_nodal, rainflow, section, segment_force, slam_nodal)
 
 TP = 11.0                # spectral peak / carrier period (s)
-REL_BANDWIDTH = 0.22     # Gaussian spectral width in k, relative to k0 (storm sea)
+REL_BANDWIDTH = 0.30     # Gaussian spectral width in k, relative to k0 (storm sea)
 RECORD = 1200.0          # s at the storm peak
 DT = 0.05                # structural time step (s)
 STORM_PEAK_HOURS = 6.0   # duration the 20-min record is taken to represent
@@ -156,7 +156,11 @@ def assess(tb, model, hs, scale):
     return res
 
 
-def verdict(name, a, airgap, freq_drop, slam, rogue):
+FATIGUE_DAYS_INSPECT = 60     # storm fatigue that triggers inspection of an accessible hot spot
+FATIGUE_DAYS_RBI = 90         # storm fatigue that triggers an RBI update (inaccessible hot spot)
+
+
+def verdict(name, a, airgap, freq_drop, slam, rogue, preload=1.0):
     """Pre-agreed red / amber / green rules. Returns status, reasons, actions."""
     reasons, actions = [], []
     red = amber = False
@@ -166,20 +170,29 @@ def verdict(name, a, airgap, freq_drop, slam, rogue):
     for k, u in uls.items():
         if u >= 0.9:
             red = True
-            reasons.append(f"ULS utilisation {u:.2f} at {labels[k]} (limit 0.90)")
+            reasons.append(f"ULS utilisation {u:.2f} at {labels[k]} (act at 0.90)")
         elif u >= 0.7:
             amber = True
-            reasons.append(f"ULS utilisation {u:.2f} at {labels[k]} (review above 0.70)")
-    if a["flange_bolts"]["full_open"]:
+            reasons.append(f"ULS utilisation {u:.2f} at {labels[k]} (review at 0.70)")
+    fb = a["flange_bolts"]
+    if fb["full_open"]:
         red = True
         reasons.append("Flange gap fully open during the event (prying)")
-    elif a["flange_bolts"]["gap_opening"] > 0:
+    elif fb["gap_opening"] > 0 and preload < 0.9:
+        red = True
+        reasons.append(f"Flange gap opened {fb['gap_opening']}x with preload already at "
+                       f"{preload:.0%}: further preload loss likely")
+    elif fb["gap_opening"] > 0:
         amber = True
-        reasons.append(f"Flange gap opened {a['flange_bolts']['gap_opening']}x in 20 min at the storm peak")
-    for k in ("flange_bolts", "door_frame", "mudline_weld"):
-        if a[k]["days"] >= 30:
+        reasons.append(f"Flange gap opened {fb['gap_opening']}x in 20 min at the storm peak")
+    for k in ("flange_bolts", "door_frame"):
+        if a[k]["days"] >= FATIGUE_DAYS_INSPECT:
             amber = True
             reasons.append(f"Storm used {a[k]['days']:.0f} days of design fatigue life at {labels[k]}")
+    rbi = a["mudline_weld"]["days"] >= FATIGUE_DAYS_RBI
+    if rbi:
+        reasons.append(f"Storm used {a['mudline_weld']['days']:.0f} days of design fatigue life at "
+                       "the mudline weld (logged to RBI; not inspectable)")
     if a["foundation"]["rot_peak"] >= 0.5:
         red = True
         reasons.append(f"Peak mudline rotation {a['foundation']['rot_peak']:.2f} deg (limit 0.5)")
@@ -193,13 +206,13 @@ def verdict(name, a, airgap, freq_drop, slam, rogue):
         amber = True
         reasons.append("Breaking-wave slamming on the monopile")
     status = "red" if red else "amber" if amber else "green"
-    # actions
-    if a["flange_bolts"]["gap_opening"] > 0 or a["flange_bolts"]["days"] >= 30 or uls["flange_bolts"] >= 0.7:
-        actions.append(("Tower-base flange", "Verify bolt preload on a 10% sample (ultrasonic); re-tension below 90%"))
-    if uls["door_frame"] >= 0.7 or a["door_frame"]["days"] >= 30:
+    if fb["gap_opening"] > 0 or fb["days"] >= FATIGUE_DAYS_INSPECT or uls["flange_bolts"] >= 0.7:
+        urgency = "before restart" if status == "red" else "at the next campaign"
+        actions.append(("Tower-base flange", f"Verify bolt preload on a 10% sample (ultrasonic) {urgency}; re-tension below 90%"))
+    if uls["door_frame"] >= 0.7 or a["door_frame"]["days"] >= FATIGUE_DAYS_INSPECT:
         actions.append(("Door frame", "Visual + MPI of the door-frame weld toes at the next campaign"))
-    if uls["mudline_weld"] >= 0.7 or a["mudline_weld"]["days"] >= 30:
-        actions.append(("Mudline weld", "Not inspectable: update the RBI model and raise monitoring priority"))
+    if uls["mudline_weld"] >= 0.7 or rbi:
+        actions.append(("Mudline weld", "Update the RBI model with this storm's damage; raise monitoring priority"))
     if freq_drop >= 3.0 or a["foundation"]["rot_peak"] >= 0.25:
         actions.append(("Foundation", "Confirm frequency recovery within 72 h; check inclinometer; schedule scour survey"))
     if airgap < 1.5 or slam:
@@ -256,7 +269,8 @@ def process(spec):
     freq_drop = 100 * (1 - f_peak / f_cal[0])
     airgap = tb.z_platform - float(eta.max())
 
-    status, reasons, actions = verdict(spec["name"], a_scr, airgap, freq_drop, False, rogue)
+    status, reasons, actions = verdict(spec["name"], a_scr, airgap, freq_drop, False, rogue,
+                                       spec["preload"])
     flagged = status != "green" or rogue or spec["name"] in CONDITION
     out = dict(spec=spec, condition=CONDITION.get(spec["name"]), f1=float(f_cal[0]),
                Hs=float(Hs_m), Hmax=float(Hmax), Cmax=float(Cmax), t_event=float(t_crest),
@@ -278,7 +292,7 @@ def process(spec):
         a_use["flange_bolts"]["full_open"] = a_scr["flange_bolts"]["full_open"] or deep["full_open"]
         a_use["foundation"] = dict(rot_peak=max(a_scr["foundation"]["rot_peak"], deep["rot_peak"]))
         status, reasons, actions = verdict(spec["name"], a_use, min(airgap, deep["airgap"]),
-                                           freq_drop, deep["slam"], rogue)
+                                           freq_drop, deep["slam"], rogue, spec["preload"])
         out["final"] = a_use
     else:
         out["final"] = a_scr
@@ -382,6 +396,7 @@ if __name__ == "__main__":
     data = dict(
         meta=dict(Tp=TP, record_s=RECORD, storm_peak_hours=STORM_PEAK_HOURS,
                   design_life=DESIGN_LIFE, dff=DFF, scf=SCF, scf_uls=SCF_ULS,
+                  fatigue_days_inspect=FATIGUE_DAYS_INSPECT, fatigue_days_rbi=FATIGUE_DAYS_RBI,
                   bandwidth=REL_BANDWIDTH,
                   turbine=dict(D_pile=tb_ref.D_pile, z_hub=tb_ref.z_hub, m_rna=tb_ref.m_rna,
                                n_bolts=tb_ref.n_bolts, bolt="M72 10.9",
