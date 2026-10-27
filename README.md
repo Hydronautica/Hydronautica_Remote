@@ -39,7 +39,9 @@ nls.find_rogue_events(res)     # local maxima above 2√2 × RMS (H > 2 Hs)
 | `nls.physical` | `DeepWater`: scales normalised (X, T, ψ) to metres and seconds for a given carrier period/wavelength and amplitude, and rebuilds the surface elevation η |
 | `nls.kinematics` | `SpectralWaveField` (linear kinematics of a sum of modes with Wheeler / linear-extrapolation stretching), `NLSWave` (kinematics from an NLS run), `LinearWave`, `wave_height`, dispersion helpers |
 | `nls.stream_function` | `StreamFunctionWave`: fully nonlinear regular wave by Fenton's Fourier method (analytic Jacobian, automatic mode count, converges to ~98% of breaking); `breaking_height(T, d)` |
-| `nls.newwave` | `NewWave`: Tromans focused linear wave group from a JONSWAP (or custom) spectrum |
+| `nls.newwave` | `NewWave`: Tromans focused wave group from a JONSWAP (or custom) spectrum, linear or second order (`order=2`) |
+| `nls.second_order` | `SecondOrderWaveField`, `pair_kernels`: Sharma–Dean second-order bound waves (sum and difference) for any unidirectional linear field in finite depth |
+| `nls.dysthe` | `DystheSolver` (Dysthe 1979 modified NLS, optional exact dispersion, RK4IP), `DystheWave`, `dysthe_for_height` |
 | `nls.plotting` | Space–time maps, 3D surface, peak-amplitude and snapshot plots |
 
 ### Breather family
@@ -127,6 +129,75 @@ d = 100 m, H_b = 26.4 m) and compares the three models at each height:
   crest kinematics of NewWave and NLS by a factor of about 2, more than the
   difference between wave theories.
 
+## Higher-order models: second order and Dysthe
+
+The models above are first order (linear) at two levels: in the *evolution*
+(the cubic NLS is the leading-order envelope equation) and in the
+*reconstruction* of the surface and kinematics from the envelope or
+spectrum. The package can go one order higher in both.
+
+**Second-order bound waves** (`nls.second_order`). A steep wave is not a sum
+of independent sinusoids: each pair of components forces bound waves at the
+sum and difference frequencies. These make crests sharper and higher, troughs
+flatter, and produce a set-down and return flow under a wave group.
+`SecondOrderWaveField` adds the Sharma & Dean (1981) solution to any linear
+field, so `NewWave(..., order=2)` is second-order NewWave. The kernels are
+tested against Stokes second order in finite depth and Tayfun's deep-water
+formulas, and the free-surface conditions are checked to be satisfied to
+O(a³). For NLS and Dysthe envelopes, `order=2` uses the same deep-water
+kernels in envelope form: η₂ = Re[(k₀A²/2 − i/2·A A_x) e^{2iθ}], set-down
+η̄ = −¼ F⁻¹[|κ| F|A|²], plus Dysthe's mean-flow potential.
+
+Second-order kinematics use the consistent **Taylor (linear) extrapolation**
+above z = 0 by default (`stretching="linear"`). Wheeler stretching is not
+consistent with second-order theory.
+
+**The Dysthe equation** (`nls.dysthe`). Dysthe (1979) carried the
+envelope expansion one order further than the NLS, to O(ε⁴) in steepness. In
+units t′ = ω₀t, x′ = k₀x, B = k₀A, and moving with the group velocity:
+
+```
+B_t + i/8 B_ξξ − 1/16 B_ξξξ + i/2 |B|²B + 3/2 |B|² B_ξ + 1/4 B² B*_ξ + i B φ̄_ξ = 0
+φ̄_ξ = −½ F⁻¹[|K| F(|B|²)]          (wave-induced mean flow, φ̄_z = ½ ∂_ξ|B|²)
+```
+
+The new terms are:
+
+- **third-order dispersion** (−1/16 B_ξξξ): makes the group asymmetric;
+- **slope-dependent nonlinearity** (3/2 and 1/4 terms): gives the Stokes
+  correction to the group velocity, which is why a steep group runs ahead of
+  linear theory;
+- **mean-flow coupling**: the return current under a group, which weakens
+  modulational instability.
+
+In practice a Dysthe breather focuses *later* and usually *lower* than the
+NLS one, with a steep front and a deep trough behind it. `dispersion="exact"`
+replaces the polynomial dispersion with the exact deep-water relation
+(Trulsen et al. 2000, the "broader bandwidth MNLS"). This matters for steep
+focusing, where the envelope is only about a wavelength long.
+
+The solver is checked against several known results:
+- the exact uniform Stokes wave;
+- the exact Stokes frequency of a detuned wave, to O(ε²K²), which pins the
+  3/2 and 1/4 coefficients;
+- reduction to NLS when the higher-order terms are switched off;
+- 4th-order convergence and conservation of ∫|B|²;
+- the mean flow reducing modulational instability growth.
+
+`examples/dysthe_vs_nls.py` compares a Peregrine initial condition (k₀a₀ = 0.1)
+under each model:
+
+| model | peak \|A\|/a₀ | time of peak |
+|---|---|---|
+| NLS | 3.00 | 1.00 t_NLS |
+| Dysthe | 2.73 | 1.18 t_NLS |
+| Dysthe, exact dispersion | 3.03 | 1.24 t_NLS |
+| Dysthe, no mean flow | 2.59 | 0.90 t_NLS |
+
+Both Dysthe variants radiate short envelope ripples ahead of the focus. These
+are converged in time step and resolution, so they belong to the model: a sign
+that the event is at the edge of narrow-band validity.
+
 ## Examples
 
 Run from the repo root; figures go to `figures/`.
@@ -139,6 +210,8 @@ python examples/random_sea.py       # random sea, rogue-event detection
 python examples/ocean_peregrine.py  # 10 s swell, 1.5 m: 4.5 m crest, probe time series
 python examples/kinematics_comparison.py  # NLS vs stream function vs NewWave kinematics (~35 s)
 python examples/breaking_sweep.py         # the same, swept up to 0.97 x breaking height (~2 min)
+python examples/dysthe_vs_nls.py          # Peregrine under NLS vs Dysthe (~10 s)
+python examples/higher_order_sweep.py     # linear vs 2nd order vs Dysthe, swept towards breaking (several min, 4 processes)
 ```
 
 ## Practical notes

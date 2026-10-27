@@ -134,7 +134,16 @@ class SpectralWaveField:
         E = np.exp(1j * np.multiply.outer(x, self.k))
         return np.real(E @ self.amp)
 
-    def kinematics(self, x, z, stretching="wheeler"):
+    def potential(self, x, z):
+        """Velocity potential phi at points (x, z), evaluated without stretching."""
+        x, z = np.broadcast_arrays(np.asarray(x, float), np.asarray(z, float))
+        Ch, _ = _depth_functions(self.k, z[..., None], self.depth)
+        # phi = Re sum -i (g / w) a cosh k(z+d)/cosh kd e^{ikx};  g/w * tanh = w/k
+        C = Ch * (np.tanh(self.k * self.depth) if np.isfinite(self.depth) else 1.0)
+        E = np.exp(1j * x[..., None] * self.k)
+        return np.real((C * E) @ (-1j * self.g / self.omega * self.amp))
+
+    def kinematics(self, x, z, stretching="wheeler", surface=None):
         """Velocities and accelerations at points (x, z).
 
         stretching controls how the modes are evaluated in the crest region:
@@ -145,6 +154,10 @@ class SpectralWaveField:
           their value and vertical gradient at z = 0;
         * ``"none"``: plain linear theory evaluated up to the surface (over-
           predicts crest kinematics for broad spectra).
+
+        ``surface`` optionally overrides the surface elevation at the points
+        (used by the second-order fields, whose surface differs from this
+        field's own eta) for masking and Wheeler stretching.
 
         Returns a dict with eta, u, w, ut, wt (local accelerations),
         ax, az (total, including convective terms) and the gradients
@@ -158,27 +171,25 @@ class SpectralWaveField:
         shape = x.shape
         x = x.ravel()
         z = z.ravel()
-        keys = ("eta", "u", "w", "ut", "wt", "ax", "az", "ux", "uz", "wx", "wz")
-        out = {key: np.empty(x.size) for key in keys}
+        if surface is not None:
+            surface = np.broadcast_to(np.asarray(surface, float), shape).ravel()
+        out = {key: np.empty(x.size) for key in KIN_KEYS}
         # Chunk the points so the (points x modes) work arrays stay ~<64 MB.
         chunk = max(1, int(4e6 // max(self.k.size, 1)))
         for s in range(0, x.size, chunk):
-            part = self._kinematics_flat(x[s:s + chunk], z[s:s + chunk], stretching)
-            for key in keys:
-                out[key][s:s + chunk] = part[key]
+            sl = slice(s, s + chunk)
+            part = self._kinematics_flat(x[sl], z[sl], stretching,
+                                         None if surface is None else surface[sl])
+            for key in KIN_KEYS:
+                out[key][sl] = part[key]
         return {key: v.reshape(shape) for key, v in out.items()}
 
-    def _kinematics_flat(self, x, z, stretching):
+    def _kinematics_flat(self, x, z, stretching, surface=None):
         k, om, d = self.k, self.omega, self.depth
         E = np.exp(1j * np.multiply.outer(x, k))
-        eta = np.real(E @ self.amp)
+        eta = np.real(E @ self.amp) if surface is None else surface
 
-        if stretching == "wheeler":
-            zs = (z - eta) if np.isinf(d) else d * (z - eta) / (d + eta)
-        elif stretching == "linear":
-            zs = np.minimum(z, 0.0)
-        else:
-            zs = z
+        zs = stretched_z(z, eta, d, stretching)
         Ch, Sh = _depth_functions(k[None, :], zs[:, None], d)
         ChE, ShE = Ch * E, Sh * E
 
@@ -197,15 +208,44 @@ class SpectralWaveField:
             ut = ut + e * np.real(ShE @ (k * om * self.amp_dot))
             wt = wt + e * np.real(ChE @ (-1j * k * om * self.amp_dot))
         wx, wz = uz, -ux
+        return finish_kinematics(dict(eta=eta, u=u, w=w, ut=ut, wt=wt,
+                                      ux=ux, uz=uz, wx=wx, wz=wz), z, d)
 
-        out = dict(eta=eta, u=u, w=w, ut=ut, wt=wt,
-                   ax=ut + u * ux + w * uz, az=wt + u * wx + w * wz,
-                   ux=ux, uz=uz, wx=wx, wz=wz)
-        outside = (z > eta + 1e-12) | (z < -d)
-        for key, v in out.items():
-            if key != "eta":
-                v[outside] = np.nan
-        return out
+
+KIN_KEYS = ("eta", "u", "w", "ut", "wt", "ax", "az", "ux", "uz", "wx", "wz")
+
+
+def stretched_z(z, eta, depth, stretching):
+    """Coordinate at which modes are evaluated for each stretching option.
+
+    For ``"linear"`` this is min(z, 0); the caller adds the extrapolation.
+    """
+    if stretching == "wheeler":
+        return (z - eta) if np.isinf(depth) else depth * (z - eta) / (depth + eta)
+    if stretching == "linear":
+        return np.minimum(z, 0.0)
+    return z
+
+
+def finish_kinematics(out, z, depth):
+    """Add total accelerations and blank points above the surface / below the bed."""
+    out["ax"] = out["ut"] + out["u"] * out["ux"] + out["w"] * out["uz"]
+    out["az"] = out["wt"] + out["u"] * out["wx"] + out["w"] * out["wz"]
+    outside = (z > out["eta"] + 1e-12) | (z < -depth)
+    for key, v in out.items():
+        if key != "eta":
+            v = np.array(v, dtype=float)
+            v[outside] = np.nan
+            out[key] = v
+    return out
+
+
+def add_kinematics(first, second, z, depth):
+    """Sum first- and second-order contributions (eta taken from ``second``)."""
+    out = {key: first[key] + second[key]
+           for key in ("u", "w", "ut", "wt", "ux", "uz", "wx", "wz")}
+    out["eta"] = second["eta"]
+    return finish_kinematics(out, z, depth)
 
 
 class LinearWave:
@@ -227,7 +267,178 @@ class LinearWave:
         return self.field(t).kinematics(x, z, stretching)
 
 
-class NLSWave:
+class EnvelopeSecondOrderField:
+    """Deep-water second-order reconstruction of a narrow-band envelope field.
+
+    The surface is eta = eta1 + eta2 + eta_mean with (exact second-order
+    deep-water kernels, written in envelope form)
+
+        eta2     = Re[(k0/2 A^2 - i/2 A A_x) e^{2 i theta}]
+        eta_mean = -1/4 F^-1[|kappa| F(|A|^2)]           (set-down)
+
+    and the kinematics add the wave-induced mean flow of Dysthe (1979),
+    phi_mean = F^-1[(i w0 / 2) sign(kappa) F(|A|^2)] e^{|kappa| z}. The
+    second-order sum-frequency potential vanishes in deep water.
+
+    ``first`` is the linear :class:`SpectralWaveField` of the same envelope.
+    The envelope A (without carrier) and its fixed-frame time derivative A_t
+    are given on the uniform grid x_j = x0 + j dx at time t.
+    """
+
+    def __init__(self, first, x0, dx, A, A_t, k0, w0, phase, t, depth=np.inf):
+        self.first = first
+        self.depth = float(depth)
+        self.k0, self.w0, self.x0 = k0, w0, x0
+        self.theta0 = phase - w0 * t      # carrier phase at x = 0
+        N = A.size
+        kappa = 2 * np.pi * np.fft.fftfreq(N, d=dx)
+        A_x = np.fft.ifft(1j * kappa * np.fft.fft(A))
+        A2 = 0.5 * k0 * A**2 - 0.5j * A * A_x
+        I_hat = np.fft.fft(np.abs(A) ** 2)
+        I_t_hat = np.fft.fft(2 * np.real(np.conj(A) * A_t))
+        S2 = np.fft.fft(A2) / N
+        Sm = -0.25 * np.abs(kappa) * I_hat / N
+        Cm = 0.5j * w0 * np.sign(kappa) * I_hat / N
+        Cm_t = 0.5j * w0 * np.sign(kappa) * I_t_hat / N
+        # Keep only the significant modes for evaluation at arbitrary points.
+        def keep(*arrays):
+            m = np.zeros(N, bool)
+            for a in arrays:
+                m |= np.abs(a) > 1e-12 * max(np.abs(a).max(), 1e-300)
+            return m
+        k2 = keep(S2)
+        self._kap2, self._S2 = kappa[k2], S2[k2]
+        km = keep(Sm, Cm, Cm_t)
+        self._kapm, self._Sm, self._Cm, self._Cm_t = kappa[km], Sm[km], Cm[km], Cm_t[km]
+
+    def _phases(self, x, kap):
+        return np.exp(1j * np.multiply.outer(x - self.x0, kap))
+
+    def eta_second(self, x):
+        """Second-order part of the surface (bound harmonic + set-down)."""
+        x = np.asarray(x, float)
+        carrier = np.exp(2j * (self.k0 * x + self.theta0))
+        eta2 = np.real(carrier * (self._phases(x, self._kap2) @ self._S2))
+        return eta2 + np.real(self._phases(x, self._kapm) @ self._Sm)
+
+    def eta(self, x):
+        x = np.asarray(x, float)
+        return self.first.eta(x) + self.eta_second(x)
+
+    def kinematics(self, x, z, stretching="linear"):
+        """Kinematics to second order.
+
+        ``"linear"`` (default) is the consistent second-order choice: the
+        first-order field is Taylor-extrapolated above z = 0 and the
+        second-order mean flow is evaluated at min(z, 0). ``"wheeler"`` and
+        ``"none"`` are available for comparison.
+        """
+        if stretching not in STRETCHING:
+            raise ValueError(f"stretching must be one of {STRETCHING}")
+        x, z = np.broadcast_arrays(np.asarray(x, float), np.asarray(z, float))
+        shape = x.shape
+        x, z = x.ravel(), z.ravel()
+        out = {key: np.empty(x.size) for key in KIN_KEYS}
+        chunk = max(1, int(2e6 // max(self._kapm.size + self._kap2.size, 1)))
+        for s in range(0, x.size, chunk):
+            sl = slice(s, s + chunk)
+            eta = self.eta(x[sl])
+            k1 = self.first._kinematics_flat(x[sl], z[sl], stretching, surface=eta)
+            zs = stretched_z(z[sl], eta, self.depth, stretching)
+            kap = self._kapm
+            P = self._phases(x[sl], kap) * np.exp(np.abs(kap) * zs[:, None])
+            two = dict(eta=eta,
+                       u=np.real(P @ (1j * kap * self._Cm)),
+                       w=np.real(P @ (np.abs(kap) * self._Cm)),
+                       ut=np.real(P @ (1j * kap * self._Cm_t)),
+                       wt=np.real(P @ (np.abs(kap) * self._Cm_t)),
+                       ux=np.real(P @ (-kap**2 * self._Cm)),
+                       uz=np.real(P @ (1j * kap * np.abs(kap) * self._Cm)))
+            two["wx"], two["wz"] = two["uz"], -two["ux"]
+            part = add_kinematics(k1, two, z[sl], self.depth)
+            for key in KIN_KEYS:
+                out[key][sl] = part[key]
+        return {key: v.reshape(shape) for key, v in out.items()}
+
+
+class EnvelopeWave:
+    """Base class for physical wave fields reconstructed from envelope runs.
+
+    Subclasses implement ``_envelope(i)`` returning, for stored snapshot i,
+    ``(x0, dx, A, A_t, t)``: the physical grid origin and spacing (m), the
+    complex envelope A (m, without carrier), its fixed-frame time derivative
+    and the physical time (s). The surface is
+    eta = Re[A exp(i(k0 x - w0 t + phase))] (+ second-order terms if
+    ``order=2``).
+    """
+
+    k0 = w0 = None
+
+    def __init__(self, times, depth=np.inf, phase=0.0, order=1, g=G):
+        if order not in (1, 2):
+            raise ValueError("order must be 1 or 2")
+        self.times = np.asarray(times, float)
+        self.depth = float(depth)
+        self.phase = float(phase)
+        self.order = order
+        self.g = g
+
+    def physical_times(self):
+        return self.times
+
+    def snapshot_index(self, t):
+        return int(np.argmin(np.abs(self.times - t)))
+
+    def _linear_field(self, x0, dx, A, A_t, t_i):
+        N = A.size
+        kappa = 2 * np.pi * np.fft.fftfreq(N, d=dx)
+        A_hat = np.fft.fft(A) / N
+        A_hat_t = np.fft.fft(A_t) / N
+        carrier = np.exp(-1j * kappa * x0) * np.exp(1j * (self.phase - self.w0 * t_i))
+        amp = A_hat * carrier
+        amp_dot = A_hat_t * carrier - 1j * self.w0 * amp
+        k = self.k0 + kappa
+        # Short envelopes (steep breathers) leak into k < 0. Re[a e^{ikx}] =
+        # Re[conj(a) e^{i|k|x}], so fold those modes onto |k|: eta and eta_t
+        # stay exact, but they are then treated as travelling in +x.
+        neg = k < 0
+        k = np.abs(k)
+        amp = np.where(neg, np.conj(amp), amp)
+        amp_dot = np.where(neg, np.conj(amp_dot), amp_dot)
+        keep = k > 0
+        f = SpectralWaveField(k[keep], amp[keep], amp_dot[keep], self.depth, self.g)
+        return f.truncated()
+
+    def field(self, t):
+        """Wave field at the stored snapshot nearest to t (s): a
+        :class:`SpectralWaveField` (order 1) or :class:`EnvelopeSecondOrderField`."""
+        x0, dx, A, A_t, t_i = self._envelope(self.snapshot_index(t))
+        first = self._linear_field(x0, dx, A, A_t, t_i)
+        if self.order == 1:
+            return first
+        return EnvelopeSecondOrderField(first, x0, dx, A, A_t, self.k0, self.w0,
+                                        self.phase, t_i, self.depth)
+
+    def negative_wavenumber_fraction(self, t=0.0):
+        """Fraction of envelope energy at k < 0 -- a check on the narrow-band
+        assumption (should be small, say < 1e-3)."""
+        x0, dx, A, _, _ = self._envelope(self.snapshot_index(t))
+        kappa = 2 * np.pi * np.fft.fftfreq(A.size, d=dx)
+        E = np.abs(np.fft.fft(A)) ** 2
+        return float(E[self.k0 + kappa < 0].sum() / E.sum())
+
+    def eta(self, x, t=0.0):
+        return self.field(t).eta(x)
+
+    def kinematics(self, x, z, t=0.0, stretching=None):
+        """Kinematics at (x, z, t). stretching defaults to "wheeler" for
+        order 1 and the consistent "linear" (Taylor) option for order 2."""
+        if stretching is None:
+            stretching = "wheeler" if self.order == 1 else "linear"
+        return self.field(t).kinematics(x, z, stretching)
+
+
+class NLSWave(EnvelopeWave):
     """Physical wave field reconstructed from an NLS simulation.
 
     Parameters
@@ -241,72 +452,34 @@ class NLSWave:
         itself is deep water, so this should satisfy k0 d >~ 3.
     phase : float
         Carrier phase offset (see :meth:`DeepWater.surface`).
+    order : {1, 2}
+        1: linear reconstruction. 2: add the bound second harmonic, set-down
+        and mean flow (:class:`EnvelopeSecondOrderField`).
 
     ``eta`` and ``kinematics`` use the stored snapshot nearest to the
     requested physical time t, so run the solver with output times at the
     resolution you need (see :meth:`physical_times`).
     """
 
-    def __init__(self, result, deep_water, depth=np.inf, phase=0.0):
+    def __init__(self, result, deep_water, depth=np.inf, phase=0.0, order=1):
+        super().__init__(deep_water.to_physical_t(result.t), depth, phase, order,
+                         deep_water.g)
         self.result = result
         self.dw = deep_water
-        self.depth = float(depth)
-        self.phase = float(phase)
-        self.times = self.dw.to_physical_t(result.t)
+        self.k0, self.w0 = deep_water.k0, deep_water.w0
 
-    def physical_times(self):
-        return self.times
-
-    def snapshot_index(self, t):
-        return int(np.argmin(np.abs(self.times - t)))
-
-    def field(self, t):
-        """SpectralWaveField at the stored snapshot nearest to t (s)."""
+    def _envelope(self, i):
         dw = self.dw
-        i = self.snapshot_index(t)
         t_i = self.times[i]
         A = dw.envelope(self.result.psi[i])
         N = A.size
         dx = (self.result.x[1] - self.result.x[0]) / dw.x_scale
         x0 = dw.to_physical_x(self.result.x[0], t_i)
         kappa = 2 * np.pi * np.fft.fftfreq(N, d=dx)
-
-        A_hat = np.fft.fft(A) / N
         # Fixed-frame envelope equation:
         #   A_t = -cg A_x - i p A_xx - i q |A|^2 A,  p = w0/(8k0^2), q = w0 k0^2/2
         p = dw.w0 / (8 * dw.k0**2)
         q = 0.5 * dw.w0 * dw.k0**2
-        A_hat_t = (-1j * dw.cg * kappa + 1j * p * kappa**2) * A_hat \
-            - 1j * q * np.fft.fft(np.abs(A) ** 2 * A) / N
-
-        carrier = np.exp(-1j * kappa * x0) * np.exp(1j * (self.phase - dw.w0 * t_i))
-        amp = A_hat * carrier
-        amp_dot = A_hat_t * carrier - 1j * dw.w0 * amp
-        k = dw.k0 + kappa
-        # Short envelopes (steep breathers) leak into k < 0. Re[a e^{ikx}] =
-        # Re[conj(a) e^{i|k|x}], so fold those modes onto |k|: eta and eta_t
-        # stay exact, but they are then treated as travelling in +x.
-        neg = k < 0
-        k = np.abs(k)
-        amp = np.where(neg, np.conj(amp), amp)
-        amp_dot = np.where(neg, np.conj(amp_dot), amp_dot)
-        keep = k > 0
-        f = SpectralWaveField(k[keep], amp[keep], amp_dot[keep], self.depth, dw.g)
-        return f.truncated()
-
-    def negative_wavenumber_fraction(self, t=0.0):
-        """Fraction of envelope energy at k < 0 -- a check on the narrow-band
-        assumption (should be small, say < 1e-3)."""
-        i = self.snapshot_index(t)
-        A_hat = np.fft.fft(self.result.psi[i])
-        K = 2 * np.pi * np.fft.fftfreq(A_hat.size, d=self.result.x[1] - self.result.x[0])
-        # A = a0 conj(psi), so envelope wavenumber kappa corresponds to -K / x_scale.
-        kappa = -K * self.dw.x_scale
-        E = np.abs(A_hat) ** 2
-        return float(E[self.dw.k0 + kappa < 0].sum() / E.sum())
-
-    def eta(self, x, t=0.0):
-        return self.field(t).eta(x)
-
-    def kinematics(self, x, z, t=0.0, stretching="wheeler"):
-        return self.field(t).kinematics(x, z, stretching)
+        A_t = np.fft.ifft((-1j * dw.cg * kappa + 1j * p * kappa**2) * np.fft.fft(A)) \
+            - 1j * q * np.abs(A) ** 2 * A
+        return x0, dx, A, A_t, t_i

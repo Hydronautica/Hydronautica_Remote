@@ -117,15 +117,44 @@ def peregrine_focus_series(dw, t, phase=np.pi):
     return np.real(dw.envelope(psi) * np.exp(1j * (phase - dw.w0 * t)))
 
 
+def peregrine_series(dw, t, phase=np.pi, order=1, L=200.0, N=4096):
+    """Focal-point surface elevation of the exact Peregrine wave at times t (s),
+    reconstructed to first or second order (:class:`nls.kinematics.NLSWave`)."""
+    if order == 1:
+        return peregrine_focus_series(dw, t, phase)
+    from .kinematics import NLSWave
+    from .solutions import peregrine
+    from .solver import Result
+    t = np.asarray(t, dtype=float)
+    X = -L / 2 + (L / N) * np.arange(N)
+    T = dw.to_normalised_t(t)
+    res = Result(X, T, np.array([peregrine(X, Ti) for Ti in T]))
+    wave = NLSWave(res, dw, phase=phase, order=order)
+    return np.array([wave.eta(0.0, ti) for ti in t]).ravel()
+
+
 def peregrine_for_height(H, k0=None, wavelength=None, period=None, phase=np.pi,
-                         g=G):
+                         g=G, order=1):
     """DeepWater scaling whose Peregrine breather has focal wave height H.
 
     H is crest-to-trough, measured in the time series at the focus as for
-    :func:`nls.kinematics.wave_height`. Since the envelope width depends on the
-    steepness, a0 is found by fixed-point iteration (H is roughly 5.1 a0).
+    :func:`nls.kinematics.wave_height`, with the surface reconstructed to
+    ``order`` 1 or 2. Since the envelope width depends on the steepness, a0 is
+    found by fixed-point iteration (H is roughly 5.1 a0).
     """
     from .kinematics import wave_height
+    if order == 2:
+        dw1 = peregrine_for_height(H, k0, wavelength, period, phase, g, order=1)
+        a0 = dw1.a0
+        for _ in range(30):
+            dw = DeepWater(a0, k0=k0, wavelength=wavelength, period=period, g=g)
+            t = np.linspace(-1.5 * dw.period, 1.5 * dw.period, 601)
+            h = wave_height(t, peregrine_series(dw, t, phase, order=2))
+            a0_new = a0 * H / h
+            if abs(a0_new - a0) < 1e-8 * a0:
+                break
+            a0 = a0_new
+        return DeepWater(a0, k0=k0, wavelength=wavelength, period=period, g=g)
     a0 = H / 5.1
     for _ in range(20):
         dw = DeepWater(a0, k0=k0, wavelength=wavelength, period=period, g=g)
