@@ -22,6 +22,10 @@
   --ok-soft: #dff1e6;
   --warn-soft: #f7ead2;
   --crit-soft: #f6dcd9;
+  --sky: #cddbe4;
+  --ocean-deep: #0d3b52;
+  --ocean-shallow: #2f7d99;
+  --foam: #eef5f8;
   --font-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -32,6 +36,7 @@
     --grid: #182531; --accent: #43b3d5; --accent-soft: #11313d; --sea: #4fa3c8;
     --ok: #4cc47e; --warn: #e3a33c; --crit: #f0705f;
     --ok-soft: #12301f; --warn-soft: #33270f; --crit-soft: #3a1915; color-scheme: dark;
+    --sky: #0c1822; --ocean-deep: #05202d; --ocean-shallow: #175a73; --foam: #b9cdd6;
   }
 }
 :root[data-theme="dark"] {
@@ -39,8 +44,10 @@
   --grid: #182531; --accent: #43b3d5; --accent-soft: #11313d; --sea: #4fa3c8;
   --ok: #4cc47e; --warn: #e3a33c; --crit: #f0705f;
   --ok-soft: #12301f; --warn-soft: #33270f; --crit-soft: #3a1915; color-scheme: dark;
+  --sky: #0c1822; --ocean-deep: #05202d; --ocean-shallow: #175a73; --foam: #b9cdd6;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--font-body);
   font-size: 15px; line-height: 1.5;
@@ -64,6 +71,43 @@ p { margin: 0; max-width: 68ch; }
 .brand b { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; letter-spacing: 0.02em; }
 .badge { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--warn); color: var(--warn); border-radius: 3px; }
 
+.dash-head { display: grid; gap: 10px; padding-block: 18px 12px; }
+.dash-head h1 { font-size: 2rem; }
+.dash-head .storm { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.dash-head .storm .v { font-size: 1.1rem; }
+.dash { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.vp-col { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); }
+.viewport { position: relative; height: min(76vh, 640px); min-height: 420px; overflow: hidden; background: var(--sky); }
+#three { position: absolute; inset: 0; }
+#three canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.vp-ui { position: absolute; left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; pointer-events: none; }
+.vp-ui > * { pointer-events: auto; }
+.vp-ui.top { top: 10px; justify-content: space-between; }
+.vp-ui.bot { bottom: 10px; justify-content: space-between; }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { font: inherit; font-size: 0.78rem; padding: 5px 10px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.on { background: var(--accent); color: var(--surface); }
+.vp-chip { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; font-size: 0.78rem; }
+.vp-msg { position: absolute; left: 50%; top: 56px; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--crit); color: var(--ink); border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; pointer-events: none; max-width: calc(100% - 20px); }
+.vp-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.76rem; }
+.vp-fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
+.side { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 2; }
+.tabs button { font: inherit; font-size: 0.88rem; padding: 9px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); cursor: pointer; }
+.tabs button.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.pane { display: flex; flex-direction: column; gap: 12px; }
+.side .grid2, .side .verdict, .side .two { grid-template-columns: minmax(0, 1fr); }
+.side .chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.side .model { grid-template-columns: minmax(0, 170px) minmax(0, 1fr); }
+.side .wiout { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1000px) {
+  .dash { grid-template-columns: minmax(0, 1fr); }
+  .vp-col { position: relative; top: 0; }
+  .viewport { height: 62vh; min-height: 340px; }
+  .dash-head .storm { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) { .side .model { grid-template-columns: minmax(0, 1fr); } }
 .portfolio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-block: 16px 0; }
 .farmcard { text-align: left; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; cursor: pointer; display: grid; gap: 6px; }
 .farmcard:hover { border-color: var(--accent); }
@@ -220,29 +264,61 @@ button.tab { font: inherit; }
   </header>
   <div class="portfolio" id="portfolio" role="tablist" aria-label="Farms in the portfolio"></div>
 
-  <div class="hero">
-    <div>
-      <div class="eyebrow" id="eyebrow">Post-storm report · storm peak replay</div>
-      <h1>Which turbines need a vessel after the storm, and what should the crew check?</h1>
-      <p>StormTwin takes the sea measured during a storm, finds and reconstructs the extreme wave groups, runs each turbine's global structural model, drives local models of the hot spots, and returns a verdict with the inspection it implies. Select a turbine to follow the chain.</p>
-    </div>
+  <div class="dash-head">
+    <div><div class="eyebrow" id="eyebrow">Post-storm report</div><h1 id="dash-title">Storm replay</h1></div>
     <div class="storm" id="storm"></div>
   </div>
 
-  <div class="replay">
-    <div class="panel farm">
-      <div class="panel-h"><h3>Farm overview</h3><div class="legend"><span><i class="dot" style="background:var(--crit)"></i>Act now</span><span><i class="dot" style="background:var(--warn)"></i>Inspect</span><span><i class="dot" style="background:var(--ok)"></i>No action</span></div></div>
-      <div class="panel-b">
-        <div id="map"></div>
-        <table class="list" id="list" aria-label="Turbines">
-          <thead><tr><th>Turbine</th><th>Verdict</th><th class="r">H<sub>max</sub>/H<sub>s</sub></th><th class="r">Peak ULS</th><th class="r">Life used</th></tr></thead>
-          <tbody></tbody>
-        </table>
-        <p class="cap">Life used: fatigue life consumed since commissioning at the worst hot spot, this storm included (design pace today: <span id="pace"></span>). ◆ known condition · <span style="color:var(--crit)">∿</span> natural-frequency alarm.</p>
+  <section class="dash" aria-label="Farm dashboard">
+    <div class="vp-col">
+      <div class="panel viewport" id="viewport">
+        <div id="three" role="img" aria-label="3D view of the farm and sea; click a turbine to analyse it"></div>
+        <div class="vp-ui top">
+          <div class="seg" role="group" aria-label="Colour turbines by"><button type="button" data-color="verdict" class="on">Verdict</button><button type="button" data-color="life">Life used</button><button type="button" data-color="alarms">Frequency alarms</button></div>
+          <div class="seg" role="group" aria-label="Sea state shown"><button type="button" data-sea="storm" class="on">Storm replay</button><button type="button" data-sea="whatif">What-if sea</button></div>
+        </div>
+        <div class="vp-msg" id="vp-msg" hidden></div>
+        <div class="vp-ui bot">
+          <div class="vp-chip vp-legend" id="vp-legend"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" type="button" id="vp-rogue">Replay largest wave</button>
+            <button class="btn" type="button" id="vp-play">Pause</button>
+            <button class="btn" type="button" id="vp-reset">Reset view</button>
+          </div>
+        </div>
+        <div class="vp-fallback" id="vp-fallback" hidden><p>3D view needs WebGL, which this browser has turned off. Use the farm map in the Overview tab.</p></div>
       </div>
+      <p class="cap" id="vp-cap">Drag to orbit, scroll or pinch to zoom, right-drag to pan. Click a turbine to analyse it.</p>
     </div>
-    <div class="detail" id="detail"></div>
-  </div>
+
+    <aside class="side">
+      <div class="tabs" role="tablist" aria-label="Turbine analysis">
+        <button type="button" role="tab" data-tab="overview" class="on">Overview</button>
+        <button type="button" role="tab" data-tab="structure">Structure</button>
+        <button type="button" role="tab" data-tab="fatigue">Fatigue</button>
+        <button type="button" role="tab" data-tab="frequency">Frequencies</button>
+        <button type="button" role="tab" data-tab="event">Event</button>
+      </div>
+      <div class="pane" id="pane-overview">
+        <div class="pane" id="pane-ov-t"></div>
+        <div class="panel farm">
+          <div class="panel-h"><h3>Farm overview</h3><div class="legend"><span><i class="dot" style="background:var(--crit)"></i>Act now</span><span><i class="dot" style="background:var(--warn)"></i>Inspect</span><span><i class="dot" style="background:var(--ok)"></i>No action</span></div></div>
+          <div class="panel-b">
+            <div id="map"></div>
+            <div class="tbl-wrap"><table class="list" id="list" aria-label="Turbines">
+              <thead><tr><th>Turbine</th><th>Verdict</th><th class="r">H<sub>max</sub>/H<sub>s</sub></th><th class="r">Peak ULS</th><th class="r">Life used</th></tr></thead>
+              <tbody></tbody>
+            </table></div>
+            <p class="cap">Life used: fatigue life consumed since commissioning at the worst hot spot, this storm included (design pace today: <span id="pace"></span>). ◆ known condition · <span style="color:var(--crit)">∿</span> natural-frequency alarm.</p>
+          </div>
+        </div>
+      </div>
+      <div class="pane" id="pane-structure" hidden></div>
+      <div class="pane" id="pane-fatigue" hidden></div>
+      <div class="pane" id="pane-frequency" hidden></div>
+      <div class="pane" id="pane-event" hidden></div>
+    </aside>
+  </section>
 
   <section class="block" id="history">
     <div class="eyebrow">Fatigue since commissioning</div>
@@ -358,11 +434,14 @@ button.tab { font: inherit; }
   </footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script type="application/json" id="data">__DATA__</script>
 <script>
 (function () {
   const ALL = JSON.parse(document.getElementById("data").textContent).farms;
   let FI = 0, D = ALL[0], T = D.turbines;
+  let S3 = null;                                   // 3D scene (null when WebGL is unavailable)
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const statusVar = { red: "--crit", amber: "--warn", green: "--ok", rbi: "--accent" };
   const statusText = { red: "Act now", amber: "Inspect", green: "No action", rbi: "Update RBI" };
@@ -413,11 +492,12 @@ button.tab { font: inherit; }
     const maxH = Math.max(...T.map((t) => t.Hmax));
     const storm = document.getElementById("storm");
     storm.innerHTML = "";
-    [["Turbines to act on", counts.red, "crit"], ["To inspect", counts.amber, "warn"], ["No action", counts.green, "ok"],
-     ["Peak H<sub>s</sub> (m)", fmt(maxHs, 1), ""], ["Largest wave (m)", fmt(maxH, 1), ""], ["Rogue waves · deep-dives", rogues + " · " + deep, ""]]
+    [["Act now", counts.red, "crit"], ["Inspect", counts.amber, "warn"], ["No action", counts.green, "ok"],
+     ["Peak H<sub>s</sub>", fmt(maxHs, 1) + " m", ""], ["Largest wave", fmt(maxH, 1) + " m", ""], ["Rogue · deep-dives", rogues + " · " + deep, ""]]
       .forEach(([k, v, c]) => storm.append(el("div", {}, `<div class="k">${k}</div><div class="v ${c}">${v}</div>`)));
     const F = D.meta.farm;
-    document.getElementById("eyebrow").textContent = `Post-storm report · ${F.name} · ${F.storm_name}, ${F.storm_peak}`;
+    document.getElementById("eyebrow").textContent = `Post-storm report · ${F.region} · ${T.length} × ${D.meta.turbine.label}`;
+    document.getElementById("dash-title").textContent = `${F.name} after the ${F.storm_name.toLowerCase()} of ${F.storm_peak}`;
   }
   function drawPortfolio() {
     const host = document.getElementById("portfolio");
@@ -567,9 +647,12 @@ button.tab { font: inherit; }
 
   // ---------- detail ----------
   function detail(i) {
-    const t = T[i], f = t.final, host = document.getElementById("detail");
+    const t = T[i], f = t.final;
+    const P = { ov: document.getElementById("pane-ov-t"), st: document.getElementById("pane-structure"),
+      fa: document.getElementById("pane-fatigue"), fr: document.getElementById("pane-frequency"), ev: document.getElementById("pane-event") };
+    Object.values(P).forEach((p) => { p.innerHTML = ""; });
+    const host = P.ov;
     const hst = hotspotStatus(t);
-    host.innerHTML = "";
     const head = el("div", { class: `panel dhead ${t.status}` });
     head.innerHTML = `<h2>${t.spec.name}</h2><span class="pill ${t.status}">${statusText[t.status]}</span>` +
       `<span class="muted mono">depth ${fmt(t.spec.depth, 1)} m · f₁ ${fmt(t.f1, 3)} Hz</span>` +
@@ -589,11 +672,15 @@ button.tab { font: inherit; }
     vd.innerHTML = `<div class="panel-b verdict" style="padding-top:14px"><div><h3>Why</h3><ul>${reasons}</ul></div>` +
       `<div><h3>Recommended action</h3><table class="actions">${t.actions.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</table></div></div>`;
     host.append(vd);
+    const goto = el("div", { class: "row", style: "display:flex;gap:8px;flex-wrap:wrap" },
+      ["structure:Structure and hot spots", "fatigue:Fatigue history", "frequency:Natural frequencies", "event:Storm event"].map((x) => `<button class="btn" type="button" data-goto="${x.split(":")[0]}">${x.split(":")[1]} →</button>`).join(""));
+    goto.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
+    host.append(goto);
 
     // interactive turbine model
     const mp = el("div", { class: "panel" });
     mp.innerHTML = `<div class="panel-h"><h3>Inspect the turbine</h3><span class="hint">Click any part of the model</span></div><div class="panel-b model"><div id="elev"></div><div class="insp" id="insp"></div></div>`;
-    host.append(mp);
+    P.st.append(mp);
     drawModel(t, hst);
     inspector(t, partSel);
 
@@ -621,12 +708,12 @@ button.tab { font: inherit; }
     right.querySelector("table").parentElement.classList.add("tbl-wrap");
     body.append(right);
     hs.append(body);
-    host.append(hs);
+    P.st.append(hs);
 
     // sea record
     const sea = el("div", { class: "panel chart" });
-    sea.innerHTML = `<div class="panel-h"><h3>Sea surface at ${t.spec.name}, 20 min at the storm peak</h3></div><div class="panel-b"><div></div><p class="cap">Second-order surface from the NLS sea at the turbine. The largest wave is circled${t.rogue ? "; it exceeds twice the significant height (rogue)" : ""}.</p></div>`;
-    host.append(sea);
+    sea.innerHTML = `<div class="panel-h"><h3>Sea surface at ${t.spec.name} at the storm peak</h3></div><div class="panel-b"><div></div><p class="cap">Second-order surface from the NLS sea at the turbine. The largest wave is circled${t.rogue ? "; it exceeds twice the significant height (rogue)" : ""}.</p></div>`;
+    P.ev.append(sea);
     const r = t.record, iC = r.t.reduce((b, v, k) => Math.abs(v - t.t_event) < Math.abs(r.t[b] - t.t_event) ? k : b, 0);
     chart(sea.querySelector(".panel-b > div"), {
       series: [{ x: r.t, y: r.eta, color: "--sea", width: 1 }], xl: "time (s)", yl: "η (m)", h: 200,
@@ -634,11 +721,11 @@ button.tab { font: inherit; }
       marks: [{ x: r.t[iC], y: r.eta[iC], label: `${fmt(t.Hmax, 1)} m wave` }], label: "Surface elevation record",
     });
 
-    if (t.history) historyCard(host, t);
-    if (t.modal && D.modal) modalCard(host, t);
+    if (t.history) historyCard(P.fa, t);
+    if (t.modal && D.modal) modalCard(P.fr, t);
 
     if (!t.deep) {
-      host.append(el("div", { class: "note" }, "Screening only. Nothing triggered a deep-dive for this turbine, so its verdict comes from the full-record screening run."));
+      P.ev.append(el("div", { class: "note" }, "Screening only. Nothing triggered a deep-dive for this turbine, so its verdict comes from the full-record screening run."));
       return;
     }
     const dd = t.deep;
@@ -648,7 +735,7 @@ button.tab { font: inherit; }
     const prof = el("div", { class: "panel chart" });
     prof.innerHTML = `<div class="panel-h"><h3>Velocity under the crest</h3></div><div class="panel-b"><div></div><p class="cap">Second-order deep-dive against narrow-band screening. Crest particle speed ${fmt(dd.u_crest, 1)} m/s against wave speed ${fmt(dd.c, 1)} m/s${dd.slam ? ": breaking, slamming applied" : ": not breaking"}.</p></div>`;
     g2.append(ev, prof);
-    host.append(g2);
+    P.ev.append(g2);
     const divs = ev.querySelectorAll(".panel-b > div");
     chart(divs[0], { series: [{ x: dd.t, y: dd.eta, color: "--sea" }], xl: "", yl: "η (m)", w: 420, h: 130, label: "Event surface" });
     chart(divs[1], {
@@ -665,7 +752,7 @@ button.tab { font: inherit; }
 
     const bolt = el("div", { class: "panel chart" });
     bolt.innerHTML = `<div class="panel-h"><h3>Flange bolt response in the event</h3></div><div class="panel-b"><div></div><p class="cap">Each dot is one time step of the deep-dive. Past the first marker the joint gap opens and the bolt force climbs steeply.${t.spec.preload < 1 ? " This turbine's reduced preload shifts the whole curve." : ""}</p></div>`;
-    host.append(bolt);
+    P.ev.append(bolt);
     const bc = t.spec.preload < 1 ? D.bolt_curve_low : D.bolt_curve;
     chart(bolt.querySelector(".panel-b > div"), {
       series: [{ x: bc.Z, y: bc.F, color: "--muted", width: 2 }, { x: dd.Z, y: dd.Fb, color: "--accent", points: true, r: 2 }],
@@ -972,8 +1059,9 @@ button.tab { font: inherit; }
     const n = xs.length; return ys[n - 1] + (ys[n - 1] - ys[n - 2]) * (x - xs[n - 1]) / (xs[n - 1] - xs[n - 2]);
   };
   const loglog = (xs, ys, x) => {
-    const lx = xs.map(Math.log), ly = ys.map((y) => Math.log(Math.max(y, 1e-300)));
-    return Math.exp(lin(lx, ly, Math.log(Math.max(x, 0.2))));
+    const top = Math.max(...ys, 1e-300), lx = xs.map(Math.log), ly = ys.map((y) => Math.log(Math.max(y, top * 1e-9)));
+    const v = lin(lx, ly, Math.log(Math.max(x, 0.2)));
+    return Math.exp(Math.min(v, Math.log(top) + 8 * Math.max(0, Math.log(x / xs[xs.length - 1]))));
   };
   const rad = (d) => d * Math.PI / 180;
   function specResp(tp, zeta, f1) {           // rms dynamic factor over a PM spectrum
@@ -1093,7 +1181,7 @@ button.tab { font: inherit; }
   const wiIds = ["hs", "tp", "wdir", "u", "udir", "dur", "clim"];
   const units = { hs: (v) => v.toFixed(1) + " m", tp: (v) => v.toFixed(1) + " s", wdir: (v) => v + "°", u: (v) => v.toFixed(1) + " m/s", udir: (v) => v + "°", dur: (v) => v + " h", clim: (v) => (v > 0 ? "+" : "") + v + "% Hₛ" };
   function readWI() { wiIds.forEach((k) => { WI[k] = +document.getElementById("wi-" + k).value; document.getElementById(`wi-${k}-v`).textContent = units[k](WI[k]); }); }
-  function setWI(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); readWI(); drawWhatif(); }
+  function setWI(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); readWI(); drawWhatif(); if (S3) S3.sea(); }
 
   function compass(host, t, res) {
     const W = 220, c = 110, R = 82;
@@ -1175,7 +1263,7 @@ button.tab { font: inherit; }
       lifeRows.map(([k, b, st, l0, l1]) => `<tr><td>${HOTNAME[k]}</td><td class="num" style="text-align:right">${fmt(b, 1)}%</td><td class="num" style="text-align:right">+${st < 0.01 ? st.toExponential(1) : fmt(st, 2)}%</td>` +
         `<td class="num" style="text-align:right">${fy(yrs + (100 - b) / (h.hot[k].total / yrs))}</td><td class="num" style="text-align:right;color:${l1 < life ? "var(--crit)" : "inherit"}">${fy(l1)}</td></tr>`).join("") + `</tbody></table>`;
   }
-  wiIds.forEach((k) => document.getElementById("wi-" + k).addEventListener("input", () => { readWI(); drawWhatif(); }));
+  wiIds.forEach((k) => document.getElementById("wi-" + k).addEventListener("input", () => { readWI(); drawWhatif(); if (S3) S3.sea(); }));
   document.getElementById("wi-tptyp").addEventListener("click", () => setWI({ tp: tpTyp(WI.hs).toFixed(1) }));
   document.getElementById("wi-calm").addEventListener("click", () => setWI({ hs: 1.5, tp: 5.5, u: 11, udir: 240, wdir: 240 }));
   document.getElementById("wi-storm").addEventListener("click", () => setWI({ hs: 9, tp: 10.8, u: 32, udir: 250, wdir: 250 }));
@@ -1187,6 +1275,300 @@ button.tab { font: inherit; }
       xl: "tension per bolt segment Z (MN)", yl: "bolt force (MN)", h: 220,
       legend: [{ label: "design preload", color: "--accent" }, { label: Math.round(D.low_preload * 100) + "% preload", color: "--warn", dash: "5 3" }], label: "Bolt load curve",
     });
+  }
+
+
+  // ---------- 3D farm scene ----------
+  function makeScene() {
+    if (!window.THREE) return null;
+    const host = document.getElementById("three");
+    let renderer;
+    try { renderer = new THREE.WebGLRenderer({ antialias: true }); } catch (e) { return null; }
+    if (!renderer.getContext()) return null;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    host.append(renderer.domElement);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, 1, 1, 6000);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = 0.08;
+    controls.maxPolarAngle = Math.PI / 2 - 0.06; controls.minDistance = 25; controls.maxDistance = 1600;
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x334455, 0.75); scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(-300, 400, 200); scene.add(sun);
+    const U = 10;                                    // metres per scene unit
+    const VE = 2.2;                                  // vertical exaggeration of the waves
+    const TS = 2.5;                                  // turbines drawn larger than true scale
+    const NW = 24, NF = 12;
+    // ocean
+    const geo = new THREE.PlaneGeometry(1, 1, 360, 360); geo.rotateX(-Math.PI / 2);
+    const uni = {
+      uTime: { value: 0 }, uW: { value: Array.from({ length: NW }, () => new THREE.Vector4()) }, uPh: { value: new Array(NW).fill(0) },
+      uF: { value: Array.from({ length: NF }, () => new THREE.Vector4()) }, uFPh: { value: new Array(NF).fill(0) },
+      uFpos: { value: new THREE.Vector2() }, uFt0: { value: -1e6 }, uFon: { value: 0 },
+      uDeep: { value: new THREE.Color() }, uShallow: { value: new THREE.Color() }, uFoam: { value: new THREE.Color() }, uSky: { value: new THREE.Color() },
+      uSun: { value: new THREE.Vector3(-0.5, 0.65, 0.35).normalize() }, uHs: { value: 1 }, uFogFar: { value: 1500 },
+    };
+    const mat = new THREE.ShaderMaterial({
+      uniforms: uni,
+      vertexShader: `
+        uniform float uTime; uniform vec4 uW[${NW}]; uniform float uPh[${NW}];
+        uniform vec4 uF[${NF}]; uniform float uFPh[${NF}]; uniform vec2 uFpos; uniform float uFt0; uniform float uFon;
+        varying vec3 vPos; varying vec3 vNrm; varying float vH;
+        void main() {
+          vec3 p = (modelMatrix * vec4(position, 1.0)).xyz;
+          float h = 0.0, hx = 0.0, hz = 0.0; vec2 d = vec2(0.0);
+          for (int i = 0; i < ${NW}; i++) {
+            vec4 w = uW[i]; float ph = w.x * p.x + w.y * p.z - w.w * uTime + uPh[i];
+            float c = cos(ph), sn = sin(ph);
+            h += w.z * c; hx -= w.z * w.x * sn; hz -= w.z * w.y * sn;
+            float kk = max(length(w.xy), 1e-4); d -= 0.45 * w.z / ${VE.toFixed(1)} * w.xy / kk * sn;
+          }
+          for (int i = 0; i < ${NF}; i++) {
+            vec4 w = uF[i]; float ph = w.x * (p.x - uFpos.x) + w.y * (p.z - uFpos.y) - w.w * (uTime - uFt0) + uFPh[i];
+            float c = cos(ph), sn = sin(ph);
+            h += uFon * w.z * c; hx -= uFon * w.z * w.x * sn; hz -= uFon * w.z * w.y * sn;
+          }
+          p.xz += d; p.y += h;
+          vH = h; vPos = p; vNrm = normalize(vec3(-hx, 1.0, -hz));
+          gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+        }`,
+      fragmentShader: `
+        uniform vec3 uDeep, uShallow, uFoam, uSky, uSun; uniform float uHs, uFogFar;
+        varying vec3 vPos; varying vec3 vNrm; varying float vH;
+        void main() {
+          vec3 n = normalize(vNrm); vec3 v = normalize(cameraPosition - vPos);
+          float fres = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+          float lift = clamp(vH / max(uHs, 0.1) * 0.5 + 0.5, 0.0, 1.0);
+          vec3 col = mix(uDeep, uShallow, lift * 0.85);
+          col = mix(col, uSky, fres * 0.55);
+          vec3 hlf = normalize(uSun + v); col += vec3(1.0) * pow(max(dot(n, hlf), 0.0), 120.0) * 0.6;
+          float slope = 1.0 - n.y;
+          float foam = smoothstep(0.62, 0.95, vH / max(uHs, 0.1)) + smoothstep(0.32, 0.5, slope) * 0.6;
+          col = mix(col, uFoam, clamp(foam, 0.0, 0.85));
+          float dist = length(cameraPosition - vPos);
+          col = mix(col, uSky, smoothstep(uFogFar * 0.45, uFogFar, dist));
+          gl_FragColor = vec4(col, 1.0);
+        }`,
+    });
+    const ocean = new THREE.Mesh(geo, mat); scene.add(ocean);
+    // wind streaks
+    const NS = 260, streakPos = new Float32Array(NS * 6), streakSeed = [];
+    const streakGeo = new THREE.BufferGeometry(); streakGeo.setAttribute("position", new THREE.BufferAttribute(streakPos, 3));
+    const streaks = new THREE.LineSegments(streakGeo, new THREE.LineBasicMaterial({ transparent: true, opacity: 0.55 }));
+    scene.add(streaks);
+    for (let i = 0; i < NS; i++) streakSeed.push([Math.random(), Math.random(), 4 + Math.random() * 26]);
+    // turbines
+    const farmGroup = new THREE.Group(); scene.add(farmGroup);
+    let turbines = [], center = new THREE.Vector3(), extent = 400, sel = 0, colorMode = "verdict", seaMode = "storm";
+    let wind = { U: 30, from: 260 }, rpm = 0.3, playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const white = new THREE.MeshStandardMaterial({ color: 0xe9edf0, roughness: 0.55, metalness: 0.1 });
+    const yellow = new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.6 });
+    const grey = new THREE.MeshStandardMaterial({ color: 0x8b98a3, roughness: 0.7 });
+    function label(text) {
+      const c = document.createElement("canvas"); c.width = 128; c.height = 48;
+      const g = c.getContext("2d"); g.font = "600 30px IBM Plex Mono, monospace"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillStyle = "rgba(255,255,255,0.88)"; g.fillRect(14, 6, 100, 36); g.fillStyle = "#0e1b27"; g.fillText(text, 64, 25);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
+      sp.scale.set(14, 5.25, 1); sp.renderOrder = 10; return sp;
+    }
+    function buildTurbine(t, i) {
+      const m = D.meta.turbine, g = new THREE.Group();
+      const zi = m.z_interface / U, zh = m.z_hub / U, R = m.rotor_D / 2 / U, rp = m.D_pile / 2 / U, rt = m.D_tower_top / 2 / U;
+      const pile = new THREE.Mesh(new THREE.CylinderGeometry(rp, rp, zi + 4, 20), grey); pile.position.y = (zi - 4) / 2; g.add(pile);
+      const tp = new THREE.Mesh(new THREE.CylinderGeometry(rp * 1.02, rp * 1.02, 0.9, 20), yellow); tp.position.y = zi - 0.45; g.add(tp);
+      const plat = new THREE.Mesh(new THREE.CylinderGeometry(rp * 1.9, rp * 1.9, 0.12, 24), grey); plat.position.y = m.z_platform / U; g.add(plat);
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(rt, rp, zh - zi - 0.4, 20), white); tower.position.y = zi + (zh - zi - 0.4) / 2; g.add(tower);
+      const yaw = new THREE.Group(); yaw.position.y = zh; g.add(yaw);
+      const nac = new THREE.Mesh(new THREE.BoxGeometry(rt * 2.2, rt * 2.2, rt * 6), white); nac.position.z = -rt * 1.6; yaw.add(nac);
+      const rotor = new THREE.Group(); rotor.position.z = rt * 1.8; yaw.add(rotor);
+      rotor.add(new THREE.Mesh(new THREE.SphereGeometry(rt * 1.1, 16, 12), white));
+      for (let b = 0; b < 3; b++) {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(R * 0.07, R, R * 0.02), white);
+        blade.geometry.translate(0, R / 2, 0); blade.rotation.z = (b * 2 * Math.PI) / 3; rotor.add(blade);
+      }
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(rp * 2.6, 0.32, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      ring.rotation.x = Math.PI / 2; ring.position.y = 0.6; g.add(ring);
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, zh + R + 6, 8, 1, true), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0, depthWrite: false }));
+      beam.position.y = (zh + R + 6) / 2; g.add(beam);
+      const lab = label(t.spec.name); lab.position.y = zh + R + 3; lab.scale.set(7, 2.6, 1); g.add(lab);
+      g.position.set((t.spec.x * 1000 / U) - center.x, 0, (t.spec.y * 1000 / U) - center.z);
+      g.scale.setScalar(TS);
+      g.traverse((o) => { o.userData.idx = i; });
+      farmGroup.add(g);
+      return { g, yaw, rotor, ring, beam, lab };
+    }
+    function colourFor(t) {
+      if (colorMode === "life" && t.history) {
+        const pace = 100 * D.history.years_in_service / D.meta.design_life, v = lifeUsed(t).v / Math.max(pace, 1e-6);
+        return css(v >= 1.25 ? "--crit" : v >= 1.0 ? "--warn" : "--ok");
+      }
+      if (colorMode === "alarms") return css(t.modal && t.modal.alarms.length ? "--crit" : "--ok");
+      return css(statusVar[t.status]);
+    }
+    function legend() {
+      const L = document.getElementById("vp-legend");
+      const it = colorMode === "life" ? [["--ok", "below design pace"], ["--warn", "up to 25% ahead"], ["--crit", "more than 25% ahead"]]
+        : colorMode === "alarms" ? [["--ok", "no frequency alarm"], ["--crit", "frequency alarm"]]
+        : [["--crit", "act now"], ["--warn", "inspect"], ["--ok", "no action"]];
+      L.innerHTML = it.map(([c, l]) => `<span><i class="dot" style="background:var(${c})"></i>${l}</span>`).join("");
+    }
+    function recolour() {
+      turbines.forEach((o, i) => {
+        const c = new THREE.Color(colourFor(T[i]));
+        o.ring.material.color = c; o.beam.material.color = c;
+        const on = i === sel; o.ring.scale.setScalar(on ? 1.35 : 1); o.beam.material.opacity = on ? 0.28 : 0.0;
+      });
+      legend();
+    }
+    function setFarm() {
+      while (farmGroup.children.length) farmGroup.remove(farmGroup.children[0]);
+      const xs = T.map((t) => t.spec.x * 1000 / U), zs = T.map((t) => t.spec.y * 1000 / U);
+      center.set((Math.min(...xs) + Math.max(...xs)) / 2, 0, (Math.min(...zs) + Math.max(...zs)) / 2);
+      extent = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs), 200);
+      turbines = T.map((t, i) => buildTurbine(t, i));
+      const size = extent * 2.6 + 600; ocean.scale.set(size, 1, size);
+      uni.uFogFar.value = size * 0.55;
+      sea(); recolour(); resetView(false);
+    }
+    // sea state -> wave components
+    let seed = 1; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+    function components(Hs, Tp, fromDeg, n, spreadDeg, out, phOut, wmin, wmax) {
+      const wp = 2 * Math.PI / Tp, ws = [], S = [];
+      for (let i = 0; i < n; i++) { const w = wp * (wmin + (wmax - wmin) * (i + 0.5) / n); ws.push(w); S.push(Math.pow(w, -5) * Math.exp(-1.25 * Math.pow(wp / w, 4)) * Math.pow(3.3, Math.exp(-((w - wp) ** 2) / (2 * 0.08 ** 2 * wp * wp)))); }
+      const sum = S.reduce((a, b) => a + b, 0), m0 = (Hs / 4) ** 2;
+      ws.forEach((w, i) => {
+        const a = Math.sqrt(2 * m0 * S[i] / sum) / U * VE;
+        const th = (fromDeg + 180 + spreadDeg * (2 * rnd() - 1)) * Math.PI / 180;   // propagation direction
+        const k = w * w / 9.81 * U;
+        out[i].set(k * Math.sin(th), -k * Math.cos(th), a, w);
+        phOut[i] = 2 * Math.PI * rnd();
+      });
+    }
+    function seaParams() {
+      if (seaMode === "whatif") return { Hs: WI.hs, Tp: WI.tp, wdir: WI.wdir, U: WI.u, udir: WI.udir };
+      const Hs = T.reduce((a, t) => a + t.Hs, 0) / T.length;
+      return { Hs, Tp: D.meta.Tp, wdir: 270, U: 32, udir: 260 };
+    }
+    function sea() {
+      const q = seaParams(); seed = 7 + FI * 13;
+      components(q.Hs, q.Tp, q.wdir, NW, 35, uni.uW.value, uni.uPh.value, 0.7, 2.6);
+      uni.uHs.value = q.Hs / U * VE;
+      wind = { U: q.U, from: q.udir };
+      const m = D.meta.turbine, op = q.U >= 3 && q.U <= 25;
+      rpm = op ? Math.min(1, q.U / m.rated_U) * (m.rotor_D > 220 ? 7.5 : 9.0) : 0.3;
+      const yawA = (wind.from) * Math.PI / 180;
+      turbines.forEach((o) => { o.yaw.rotation.y = Math.PI - yawA; });
+      const cap = document.getElementById("vp-cap");
+      cap.textContent = `${seaMode === "storm" ? "Storm replay" : "What-if sea"}: Hs ${fmt(q.Hs, 1)} m, Tp ${fmt(q.Tp, 1)} s, waves from ${q.wdir}°, wind ${fmt(q.U, 0)} m/s from ${q.udir}° (rotors ${op ? "operating" : "idling"}). Waves drawn ${VE}× taller, turbines ${TS}× larger. Drag to orbit, scroll to zoom, right-drag to pan; click a turbine.`;
+    }
+    // camera
+    let fly = null;
+    function resetView(animate = true) {
+      const tgt = new THREE.Vector3(0, 20, 0), d = extent * 0.62 + 170;
+      const pos = new THREE.Vector3(-d * 0.35, d * 0.42, d * 0.85);
+      if (!animate) { camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+      fly = { t0: performance.now(), p0: camera.position.clone(), q0: controls.target.clone(), p1: pos, q1: tgt };
+    }
+    function flyTo(i) {
+      const o = turbines[i]; if (!o) return;
+      const tgt = o.g.position.clone(); tgt.y = 25;
+      const dir = camera.position.clone().sub(controls.target).normalize();
+      const pos = tgt.clone().add(dir.multiplyScalar(170)); pos.y = Math.max(pos.y, 45);
+      fly = { t0: performance.now(), p0: camera.position.clone(), q0: controls.target.clone(), p1: pos, q1: tgt };
+    }
+    // rogue replay
+    let rogueEnd = 0;
+    function rogue() {
+      const t = T[sel], o = turbines[sel]; if (!o) return;
+      const q = seaParams(); seed = 99 + sel;
+      components(1, q.Tp, q.wdir, NF, 8, uni.uF.value, uni.uFPh.value, 0.75, 1.7);
+      const sumA = uni.uF.value.reduce((a, w) => a + w.z, 0), crest = Math.max(t.Cmax, t.deep ? t.deep.crest : 0);
+      uni.uF.value.forEach((w) => { w.z = w.z / sumA * crest / U * VE; });
+      uni.uFPh.value.fill(0);
+      uni.uFpos.value.set(o.g.position.x, o.g.position.z);
+      uni.uFt0.value = uni.uTime.value + 22; rogueEnd = uni.uFt0.value + 26;
+      const msg = document.getElementById("vp-msg");
+      msg.hidden = false;
+      msg.textContent = `Largest recorded wave at ${t.spec.name}: ${fmt(t.Hmax, 1)} m high, ${fmt(crest, 1)} m crest${t.deep && t.deep.slam ? ", breaking" : ""}. Focusing in 22 s.`;
+      if (!playing) toggle();
+    }
+    // picking
+    const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(); let down = null;
+    renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
+    renderer.domElement.addEventListener("pointerup", (e) => {
+      if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+      const r = renderer.domElement.getBoundingClientRect();
+      mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(mouse, camera);
+      const hit = ray.intersectObjects(farmGroup.children, true).find((h) => h.object.userData.idx !== undefined);
+      if (hit) { select(hit.object.userData.idx); flyTo(hit.object.userData.idx); }
+    });
+    renderer.domElement.addEventListener("pointermove", (e) => {
+      const r = renderer.domElement.getBoundingClientRect();
+      mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(mouse, camera);
+      renderer.domElement.style.cursor = ray.intersectObjects(farmGroup.children, true).length ? "pointer" : "grab";
+    });
+    // loop
+    let last = performance.now(), visible = true;
+    new IntersectionObserver((en) => { visible = en[0].isIntersecting; }).observe(host);
+    function resize() {
+      const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
+      renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(host);
+    function frame(now) {
+      requestAnimationFrame(frame);
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (!visible) return;
+      if (playing) {
+        uni.uTime.value += dt;
+        turbines.forEach((o) => { o.rotor.rotation.z -= rpm / 60 * 2 * Math.PI * dt; });
+        // focus group fade
+        const tt = uni.uTime.value;
+        uni.uFon.value = tt < uni.uFt0.value - 40 ? 0 : tt > rogueEnd ? Math.max(0, uni.uFon.value - dt / 4) : Math.min(1, uni.uFon.value + dt / 3);
+        if (tt > rogueEnd + 4) document.getElementById("vp-msg").hidden = true;
+        // streaks
+        const th = (wind.from + 180) * Math.PI / 180, vx = Math.sin(th), vz = -Math.cos(th), L = 3 + wind.U * 0.25, box = extent * 1.6 + 200;
+        for (let i = 0; i < NS; i++) {
+          const sd = streakSeed[i];
+          sd[0] = (sd[0] + dt * wind.U * 0.0016) % 1; const s2 = sd[1];
+          const along = (sd[0] - 0.5) * box, across = (s2 - 0.5) * box;
+          const x = along * vx - across * vz, z = along * vz + across * vx, y = sd[2];
+          streakPos.set([x, y, z, x + vx * L, y, z + vz * L], i * 6);
+        }
+        streakGeo.attributes.position.needsUpdate = true;
+        turbines.forEach((o, i) => { if (i === sel) o.ring.scale.setScalar(1.35 + 0.08 * Math.sin(now / 300)); });
+      }
+      if (fly) {
+        const u = Math.min(1, (now - fly.t0) / 900), e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+        camera.position.lerpVectors(fly.p0, fly.p1, e); controls.target.lerpVectors(fly.q0, fly.q1, e);
+        if (u >= 1) fly = null;
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    function theme() {
+      const sky = new THREE.Color(css("--sky"));
+      scene.background = sky; uni.uSky.value = sky;
+      uni.uDeep.value = new THREE.Color(css("--ocean-deep")); uni.uShallow.value = new THREE.Color(css("--ocean-shallow")); uni.uFoam.value = new THREE.Color(css("--foam"));
+      streaks.material.color = new THREE.Color(css("--foam"));
+      if (turbines.length) recolour();
+    }
+    function toggle() { playing = !playing; document.getElementById("vp-play").textContent = playing ? "Pause" : "Play"; }
+    document.getElementById("vp-play").textContent = playing ? "Pause" : "Play";
+    document.getElementById("vp-play").addEventListener("click", toggle);
+    document.getElementById("vp-reset").addEventListener("click", () => resetView(true));
+    document.getElementById("vp-rogue").addEventListener("click", rogue);
+    document.querySelectorAll("[data-color]").forEach((b) => b.addEventListener("click", () => {
+      colorMode = b.dataset.color; document.querySelectorAll("[data-color]").forEach((x) => x.classList.toggle("on", x === b)); recolour(); }));
+    document.querySelectorAll("[data-sea]").forEach((b) => b.addEventListener("click", () => {
+      seaMode = b.dataset.sea; document.querySelectorAll("[data-sea]").forEach((x) => x.classList.toggle("on", x === b)); sea();
+      if (seaMode === "whatif") document.getElementById("whatif").scrollIntoView({ behavior: "smooth", block: "start" }); }));
+    theme(); resize(); requestAnimationFrame(frame);
+    return {
+      setFarm, theme, sea: () => { if (seaMode === "whatif") sea(); },
+      select: (i) => { sel = i; recolour(); document.getElementById("vp-rogue").textContent = `Replay largest wave at ${T[i].spec.name}`; },
+    };
   }
 
   function assumptions() {
@@ -1202,8 +1584,13 @@ button.tab { font: inherit; }
     if (i < 0) i = T.findIndex((t) => t.condition);
     return Math.max(0, i);
   }
-  function select(i) { current = i; drawMap(i); drawList(i); detail(i); if (D.history) drawWhatif(); }
-  function renderAll() { drawPortfolio(); drawStorm(); farmHistory(); assumptions(); select(current); boltCurve(); }
+  function select(i) { current = i; drawMap(i); drawList(i); detail(i); if (D.history) drawWhatif(); if (S3) S3.select(i); }
+  function showTab(name) {
+    document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+    ["overview", "structure", "fatigue", "frequency", "event"].forEach((n) => { document.getElementById("pane-" + n).hidden = n !== name; });
+  }
+  document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  function renderAll() { drawPortfolio(); drawStorm(); farmHistory(); assumptions(); if (S3) { S3.theme(); S3.setFarm(); } select(current); boltCurve(); }
   function loadFarm(i) {
     FI = i; D = ALL[i]; T = D.turbines; current = defaultTurbine();
     const hs = Math.min(4, Math.max(1.5, (D.history ? D.history.hs_mean : 2) * 2));
@@ -1212,6 +1599,8 @@ button.tab { font: inherit; }
   }
   function setWIsilent(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); readWI(); }
   readWI();
+  S3 = makeScene();
+  if (!S3) { document.getElementById("vp-fallback").hidden = false; document.querySelectorAll(".vp-ui").forEach((e) => { e.hidden = true; }); }
   loadFarm(0);
   const mq = window.matchMedia("(prefers-color-scheme: dark)");
   if (mq.addEventListener) mq.addEventListener("change", renderAll);

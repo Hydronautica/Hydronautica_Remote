@@ -131,12 +131,17 @@ def hs_history(seed=CFG["history_seed"]):
 
 
 def interp_rate(table_hs, table_d, hs):
-    """Log-log interpolation of damage rate vs Hs (linear extrapolation in log)."""
+    """Log-log interpolation of damage rate vs Hs (linear extrapolation in log).
+
+    Zero rates (e.g. bolts with a closed joint) are floored at 1e-9 of the
+    largest rate and the extrapolation slopes are capped, so a zero bin cannot
+    blow up the extrapolation."""
     lh = np.log(table_hs)
-    ld = np.log(np.maximum(table_d, 1e-300))
+    top = max(float(np.max(table_d)), 1e-300)
+    ld = np.log(np.maximum(table_d, top * 1e-9))
     x = np.log(np.maximum(hs, 0.2))
-    slope_lo = (ld[1] - ld[0]) / (lh[1] - lh[0])
-    slope_hi = (ld[-1] - ld[-2]) / (lh[-1] - lh[-2])
+    slope_lo = float(np.clip((ld[1] - ld[0]) / (lh[1] - lh[0]), 0, 8))
+    slope_hi = float(np.clip((ld[-1] - ld[-2]) / (lh[-1] - lh[-2]), 0, 8))
     y = np.interp(x, lh, ld)
     y = np.where(x < lh[0], ld[0] + slope_lo * (x - lh[0]), y)
     y = np.where(x > lh[-1], ld[-1] + slope_hi * (x - lh[-1]), y)
@@ -153,8 +158,19 @@ if __name__ == "__main__":
     only = sys.argv[1:]          # optional: re-run selected turbines, keep the others
     specs = [t["spec"] for t in data["turbines"] if not only or t["spec"]["name"] in only]
     jobs = [(s, hs) for s in specs for hs in HS_BINS]
-    with ProcessPoolExecutor(max_workers=4) as pool:
-        rates = list(pool.map(damage_rates, jobs))
+    if os.environ.get("STORMTWIN_REACC"):
+        # re-accumulate from the stored (already scaled) rates and statistics
+        prev_scale = data["history"].get("demo_scale", 1.0)
+        rates = []
+        for t in data["turbines"]:
+            w = t["whatif"]
+            for i, hs in enumerate(HS_BINS):
+                out = {k: t["history"]["hot"][k]["rates"][i] / prev_scale for k in HOT}
+                st = {sk: {q: w["sections"][sk][q][i] for q in ("mean", "std", "nu")} for sk in ("flange", "door", "mudline")}
+                rates.append((t["spec"]["name"], hs, out, st, dict(z_mw=w["z"]["mudline"], f1=w["f1"])))
+    else:
+        with ProcessPoolExecutor(max_workers=4) as pool:
+            rates = list(pool.map(damage_rates, jobs))
     table, stats, props = {}, {}, {}
     for name, hs, out, st, pr in rates:
         table.setdefault(name, {})[hs] = out
