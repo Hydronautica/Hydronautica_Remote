@@ -237,12 +237,36 @@ def _solve_height(fun, target, x0, tol=1e-3, max_iter=30):
     raise RuntimeError("height calibration did not converge")
 
 
+def first_focus_index(peak, rel=0.85, smooth=5):
+    """Index of the first major focusing event in a peak-amplitude history:
+    the first local maximum (after light smoothing) reaching ``rel`` times the
+    overall maximum. At large steepness a Dysthe group can focus more than
+    once and the largest event switches between them as eps changes, so the
+    first event gives a height that varies continuously with eps."""
+    peak = np.asarray(peak, float)
+    if smooth > 1:
+        ker = np.ones(smooth) / smooth
+        ps = np.convolve(np.pad(peak, smooth // 2, mode="edge"), ker, mode="valid")
+    else:
+        ps = peak
+    thresh = rel * ps.max()
+    for i in range(1, ps.size - 1):
+        if ps[i] >= thresh and ps[i] >= ps[i - 1] and ps[i] >= ps[i + 1]:
+            # refine on the raw history around the smoothed peak
+            lo, hi = max(0, i - smooth), min(peak.size, i + smooth + 1)
+            return lo + int(np.argmax(peak[lo:hi]))
+    return int(np.argmax(peak))
+
+
 def dysthe_focused_wave(eps, period, depth=np.inf, order=2, T0=-2.0, g=G,
-                        dispersion="dysthe", window_periods=1.5, samples_per_period=100):
+                        dispersion="dysthe", window_periods=1.5, samples_per_period=100,
+                        focus="first"):
     """Evolve a Peregrine initial condition of steepness eps under Dysthe and
     return a :class:`DystheWave` sampled finely around its focus.
 
-    The carrier phase is chosen so that a crest sits at the envelope maximum.
+    ``focus="first"`` (default) takes the first major focusing event (see
+    :func:`first_focus_index`); ``"max"`` takes the largest one. The carrier
+    phase is chosen so that a crest sits at the envelope maximum.
     Returns (wave, focus_time_s, focus_x_m).
     """
     L, N = peregrine_domain(eps)
@@ -250,7 +274,8 @@ def dysthe_focused_wave(eps, period, depth=np.inf, order=2, T0=-2.0, g=G,
     t_nls = -2 * T0 / eps**2
     dt = 0.004 / eps**2
     coarse = solver.run(peregrine_initial(solver.x, eps, T0), 0.0, 2.0 * t_nls, dt, n_out=401)
-    i = int(np.argmax(np.abs(coarse.psi).max(axis=1)))
+    peak = np.abs(coarse.psi).max(axis=1)
+    i = first_focus_index(peak) if focus == "first" else int(np.argmax(peak))
     half = window_periods * 2 * np.pi          # window in units of 1/w0
     t_start = coarse.t[i] - half
     j = max(0, int(np.searchsorted(coarse.t, t_start)) - 1)
