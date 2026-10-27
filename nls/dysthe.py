@@ -197,14 +197,43 @@ class DystheWave(EnvelopeWave):
         return t, self.solver.x[j] / self.k0 + self.cg * t, i
 
 
-def _secant(fun, target, x0, x1, tol=1e-6, max_iter=20):
-    """Solve fun(x) = target by the secant method."""
-    f0, f1 = fun(x0) - target, fun(x1) - target
+def _solve_height(fun, target, x0, tol=1e-3, max_iter=30):
+    """Solve fun(x) = target for an increasing, slightly noisy fun.
+
+    Brackets the root by stepping x up or down by 10%, then uses regula falsi
+    (Illinois variant) so every iterate stays inside the bracket.
+    """
+    lo, flo = x0, fun(x0) - target
+    if abs(flo) < tol * target:
+        return lo
+    step = 1.1 if flo < 0 else 1 / 1.1
+    hi, fhi = lo, flo
+    for _ in range(30):
+        hi = hi * step
+        fhi = fun(hi) - target
+        if abs(fhi) < tol * target:
+            return hi
+        if np.sign(fhi) != np.sign(flo):
+            break
+        lo, flo = hi, fhi
+    else:
+        raise RuntimeError("could not bracket the target height")
+    side = 0
     for _ in range(max_iter):
-        if abs(f1) < tol * abs(target):
-            return x1
-        x0, x1, f0 = x1, x1 - f1 * (x1 - x0) / (f1 - f0), f1
-        f1 = fun(x1) - target
+        x = (lo * fhi - hi * flo) / (fhi - flo)
+        fx = fun(x) - target
+        if abs(fx) < tol * target:
+            return x
+        if np.sign(fx) == np.sign(flo):
+            lo, flo = x, fx
+            if side == -1:
+                fhi *= 0.5
+            side = -1
+        else:
+            hi, fhi = x, fx
+            if side == 1:
+                flo *= 0.5
+            side = 1
     raise RuntimeError("height calibration did not converge")
 
 
@@ -263,7 +292,7 @@ def dysthe_for_height(H, period, depth=np.inf, order=2, eps_guess=None, **kwargs
         return wave_height(t, eta)
 
     e0 = eps_guess if eps_guess is not None else k0 * H / 5.0
-    eps = _secant(height, H, e0, 1.05 * e0, tol=1e-3)
+    eps = _solve_height(height, H, e0, tol=1e-3)
     if eps not in cache:
         height(eps)
     wave, t_f, x_f = cache[eps]

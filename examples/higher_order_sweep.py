@@ -12,10 +12,19 @@ its own focal point:
 * Dysthe, 2nd order           -- Peregrine initial condition evolved with Dysthe
 * Dysthe exact dispersion     -- same with the exact linear dispersion relation
 
-Runs the heights in parallel; takes a few minutes.
+Points where a model's crest particle velocity exceeds the phase speed (the
+kinematic breaking criterion: the model itself says the wave breaks) or an
+envelope model leaks more than 1e-3 of its energy to k < 0 (narrow-band
+assumption violated) are drawn as open symbols: they are outside the model's
+range and should not be used quantitatively.
+
+Runs the heights in parallel; takes 10-20 minutes. Results are cached per
+height in figures/sweep_cache/, so a rerun only recomputes models that are
+missing or failed (delete the cache to start afresh).
 """
 
 import os
+import pickle
 import warnings
 from concurrent.futures import ProcessPoolExecutor
 
@@ -74,14 +83,28 @@ def build(name, H):
     return wave, x_f, t_f, t, wave.w0 / wave.k0, eps
 
 
+CACHE = os.path.join("figures", "sweep_cache")
+
+
+def valid(m):
+    """Inside the model's range: no predicted breaking, narrow band respected."""
+    return m is not None and m["u_top"] < m["c"] and m.get("leak", 0.0) < 1e-3
+
+
 def evaluate(args):
     f, Hb = args
     warnings.filterwarnings("ignore")
     import nls
     H = f * Hb
     z = np.linspace(-0.6 * H - 30.0, 0.8 * H, 100)
+    path = os.path.join(CACHE, f"H{f:.3f}.pkl")
     row = dict(f=f, H=H, z=z)
+    if os.path.exists(path):
+        with open(path, "rb") as fh:
+            row.update(pickle.load(fh))
     for name in MODELS:
+        if row.get(name) is not None:
+            continue
         try:
             wave, x_f, t_f, times, c, eps = build(name, H)
             kin = [wave.kinematics(x_f, z, ti) for ti in times]
@@ -90,21 +113,25 @@ def evaluate(args):
                            ).ravel() if name in ("Stream function",) or name.startswith("NewWave") \
                 else np.array([wave.eta(x_f, ti) for ti in wave.physical_times()]).ravel()
             u0 = kin[i0]["u"]
+            leak = wave.negative_wavenumber_fraction(t_f) \
+                if hasattr(wave, "negative_wavenumber_fraction") else 0.0
             row[name] = dict(
-                crest=float(np.max(eta)), c=c, eps=eps,
+                crest=float(np.max(eta)), c=c, eps=eps, leak=leak,
                 u_profile=u0, u_top=u0[np.isfinite(u0)][-1],
                 ax_profile=np.nanmax(np.abs([k["ax"] for k in kin]), axis=0),
                 w_profile=np.nanmax(np.abs([k["w"] for k in kin]), axis=0))
         except Exception as e:      # e.g. beyond a model's range of validity
-            print(f"  H/H_b={f}: {name} failed: {e}")
+            print(f"  H/H_b={f}: {name} failed: {e}", flush=True)
             row[name] = None
+        with open(path, "wb") as fh:
+            pickle.dump(row, fh)
     print(f"done H/H_b = {f}", flush=True)
     return row
 
 
 if __name__ == "__main__":
     import nls
-    os.makedirs("figures", exist_ok=True)
+    os.makedirs(CACHE, exist_ok=True)
     Hb = nls.breaking_height(T, d)
     om = 2 * np.pi / T
     print(f"T = {T} s, d = {d} m, H_b = {Hb:.2f} m")
@@ -113,7 +140,7 @@ if __name__ == "__main__":
 
     # --- table ----------------------------------------------------------------
     print(f"\n{'H/Hb':>5s} {'model':29s} {'crest/H':>7s} {'u_crest':>7s} {'u/c':>5s} "
-          f"{'|ax|max':>7s} {'|w|max':>6s} {'k0a0':>6s}")
+          f"{'|ax|max':>7s} {'|w|max':>6s} {'k0a0':>6s} {'k<0':>7s}")
     for r in rows:
         for name in MODELS:
             m = r[name]
@@ -122,7 +149,8 @@ if __name__ == "__main__":
                 continue
             print(f"{r['f']:5.2f} {name:29s} {m['crest'] / r['H']:7.3f} {m['u_top']:7.2f} "
                   f"{m['u_top'] / m['c']:5.2f} {np.nanmax(m['ax_profile']):7.2f} "
-                  f"{np.nanmax(m['w_profile']):6.2f} {m['eps']:6.3f}")
+                  f"{np.nanmax(m['w_profile']):6.2f} {m['eps']:6.3f} {m.get('leak', 0):7.0e}"
+                  f"{'' if valid(m) else '  *outside range'}")
 
     # --- trend plots --------------------------------------------------------------
     fr = np.array([r["f"] for r in rows])
@@ -144,15 +172,20 @@ if __name__ == "__main__":
             y = series(name, fn)
             if np.all(np.isnan(y)):
                 continue
-            ax.plot(fr, y, ls, color=col, marker="o", ms=3.5, label=name)
+            ok = np.array([valid(r[name]) for r in rows])
+            ax.plot(fr, y, ls, color=col, lw=1, alpha=0.35)
+            ax.plot(np.where(ok, fr, np.nan), np.where(ok, y, np.nan), ls, color=col,
+                    marker="o", ms=4, label=name)
+            ax.plot(fr[~ok], y[~ok], "o", mfc="none", color=col, ms=5)
         if ref is not None:
             ax.axhline(ref, c="k", ls=":", lw=1)
         ax.set_title(title)
         ax.set_xlabel("H / H_b")
         ax.grid(alpha=0.3)
     axes[0, 0].legend(fontsize=8)
-    fig.suptitle(f"T = {T} s, d = {d} m, H_b = {Hb:.1f} m. Linear models: Wheeler stretching; "
-                 "2nd-order models: Taylor (linear) extrapolation")
+    fig.suptitle(f"T = {T} s, d = {d} m, H_b = {Hb:.1f} m. Linear models: Wheeler; 2nd order: "
+                 "Taylor extrapolation. Open symbols: model predicts breaking (u > c) or "
+                 "leaves its narrow-band range")
     fig.tight_layout()
     fig.savefig("figures/higher_order_trends.png", dpi=150)
 
