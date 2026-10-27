@@ -1,0 +1,593 @@
+<title>StormTwin Storm Replay</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: instrument-panel replay. Farm overview on the left, the selected
+   turbine's chain (sea -> global -> hot spot -> verdict) on the right, then
+   how it works, confidence, standards and ways to start. */
+:root {
+  --bg: #eef2f5;
+  --surface: #ffffff;
+  --ink: #0e1b27;
+  --muted: #566676;
+  --line: #d3dce4;
+  --grid: #e6ecf1;
+  --accent: #0a6a8a;
+  --accent-soft: #d9edf3;
+  --sea: #2d7fa3;
+  --ok: #1c7f47;
+  --warn: #b5730a;
+  --crit: #bb3328;
+  --ok-soft: #dff1e6;
+  --warn-soft: #f7ead2;
+  --crit-soft: #f6dcd9;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a121a; --surface: #101b25; --ink: #e3ebf2; --muted: #8b9cad; --line: #22313f;
+    --grid: #182531; --accent: #43b3d5; --accent-soft: #11313d; --sea: #4fa3c8;
+    --ok: #4cc47e; --warn: #e3a33c; --crit: #f0705f;
+    --ok-soft: #12301f; --warn-soft: #33270f; --crit-soft: #3a1915; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a121a; --surface: #101b25; --ink: #e3ebf2; --muted: #8b9cad; --line: #22313f;
+  --grid: #182531; --accent: #43b3d5; --accent-soft: #11313d; --sea: #4fa3c8;
+  --ok: #4cc47e; --warn: #e3a33c; --crit: #f0705f;
+  --ok-soft: #12301f; --warn-soft: #33270f; --crit-soft: #3a1915; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body);
+  font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+.wrap { max-width: 1280px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
+h1 { font-size: 2.6rem; line-height: 1.05; }
+h2 { font-size: 1.75rem; line-height: 1.15; }
+h3 { font-size: 1.15rem; }
+p { margin: 0; max-width: 68ch; }
+.muted { color: var(--muted); }
+.mono, .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.eyebrow { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+
+/* top bar */
+.topbar { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; padding-block: 20px 14px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.brand b { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; letter-spacing: 0.02em; }
+.badge { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--warn); color: var(--warn); border-radius: 3px; }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; padding-block: 28px 24px; align-items: end; }
+.hero p { margin-top: 12px; color: var(--muted); font-size: 1.02rem; }
+.storm { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.storm div { background: var(--surface); padding: 10px 12px; }
+.storm .k { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.storm .v { font-family: var(--font-data); font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.storm .v.crit { color: var(--crit); } .storm .v.warn { color: var(--warn); } .storm .v.ok { color: var(--ok); }
+
+/* main replay */
+.replay { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.panel-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; padding: 14px 16px 6px; }
+.panel-b { padding: 6px 16px 16px; }
+.farm svg { width: 100%; height: auto; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.8rem; color: var(--muted); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+.list { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.list th { text-align: left; font-weight: 500; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 6px; border-bottom: 1px solid var(--line); }
+.list td { padding: 6px 6px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+.list tr { cursor: pointer; }
+.list tbody tr:hover td { background: var(--accent-soft); }
+.list tr.sel td { background: var(--accent-soft); font-weight: 600; }
+.list td.r { text-align: right; font-family: var(--font-data); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; font-weight: 500; }
+.pill.red { background: var(--crit-soft); color: var(--crit); }
+.pill.amber { background: var(--warn-soft); color: var(--warn); }
+.pill.green { background: var(--ok-soft); color: var(--ok); }
+
+.detail { display: flex; flex-direction: column; gap: 16px; }
+.dhead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 16px; border-left: 5px solid var(--line); }
+.dhead.red { border-left-color: var(--crit); } .dhead.amber { border-left-color: var(--warn); } .dhead.green { border-left-color: var(--ok); }
+.dhead h2 { font-size: 2rem; }
+.cond { font-size: 0.85rem; color: var(--warn); font-family: var(--font-data); }
+.chips { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
+.chips div { background: var(--surface); padding: 8px 12px; }
+.chips .k { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+.chips .v { font-family: var(--font-data); font-size: 1.02rem; font-variant-numeric: tabular-nums; }
+.verdict { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.verdict ul { margin: 6px 0 0; padding-left: 18px; }
+.verdict li { margin: 3px 0; }
+.actions { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 6px; }
+.actions td { padding: 6px 4px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+.actions td:first-child { font-weight: 600; white-space: nowrap; padding-right: 12px; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.cap { font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
+.note { font-size: 0.85rem; color: var(--muted); padding: 10px 12px; border: 1px dashed var(--line); border-radius: 6px; }
+
+.hs { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; align-items: start; }
+.hs svg { width: 100%; height: auto; }
+.hstable { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.hstable th { text-align: left; font-weight: 500; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 6px; border-bottom: 1px solid var(--line); }
+.hstable td { padding: 7px 6px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+.bar { position: relative; height: 8px; background: var(--grid); border-radius: 4px; min-width: 80px; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.bar b { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--muted); }
+.hsname { font-weight: 600; }
+.hssub { font-size: 0.75rem; color: var(--muted); }
+
+/* sections below */
+section.block { padding-block: 40px 8px; display: flex; flex-direction: column; gap: 18px; }
+.chain { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.step { padding: 14px 14px 16px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.step:last-child { border-right: 0; }
+.step .n { font-family: var(--font-data); font-size: 0.75rem; color: var(--accent); }
+.step h3 { font-size: 1.05rem; }
+.step p { font-size: 0.84rem; color: var(--muted); }
+.step .tag { font-family: var(--font-data); font-size: 0.7rem; color: var(--ink); background: var(--accent-soft); padding: 2px 6px; border-radius: 3px; align-self: flex-start; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.tbl-wrap { overflow-x: auto; }
+table.std { width: 100%; border-collapse: collapse; font-size: 0.88rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table.std th { text-align: left; font-weight: 500; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+table.std td { padding: 8px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+table.std td:first-child { font-family: var(--font-data); white-space: nowrap; font-size: 0.82rem; }
+.offers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.offer { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.offer .who { font-family: var(--font-data); font-size: 0.75rem; color: var(--muted); }
+.offer ul { margin: 0; padding-left: 18px; font-size: 0.88rem; }
+footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
+button.tab { font: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 1000px) {
+  .hero, .replay, .two, .verdict, .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .chain { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .step { border-bottom: 1px solid var(--line); }
+  .offers { grid-template-columns: minmax(0, 1fr); }
+  .chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  h1 { font-size: 2rem; }
+  .chain { grid-template-columns: minmax(0, 1fr); }
+  .step { border-right: 0; }
+  .hs { grid-template-columns: minmax(0, 1fr); }
+  .hs svg { max-width: 200px; }
+  .storm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .list tr td, .farm circle { transition: background 0.15s, stroke-width 0.15s; }
+}
+</style>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><b>StormTwin</b><span class="muted">Storm-to-hot-spot assessment for offshore wind monopiles</span></div>
+    <span class="badge">Demonstration · synthetic storm and farm</span>
+  </header>
+
+  <div class="hero">
+    <div>
+      <div class="eyebrow">Post-storm report · storm peak replay</div>
+      <h1>Which turbines need a vessel after the storm, and what should the crew check?</h1>
+      <p>StormTwin takes the sea measured during a storm, finds and reconstructs the extreme wave groups, runs each turbine's global structural model, drives local models of the hot spots, and returns a verdict with the inspection it implies. Select a turbine to follow the chain.</p>
+    </div>
+    <div class="storm" id="storm"></div>
+  </div>
+
+  <div class="replay">
+    <div class="panel farm">
+      <div class="panel-h"><h3>Farm overview</h3><div class="legend"><span><i class="dot" style="background:var(--crit)"></i>Act now</span><span><i class="dot" style="background:var(--warn)"></i>Inspect</span><span><i class="dot" style="background:var(--ok)"></i>No action</span></div></div>
+      <div class="panel-b">
+        <div id="map"></div>
+        <table class="list" id="list" aria-label="Turbines">
+          <thead><tr><th>Turbine</th><th>Verdict</th><th class="r">H<sub>max</sub>/H<sub>s</sub></th><th class="r">Peak ULS</th><th class="r">Fatigue&nbsp;d</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="cap">Fatigue d: design-life days of fatigue the storm used at the worst hot spot (6 h at peak conditions).</p>
+      </div>
+    </div>
+    <div class="detail" id="detail"></div>
+  </div>
+
+  <section class="block" id="how">
+    <div class="eyebrow">How it works</div>
+    <h2>One chain from the sea surface to a bolt</h2>
+    <p class="muted">Every turbine is screened over the full storm record. Turbines that are flagged, or that carry a known condition such as scour or low preload, get a deep-dive on their largest wave group.</p>
+    <div class="chain">
+      <div class="step"><span class="n">1</span><h3>Sea state</h3><p>Buoy, radar or hindcast data at each position, evolved with the nonlinear Schrödinger equation.</p><span class="tag">NLS · Dysthe</span></div>
+      <div class="step"><span class="n">2</span><h3>Extreme groups</h3><p>Rogue-wave detection, then a second-order reconstruction of the largest group with crest kinematics.</p><span class="tag">2nd-order · breaking check</span></div>
+      <div class="step"><span class="n">3</span><h3>Loads</h3><p>Morison loading along the pile, plus a slamming impulse when the crest is breaking.</p><span class="tag">Morison · Wienke–Oumeraci</span></div>
+      <div class="step"><span class="n">4</span><h3>Global model</h3><p>Beam tower, RNA and blades on a hybrid shell monopile with nonlinear p-y soil springs.</p><span class="tag">Nonlinear dynamics</span></div>
+      <div class="step"><span class="n">5</span><h3>Hot spots</h3><p>Section forces drive local finite-element models of flange bolts, door frames and welds.</p><span class="tag">Local FE · S-N</span></div>
+      <div class="step"><span class="n">6</span><h3>Verdict</h3><p>Pre-agreed rules turn utilisation and fatigue into a red, amber or green call with actions.</p><span class="tag">Inspection scope</span></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="two">
+      <div class="panel"><div class="panel-h"><h3>Global to local: the tower-base flange</h3></div><div class="panel-b">
+        <p class="muted">The global model gives the bending moment at the flange. The local flange model turns it into the force in each bolt. Below a threshold the joint stays closed and the bolt barely feels the load. Once the gap opens the bolt picks up load fast, through prying, and that is where storm fatigue and preload loss happen. Lost preload moves the curve and makes every later storm worse.</p>
+        <div class="chart" id="boltcurve"></div>
+        <p class="cap">Bolt force against tension per bolt segment. Demo model: Schmidt–Neuper-type trilinear law standing in for the local FE flange segment with contact.</p>
+      </div></div>
+      <div class="panel"><div class="panel-h"><h3>How much to trust each wave model</h3></div><div class="panel-b">
+        <p class="muted">The same wave height gives different crest kinematics depending on the wave theory. StormTwin reports that spread and flags results outside a model's valid range. From our sweep towards breaking (T = 10 s, d = 100 m):</p>
+        <div class="tbl-wrap"><table class="std" style="margin-top:10px">
+          <thead><tr><th>Wave height</th><th>What we found</th></tr></thead>
+          <tbody>
+            <tr><td>up to 0.4 H<sub>b</sub></td><td>Second-order NLS and Dysthe agree with the fully nonlinear stream function to about 15% on crest velocity and acceleration.</td></tr>
+            <tr><td>0.5 to 0.8 H<sub>b</sub></td><td>The choice of crest extrapolation matters more than the wave theory. Second-order models with Taylor extrapolation run well above the stream function.</td></tr>
+            <tr><td>0.9 H<sub>b</sub> and up</td><td>Every focused-wave model predicts the crest breaks (particle speed above wave speed). Use a slamming load model, not finer kinematics.</td></tr>
+          </tbody>
+        </table></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">Where it fits</div>
+    <h2>What it reports against</h2>
+    <div class="tbl-wrap"><table class="std">
+      <thead><tr><th>Document</th><th>What it asks for</th><th>What StormTwin supplies</th></tr></thead>
+      <tbody>
+        <tr><td>DNV-RP-A204</td><td>Assurance of digital twins: confidence in data and models, risk of relying on outputs, operation and maintenance of the twin.</td><td>Validation record per module, model-spread bands, versioned and reproducible reports.</td></tr>
+        <tr><td>IEC TS 61400-28:2025</td><td>Through-life management: condition and remaining-life assessments, phased inspections.</td><td>Event-triggered assessments between campaigns; fatigue totals per hot spot.</td></tr>
+        <tr><td>DNV-ST-0262</td><td>Lifetime extension of wind turbines, assessing the whole structure.</td><td>Load history and remaining fatigue life from measured storms instead of design assumptions.</td></tr>
+        <tr><td>DNV-RP-C210</td><td>Probabilistic inspection planning for fatigue cracks, updated with new information.</td><td>Storm fatigue increments that update inspection timing.</td></tr>
+        <tr><td>DNV-RP-C203 · ST-0126 · IEC 61400-3-1</td><td>S-N curves, design checks and wave-load models in the design basis.</td><td>Hot-spot checks in the same format, with the code wave model shown beside the higher-fidelity result.</td></tr>
+        <tr><td>US self-inspection (30 CFR 585.824, now BSEE Part 285)</td><td>Annual self-inspection plan and report.</td><td>A documented, risk-based reason for each year's inspection scope.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">Ways to start</div>
+    <h2>Prove it on a storm you have already had</h2>
+    <div class="offers">
+      <div class="offer"><span class="who">Operators · 6–10 weeks</span><h3>Storm hindcast pilot</h3><ul><li>Pick a past storm and the inspections that followed</li><li>We run StormTwin on the data from the time, without seeing the findings</li><li>Compare our calls with what the crews found</li></ul></div>
+      <div class="offer"><span class="who">Operators · insurers · per event</span><h3>Post-storm assessment</h3><ul><li>Report within 48 hours of the storm peak</li><li>Red, amber, green per turbine with inspection scope</li><li>Evidence pack for insurers and certifiers</li></ul></div>
+      <div class="offer"><span class="who">Asset owners · per turbine per year</span><h3>Fleet twin</h3><ul><li>Continuous fatigue and foundation tracking</li><li>Inspection intervals updated from measured loads</li><li>Life-extension evidence built up year by year</li></ul></div>
+    </div>
+  </section>
+
+  <footer>
+    <div><b>About this demonstration.</b> The storm, farm, turbine and condition data are synthetic. The turbine is a 15 MW-class monopile design sized loosely after public reference turbines; it is not a real asset. Waves come from NLS simulations of a random sea; loads, global response and hot-spot results come from demo-grade models (Morison loading, a nonlinear beam on API p-y springs, Schmidt–Neuper-type bolt law, stress concentration factors, DNV-RP-C203 and EN 1993-1-9 S-N curves) standing in for the production global and local finite-element models.</div>
+    <div id="assumptions"></div>
+  </footer>
+</div>
+
+<script type="application/json" id="data">__DATA__</script>
+<script>
+(function () {
+  const D = JSON.parse(document.getElementById("data").textContent);
+  const T = D.turbines;
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const statusVar = { red: "--crit", amber: "--warn", green: "--ok" };
+  const statusText = { red: "Act now", amber: "Inspect", green: "No action" };
+  const fmt = (v, d = 1) => (v === null || v === undefined || !isFinite(v)) ? "–" : Number(v).toFixed(d);
+  const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (html) e.innerHTML = html; return e; };
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = (tag, attrs = {}) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+
+  const worst = (t) => {
+    const f = t.final;
+    const uls = Math.max(f.flange_bolts.uls, f.door_frame.uls, f.mudline_weld.uls);
+    const days = Math.max(f.flange_bolts.days, f.door_frame.days, f.mudline_weld.days);
+    return { uls, days };
+  };
+  function hotspotStatus(t) {
+    const f = t.final;
+    const s = (uls, days) => uls >= 0.9 ? "red" : (uls >= 0.7 || days >= 30) ? "amber" : "green";
+    const fl = f.flange_bolts.full_open ? "red" : (f.flange_bolts.gap_opening > 0 ? "amber" : "green");
+    const order = { green: 0, amber: 1, red: 2 };
+    const mx = (a, b) => order[a] >= order[b] ? a : b;
+    const slam = t.deep && t.deep.slam;
+    const air = Math.min(t.airgap, t.deep ? t.deep.airgap : 99);
+    return {
+      flange_bolts: mx(s(f.flange_bolts.uls, f.flange_bolts.days), fl),
+      door_frame: s(f.door_frame.uls, f.door_frame.days),
+      mudline_weld: s(f.mudline_weld.uls, f.mudline_weld.days),
+      foundation: f.foundation.rot_peak >= 0.5 ? "red" : (t.freq_drop >= 3 || f.foundation.rot_peak >= 0.25) ? "amber" : "green",
+      platform: (air < 1.5 || slam) ? "amber" : "green",
+    };
+  }
+
+  // ---------- storm summary ----------
+  const counts = { red: 0, amber: 0, green: 0 };
+  T.forEach((t) => counts[t.status]++);
+  const rogues = T.filter((t) => t.rogue).length;
+  const deep = T.filter((t) => t.deep).length;
+  const maxHs = Math.max(...T.map((t) => t.Hs));
+  const maxH = Math.max(...T.map((t) => t.Hmax));
+  const storm = document.getElementById("storm");
+  [["Turbines to act on", counts.red, "crit"], ["To inspect", counts.amber, "warn"], ["No action", counts.green, "ok"],
+   ["Peak H<sub>s</sub> (m)", fmt(maxHs, 1), ""], ["Largest wave (m)", fmt(maxH, 1), ""], ["Rogue waves · deep-dives", rogues + " · " + deep, ""]]
+    .forEach(([k, v, c]) => storm.append(el("div", {}, `<div class="k">${k}</div><div class="v ${c}">${v}</div>`)));
+
+  // ---------- map ----------
+  function drawMap(sel) {
+    const host = document.getElementById("map");
+    host.innerHTML = "";
+    const W = 360, H = 250, pad = 34;
+    const xs = T.map((t) => t.spec.x), ys = T.map((t) => t.spec.y);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const X = (x) => pad + (x - x0) / (x1 - x0) * (W - 2 * pad);
+    const Y = (y) => pad + (y - y0) / (y1 - y0) * (H - 2 * pad - 10);
+    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Farm map coloured by verdict" });
+    // depth shading: deeper to the east
+    const grad = svg("linearGradient", { id: "dg", x1: "0", x2: "1", y1: "0", y2: "0" });
+    grad.append(svg("stop", { offset: "0", "stop-color": css("--accent-soft") }), svg("stop", { offset: "1", "stop-color": css("--sea"), "stop-opacity": "0.35" }));
+    const defs = svg("defs"); defs.append(grad); s.append(defs);
+    s.append(svg("rect", { x: 8, y: 8, width: W - 16, height: H - 30, rx: 6, fill: "url(#dg)" }));
+    const lab = svg("text", { x: 14, y: H - 8, "font-size": 10, fill: css("--muted"), "font-family": "IBM Plex Mono, monospace" });
+    lab.textContent = `depth ${Math.min(...T.map(t => t.spec.depth)).toFixed(0)} m → ${Math.max(...T.map(t => t.spec.depth)).toFixed(0)} m · storm from the west`;
+    s.append(lab);
+    T.forEach((t, i) => {
+      const g = svg("g", { tabindex: 0, role: "button", "aria-label": `${t.spec.name}, ${statusText[t.status]}`, style: "cursor:pointer" });
+      const cx = X(t.spec.x), cy = Y(t.spec.y);
+      g.append(svg("circle", { cx, cy, r: i === sel ? 15 : 12, fill: css(statusVar[t.status]), stroke: i === sel ? css("--ink") : css("--surface"), "stroke-width": i === sel ? 3 : 2 }));
+      const tx = svg("text", { x: cx, y: cy + 27, "text-anchor": "middle", "font-size": 11, fill: css("--ink"), "font-family": "IBM Plex Mono, monospace", "font-weight": i === sel ? 600 : 400 });
+      tx.textContent = t.spec.name;
+      g.append(tx);
+      if (t.condition) {
+        const w = svg("text", { x: cx + 11, y: cy - 9, "font-size": 12, fill: css("--warn"), "font-weight": 700 });
+        w.textContent = "◆";
+        g.append(w);
+      }
+      g.addEventListener("click", () => select(i));
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(i); } });
+      s.append(g);
+    });
+    host.append(s);
+  }
+
+  // ---------- list ----------
+  function drawList(sel) {
+    const tb = document.querySelector("#list tbody");
+    tb.innerHTML = "";
+    T.forEach((t, i) => {
+      const w = worst(t);
+      const tr = el("tr", { class: i === sel ? "sel" : "", tabindex: 0 },
+        `<td>${t.spec.name}${t.condition ? ' <span style="color:var(--warn)" title="Known condition">◆</span>' : ""}</td>` +
+        `<td><span class="pill ${t.status}">${statusText[t.status]}</span></td>` +
+        `<td class="r">${fmt(t.Hmax / t.Hs, 2)}</td><td class="r">${fmt(w.uls, 2)}</td><td class="r">${fmt(w.days, 0)}</td>`);
+      tr.addEventListener("click", () => select(i));
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter") select(i); });
+      tb.append(tr);
+    });
+  }
+
+  // ---------- charts ----------
+  function ticks(a, b, n = 5) {
+    const span = b - a || 1, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= step0);
+    const out = [];
+    for (let v = Math.ceil(a / step) * step; v <= b + 1e-9; v += step) out.push(+v.toFixed(10));
+    return out;
+  }
+  function chart(host, o) {
+    const W = o.w || 640, H = o.h || 230, L = 52, R = 14, Tp = 12, B = 34;
+    const xs = [], ys = [];
+    o.series.forEach((s) => s.x.forEach((x, i) => { if (s.y[i] !== null && isFinite(s.y[i])) { xs.push(x); ys.push(s.y[i]); } }));
+    (o.hlines || []).forEach((h) => ys.push(h.y));
+    let [xa, xb] = o.xd || [Math.min(...xs), Math.max(...xs)];
+    let [ya, yb] = o.yd || [Math.min(...ys), Math.max(...ys)];
+    if (!o.yd) { const p = (yb - ya) * 0.08 || 1; ya -= p; yb += p; }
+    const X = (x) => L + (x - xa) / (xb - xa) * (W - L - R);
+    const Y = (y) => Tp + (1 - (y - ya) / (yb - ya)) * (H - Tp - B);
+    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": o.label || "chart" });
+    const mono = "IBM Plex Mono, monospace";
+    ticks(ya, yb).forEach((v) => {
+      s.append(svg("line", { x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: css("--grid"), "stroke-width": 1 }));
+      const t = svg("text", { x: L - 6, y: Y(v) + 3.5, "text-anchor": "end", "font-size": 10.5, fill: css("--muted"), "font-family": mono });
+      t.textContent = +v.toFixed(3); s.append(t);
+    });
+    ticks(xa, xb, o.xticks || 6).forEach((v) => {
+      s.append(svg("line", { x1: X(v), x2: X(v), y1: H - B, y2: H - B + 4, stroke: css("--muted") }));
+      const t = svg("text", { x: X(v), y: H - B + 16, "text-anchor": "middle", "font-size": 10.5, fill: css("--muted"), "font-family": mono });
+      t.textContent = +v.toFixed(3); s.append(t);
+    });
+    s.append(svg("line", { x1: L, x2: W - R, y1: H - B, y2: H - B, stroke: css("--line") }));
+    const xl = svg("text", { x: (L + W - R) / 2, y: H - 3, "text-anchor": "middle", "font-size": 11, fill: css("--muted") }); xl.textContent = o.xl || ""; s.append(xl);
+    const yl = svg("text", { x: 12, y: (Tp + H - B) / 2, "text-anchor": "middle", "font-size": 11, fill: css("--muted"), transform: `rotate(-90 12 ${(Tp + H - B) / 2})` }); yl.textContent = o.yl || ""; s.append(yl);
+    (o.bands || []).forEach((b) => s.append(svg("rect", { x: X(b.x0), width: Math.max(1, X(b.x1) - X(b.x0)), y: Tp, height: H - Tp - B, fill: css(b.color || "--accent-soft"), opacity: b.opacity || 1 })));
+    (o.hlines || []).forEach((h) => {
+      s.append(svg("line", { x1: L, x2: W - R, y1: Y(h.y), y2: Y(h.y), stroke: css(h.color || "--muted"), "stroke-dasharray": "4 3", "stroke-width": 1 }));
+      if (h.label) { const t = svg("text", { x: W - R - 2, y: Y(h.y) - 4, "text-anchor": "end", "font-size": 10, fill: css(h.color || "--muted") }); t.textContent = h.label; s.append(t); }
+    });
+    (o.vlines || []).forEach((h) => {
+      s.append(svg("line", { y1: Tp, y2: H - B, x1: X(h.x), x2: X(h.x), stroke: css(h.color || "--muted"), "stroke-dasharray": "4 3", "stroke-width": 1 }));
+      if (h.label) { const t = svg("text", { x: X(h.x) + 4, y: Tp + 10, "font-size": 10, fill: css(h.color || "--muted") }); t.textContent = h.label; s.append(t); }
+    });
+    o.series.forEach((sr) => {
+      if (sr.points) {
+        sr.x.forEach((x, i) => { if (sr.y[i] !== null && isFinite(sr.y[i])) s.append(svg("circle", { cx: X(x), cy: Y(sr.y[i]), r: sr.r || 2, fill: css(sr.color), opacity: sr.opacity || 0.8 })); });
+        return;
+      }
+      let d = "", pen = false;
+      sr.x.forEach((x, i) => {
+        const y = sr.y[i];
+        if (y === null || !isFinite(y)) { pen = false; return; }
+        d += (pen ? "L" : "M") + X(x).toFixed(1) + " " + Y(y).toFixed(1) + " ";
+        pen = true;
+      });
+      s.append(svg("path", { d, fill: "none", stroke: css(sr.color), "stroke-width": sr.width || 1.5, "stroke-dasharray": sr.dash || "", "stroke-linejoin": "round" }));
+    });
+    (o.marks || []).forEach((m) => {
+      s.append(svg("circle", { cx: X(m.x), cy: Y(m.y), r: 4.5, fill: "none", stroke: css(m.color || "--crit"), "stroke-width": 2 }));
+      if (m.label) { const t = svg("text", { x: X(m.x) + 8, y: Y(m.y) - 6, "font-size": 10.5, fill: css(m.color || "--crit"), "font-family": mono }); t.textContent = m.label; s.append(t); }
+    });
+    if (o.legend) {
+      let lx = L + 6;
+      o.legend.forEach((g) => {
+        s.append(svg("line", { x1: lx, x2: lx + 16, y1: Tp + 6, y2: Tp + 6, stroke: css(g.color), "stroke-width": 2, "stroke-dasharray": g.dash || "" }));
+        const t = svg("text", { x: lx + 20, y: Tp + 10, "font-size": 10.5, fill: css("--ink") }); t.textContent = g.label; s.append(t);
+        lx += 30 + g.label.length * 6.2;
+      });
+    }
+    host.innerHTML = "";
+    host.append(s);
+  }
+
+  // ---------- hot-spot schematic ----------
+  function schematic(host, t, hst) {
+    const d = t.spec.depth, zmw = t.z_mudline_weld, M = D.meta.turbine;
+    const zTop = 34, zBot = zmw - 6;
+    const W = 160, H = 330;
+    const Y = (z) => 10 + (zTop - z) / (zTop - zBot) * (H - 20);
+    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Hot-spot locations" });
+    s.append(svg("rect", { x: 0, y: Y(0), width: W, height: Y(-d) - Y(0), fill: css("--accent-soft") }));
+    s.append(svg("rect", { x: 0, y: Y(-d), width: W, height: H - Y(-d), fill: css("--grid") }));
+    s.append(svg("line", { x1: 0, x2: W, y1: Y(0), y2: Y(0), stroke: css("--sea"), "stroke-width": 1.5 }));
+    const cx = 62;
+    s.append(svg("rect", { x: cx - 13, y: Y(zTop), width: 26, height: Y(zBot + 2) - Y(zTop), fill: css("--surface"), stroke: css("--muted"), "stroke-width": 1.2 }));
+    s.append(svg("line", { x1: cx - 18, x2: cx + 18, y1: Y(M.z_interface), y2: Y(M.z_interface), stroke: css("--ink"), "stroke-width": 3 }));
+    s.append(svg("rect", { x: cx + 13, y: Y(M.z_platform) - 2, width: 22, height: 4, fill: css("--muted") }));
+    if (t.spec.scour > 0) s.append(svg("path", { d: `M${cx - 40} ${Y(-d)} Q ${cx - 16} ${Y(-d - t.spec.scour) + 0} ${cx - 13} ${Y(-d - t.spec.scour)} M${cx + 13} ${Y(-d - t.spec.scour)} Q ${cx + 16} ${Y(-d - t.spec.scour)} ${cx + 40} ${Y(-d)}`, fill: "none", stroke: css("--warn"), "stroke-width": 1.5 }));
+    const items = [["door_frame", M.z_door, "Door"], ["platform", M.z_platform, "Platform"], ["flange_bolts", M.z_interface, "Flange"], ["foundation", -d, "Mudline"], ["mudline_weld", zmw, "Weld"]];
+    const mono = "IBM Plex Mono, monospace";
+    let lastY = -99;
+    items.sort((a, b) => b[1] - a[1]).forEach(([k, z, lab]) => {
+      let y = Y(z);
+      const ly = Math.max(y, lastY + 13); lastY = ly;
+      s.append(svg("circle", { cx, cy: y, r: 5, fill: css(statusVar[hst[k]]), stroke: css("--surface"), "stroke-width": 1.5 }));
+      s.append(svg("line", { x1: cx + 6, x2: 104, y1: y, y2: ly, stroke: css("--line") }));
+      const tx = svg("text", { x: 106, y: ly + 3.5, "font-size": 10, fill: css("--ink"), "font-family": mono }); tx.textContent = lab; s.append(tx);
+    });
+    const tt = svg("text", { x: cx, y: 9, "text-anchor": "middle", "font-size": 9, fill: css("--muted"), "font-family": mono }); tt.textContent = "↑ tower to hub +150 m"; s.append(tt);
+    host.append(s);
+  }
+
+  // ---------- detail ----------
+  function detail(i) {
+    const t = T[i], f = t.final, host = document.getElementById("detail");
+    const hst = hotspotStatus(t);
+    host.innerHTML = "";
+    const head = el("div", { class: `panel dhead ${t.status}` });
+    head.innerHTML = `<h2>${t.spec.name}</h2><span class="pill ${t.status}">${statusText[t.status]}</span>` +
+      `<span class="muted mono">depth ${fmt(t.spec.depth, 1)} m · f₁ ${fmt(t.f1, 3)} Hz</span>` +
+      (t.condition ? `<span class="cond">◆ ${t.condition}</span>` : "");
+    const card = el("div", { class: "panel" });
+    card.append(head);
+    const air = Math.min(t.airgap, t.deep ? t.deep.airgap : 99);
+    const chips = el("div", { class: "chips" });
+    [["H<sub>s</sub> at peak", fmt(t.Hs, 1) + " m"], ["Largest wave", fmt(t.Hmax, 1) + " m"], ["H<sub>max</sub>/H<sub>s</sub>", fmt(t.Hmax / t.Hs, 2) + (t.rogue ? " rogue" : "")],
+     ["Crest clearance", fmt(air, 1) + " m"], ["f₁ drop at peak", fmt(t.freq_drop, 1) + "%"], ["Mudline rotation", fmt(f.foundation.rot_peak, 2) + "°"]]
+      .forEach(([k, v]) => chips.append(el("div", {}, `<div class="k">${k}</div><div class="v">${v}</div>`)));
+    card.append(chips);
+    host.append(card);
+
+    const vd = el("div", { class: "panel" });
+    const reasons = t.reasons.length ? t.reasons.map((r) => `<li>${r}</li>`).join("") : "<li>All hot spots within limits; no rule triggered.</li>";
+    vd.innerHTML = `<div class="panel-b verdict" style="padding-top:14px"><div><h3>Why</h3><ul>${reasons}</ul></div>` +
+      `<div><h3>Recommended action</h3><table class="actions">${t.actions.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</table></div></div>`;
+    host.append(vd);
+
+    // hot spots
+    const hs = el("div", { class: "panel" });
+    hs.innerHTML = `<div class="panel-h"><h3>Hot spots</h3><span class="muted" style="font-size:0.8rem">ULS: utilisation, limit 1.0 (review 0.7, act 0.9) · Fatigue: design-life days used by this storm</span></div>`;
+    const body = el("div", { class: "panel-b hs" });
+    const sch = el("div");
+    schematic(sch, t, hst);
+    body.append(sch);
+    const rows = [
+      ["flange_bolts", "Tower-base flange bolts", `${D.meta.turbine.n_bolts} × ${D.meta.turbine.bolt}; gap opened ${f.flange_bolts.gap_opening}× in 20 min`],
+      ["door_frame", "Door frame", `+${D.meta.turbine.z_door} m; fatigue SCF ${D.meta.scf.door_frame}`],
+      ["mudline_weld", "Mudline circumferential weld", `${fmt(t.z_mudline_weld, 1)} m; not inspectable`],
+    ];
+    let tbl = `<table class="hstable"><thead><tr><th>Hot spot</th><th>ULS</th><th class="r">Fatigue d</th><th>Status</th></tr></thead><tbody>`;
+    rows.forEach(([k, name, sub]) => {
+      const u = f[k].uls, w = Math.min(100, u / 1.2 * 100);
+      tbl += `<tr><td><div class="hsname">${name}</div><div class="hssub">${sub}</div></td>` +
+        `<td><div class="num" style="font-size:0.8rem">${fmt(u, 2)}</div><div class="bar"><i style="width:${w}%;background:var(${statusVar[hst[k]]})"></i><b style="left:${0.9 / 1.2 * 100}%"></b></div></td>` +
+        `<td class="num" style="text-align:right">${fmt(f[k].days, 0)}</td><td><span class="pill ${hst[k]}">${statusText[hst[k]]}</span></td></tr>`;
+    });
+    tbl += `<tr><td><div class="hsname">Foundation</div><div class="hssub">peak rotation ${fmt(f.foundation.rot_peak, 2)}°, f₁ ${fmt(t.freq_drop, 1)}% lower at peak</div></td><td></td><td></td><td><span class="pill ${hst.foundation}">${statusText[hst.foundation]}</span></td></tr>`;
+    tbl += `<tr><td><div class="hsname">Platform and boat landing</div><div class="hssub">crest clearance ${fmt(air, 1)} m${t.deep && t.deep.slam ? "; slamming" : ""}</div></td><td></td><td></td><td><span class="pill ${hst.platform}">${statusText[hst.platform]}</span></td></tr>`;
+    tbl += `</tbody></table>`;
+    const right = el("div", {}, tbl);
+    right.style.minWidth = "0";
+    right.querySelector("table").parentElement.classList.add("tbl-wrap");
+    body.append(right);
+    hs.append(body);
+    host.append(hs);
+
+    // sea record
+    const sea = el("div", { class: "panel chart" });
+    sea.innerHTML = `<div class="panel-h"><h3>Sea surface at ${t.spec.name}, 20 min at the storm peak</h3></div><div class="panel-b"><div></div><p class="cap">Second-order surface from the NLS sea at the turbine. The largest wave is circled${t.rogue ? "; it exceeds twice the significant height (rogue)" : ""}.</p></div>`;
+    host.append(sea);
+    const r = t.record, iC = r.t.reduce((b, v, k) => Math.abs(v - t.t_event) < Math.abs(r.t[b] - t.t_event) ? k : b, 0);
+    chart(sea.querySelector(".panel-b > div"), {
+      series: [{ x: r.t, y: r.eta, color: "--sea", width: 1 }], xl: "time (s)", yl: "η (m)", h: 200,
+      hlines: [{ y: D.meta.turbine.z_platform, label: "platform underside", color: "--warn" }],
+      marks: [{ x: r.t[iC], y: r.eta[iC], label: `${fmt(t.Hmax, 1)} m wave` }], label: "Surface elevation record",
+    });
+
+    if (!t.deep) {
+      host.append(el("div", { class: "note" }, "Screening only. Nothing triggered a deep-dive for this turbine, so its verdict comes from the full-record screening run."));
+      return;
+    }
+    const dd = t.deep;
+    const g2 = el("div", { class: "grid2" });
+    const ev = el("div", { class: "panel chart" });
+    ev.innerHTML = `<div class="panel-h"><h3>Event deep-dive: flange moment</h3></div><div class="panel-b"><div></div><div style="margin-top:8px"></div><p class="cap">Top: second-order reconstruction of the largest group. Bottom: tower-base bending moment from the global model, deep-dive against screening.</p></div>`;
+    const prof = el("div", { class: "panel chart" });
+    prof.innerHTML = `<div class="panel-h"><h3>Velocity under the crest</h3></div><div class="panel-b"><div></div><p class="cap">Second-order deep-dive against narrow-band screening. Crest particle speed ${fmt(dd.u_crest, 1)} m/s against wave speed ${fmt(dd.c, 1)} m/s${dd.slam ? ": breaking, slamming applied" : ": not breaking"}.</p></div>`;
+    g2.append(ev, prof);
+    host.append(g2);
+    const divs = ev.querySelectorAll(".panel-b > div");
+    chart(divs[0], { series: [{ x: dd.t, y: dd.eta, color: "--sea" }], xl: "", yl: "η (m)", h: 150, label: "Event surface" });
+    chart(divs[1], {
+      series: [{ x: dd.t, y: dd.M_flange_screen, color: "--muted", dash: "4 3" }, { x: dd.t, y: dd.M_flange, color: "--accent", width: 2 }],
+      xl: "time (s)", yl: "M (MN·m)", h: 190, legend: [{ label: "deep-dive", color: "--accent" }, { label: "screening", color: "--muted", dash: "4 3" }], label: "Flange moment",
+    });
+    chart(prof.querySelector(".panel-b > div"), {
+      series: [{ x: dd.screen_profile.u, y: dd.screen_profile.z, color: "--muted", dash: "4 3" }, { x: dd.crest_profile.u, y: dd.crest_profile.z, color: "--accent", width: 2 }],
+      xl: "horizontal velocity u (m/s)", yl: "z (m)", h: 360,
+      hlines: [{ y: 0, label: "still water", color: "--sea" }, { y: -t.spec.depth, label: "seabed", color: "--muted" }],
+      vlines: [{ x: dd.c, label: "wave speed", color: "--crit" }],
+      legend: [{ label: "2nd order", color: "--accent" }, { label: "screening", color: "--muted", dash: "4 3" }], label: "Crest velocity profile",
+    });
+
+    const bolt = el("div", { class: "panel chart" });
+    bolt.innerHTML = `<div class="panel-h"><h3>Flange bolt response in the event</h3></div><div class="panel-b"><div></div><p class="cap">Each dot is one time step of the deep-dive. Past the first marker the joint gap opens and the bolt force climbs steeply.${t.spec.preload < 1 ? " This turbine's reduced preload shifts the whole curve." : ""}</p></div>`;
+    host.append(bolt);
+    const bc = t.spec.preload < 1 ? D.bolt_curve_80 : D.bolt_curve;
+    chart(bolt.querySelector(".panel-b > div"), {
+      series: [{ x: bc.Z, y: bc.F, color: "--muted", width: 2 }, { x: dd.Z, y: dd.Fb, color: "--accent", points: true, r: 2 }],
+      xl: "tension per bolt segment Z (MN)", yl: "bolt force (MN)", h: 220,
+      vlines: [{ x: dd.bolt_params.Z1, label: "gap opens", color: "--warn" }, { x: dd.bolt_params.Z2, label: "fully open", color: "--crit" }],
+      label: "Bolt force against segment tension",
+    });
+  }
+
+  function boltCurve() {
+    chart(document.getElementById("boltcurve"), {
+      series: [{ x: D.bolt_curve.Z, y: D.bolt_curve.F, color: "--accent", width: 2 }, { x: D.bolt_curve_80.Z, y: D.bolt_curve_80.F, color: "--warn", width: 2, dash: "5 3" }],
+      xl: "tension per bolt segment Z (MN)", yl: "bolt force (MN)", h: 220,
+      legend: [{ label: "design preload", color: "--accent" }, { label: "80% preload", color: "--warn", dash: "5 3" }], label: "Bolt load curve",
+    });
+  }
+
+  document.getElementById("assumptions").textContent =
+    `Assumptions: carrier period ${D.meta.Tp} s; ${D.meta.record_s / 60}-minute record per turbine, scaled to ${D.meta.storm_peak_hours} h at peak for fatigue; design life ${D.meta.design_life} years; design fatigue factors ${Object.entries(D.meta.dff).map(([k, v]) => k.replace("_", " ") + " " + v).join(", ")}. ` +
+    `Fatigue stress concentration: door frame ${D.meta.scf.door_frame}, mudline weld ${D.meta.scf.mudline_weld}. Deep-water NLS dynamics are applied at intermediate depth (kd ≈ 1.4–1.7); the production chain uses finite-depth evolution.`;
+
+  let current = Math.max(0, T.findIndex((t) => t.status === "red"));
+  if (T[current].status !== "red") current = Math.max(0, T.findIndex((t) => t.status === "amber"));
+  function select(i) { current = i; drawMap(i); drawList(i); detail(i); }
+  select(current);
+  boltCurve();
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const redraw = () => { select(current); boltCurve(); };
+  if (mq.addEventListener) mq.addEventListener("change", redraw);
+  new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>

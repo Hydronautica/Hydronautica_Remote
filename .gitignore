@@ -5,3 +5,4 @@ __pycache__/
 build/
 dist/
 figures/
+demo/stormtwin/demo_data.json
