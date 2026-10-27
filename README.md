@@ -198,6 +198,42 @@ Both Dysthe variants radiate short envelope ripples ahead of the focus. These
 are converged in time step and resolution, so they belong to the model: a sign
 that the event is at the edge of narrow-band validity.
 
+### Linear vs second order vs Dysthe towards breaking
+
+`examples/higher_order_sweep.py` calibrates seven models to the same focal
+wave height H, for T = 10 s and d = 100 m (H_b = 26.4 m). Dysthe uses the
+largest wave near the focus, because its focus becomes multi-peaked.
+Selected results:
+
+| H/H_b | model | crest/H | u_crest (m/s) | u_crest/c | max a_x (m/s²) |
+|---|---|---|---|---|---|
+| 0.4 | Stream function | 0.55 | 4.0 | 0.25 | 2.0 |
+| | NewWave linear / 2nd | 0.58 / 0.63 | 4.4 / 5.8 | 0.28 / 0.37 | 2.5 / 3.3 |
+| | NLS linear / 2nd | 0.54 / 0.58 | 3.5 / 4.2 | 0.22 / 0.27 | 2.2 / 2.2 |
+| | Dysthe / exact-dispersion (2nd) | 0.56 / 0.56 | 4.5 / 4.4 | 0.29 / 0.28 | 2.5 / 2.5 |
+| 0.8 | Stream function | 0.62 | 9.8 | 0.55 | 3.7 |
+| | NewWave linear / 2nd | 0.58 / 0.67 | 9.1 / 15.1 | 0.58 / 0.97 | 4.2 / 9.2 |
+| | NLS linear / 2nd | 0.65 / 0.73 | 8.5 / 13.2 | 0.54 / 0.84 | 5.0 / 6.2 |
+| | Dysthe / exact-dispersion (2nd) | 0.63 / 0.61 | 13.1 / 14.5 | 0.84 / 0.93 | 8.0 / 10.6 |
+
+What the sweep shows:
+
+- **Up to about 0.4 H_b the models agree.** Second-order NLS and Dysthe are
+  within about 15% of the stream function, and the bound waves give the
+  expected sharper crests.
+- **Above about 0.5 H_b the extrapolation method dominates.** Taylor
+  extrapolation into the crest makes the second-order models' crest
+  velocities and accelerations grow much faster than the stream function's.
+  This is strongest for broadband NewWave, whose short waves are amplified.
+  It is a property of second-order theory near breaking, not of the
+  bound-wave terms.
+- **Dysthe's crest shape tracks the stream function closely** (crest/H within
+  0.02 up to 0.95 H_b), but its envelope needs k₀a₀ ≈ 0.3 at 0.9 H_b, outside
+  its range.
+- **Every focused-wave model predicts breaking (u > c) by 0.9–0.95 H_b.** For
+  structures, that regime needs a slamming load model rather than better
+  kinematics.
+
 ## Examples
 
 Run from the repo root; figures go to `figures/`.
@@ -211,7 +247,7 @@ python examples/ocean_peregrine.py  # 10 s swell, 1.5 m: 4.5 m crest, probe time
 python examples/kinematics_comparison.py  # NLS vs stream function vs NewWave kinematics (~35 s)
 python examples/breaking_sweep.py         # the same, swept up to 0.97 x breaking height (~2 min)
 python examples/dysthe_vs_nls.py          # Peregrine under NLS vs Dysthe (~10 s)
-python examples/higher_order_sweep.py     # linear vs 2nd order vs Dysthe, swept towards breaking (several min, 4 processes)
+python examples/higher_order_sweep.py     # linear vs 2nd order vs Dysthe, swept towards breaking (10-20 min, 4 processes, cached)
 ```
 
 ## Practical notes
