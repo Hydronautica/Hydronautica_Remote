@@ -178,6 +178,17 @@ table.std td:first-child { font-family: var(--font-data); white-space: nowrap; f
 .kv span:nth-child(even) { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
 .hint { font-size: 0.8rem; color: var(--muted); }
 @media (max-width: 760px) { .model { grid-template-columns: minmax(0, 1fr); } .model svg.elev { max-width: 260px; margin: 0 auto; } }
+.chips2 { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 0.78rem; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.chip.al { border-color: var(--crit); }
+.alerts { display: grid; gap: 6px; font-size: 0.88rem; }
+.alert { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; padding: 8px 10px; border-radius: 6px; background: var(--crit-soft); }
+.alert b { color: var(--crit); font-family: var(--font-data); font-size: 0.8rem; }
+.meas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.meas div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 0.86rem; }
+.meas b { display: block; font-family: var(--font-display); font-size: 1.02rem; font-weight: 600; margin-bottom: 2px; }
+@media (max-width: 800px) { .meas { grid-template-columns: minmax(0, 1fr); } }
 footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
 button.tab { font: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -227,7 +238,7 @@ button.tab { font: inherit; }
           <thead><tr><th>Turbine</th><th>Verdict</th><th class="r">H<sub>max</sub>/H<sub>s</sub></th><th class="r">Peak ULS</th><th class="r">Life used</th></tr></thead>
           <tbody></tbody>
         </table>
-        <p class="cap">Life used: fatigue life consumed since commissioning at the worst hot spot, this storm included (design pace today: <span id="pace"></span>).</p>
+        <p class="cap">Life used: fatigue life consumed since commissioning at the worst hot spot, this storm included (design pace today: <span id="pace"></span>). ◆ known condition · <span style="color:var(--crit)">∿</span> natural-frequency alarm.</p>
       </div>
     </div>
     <div class="detail" id="detail"></div>
@@ -298,6 +309,20 @@ button.tab { font: inherit; }
           </tbody>
         </table></div>
       </div></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">Beyond storms</div>
+    <h2>What else the twin watches</h2>
+    <p class="muted">The same model ingests the monitoring data operators already collect, and turns each signal into a statement about a component.</p>
+    <div class="meas">
+      <div><b>Natural frequencies</b>Tower and blade modes from accelerometers (operational modal analysis). Foundation stiffness, scour, flange and blade damage show up as shifts once temperature and operation are normalised out.</div>
+      <div><b>Tilt and rotation</b>Inclinometers at the interface: permanent tilt after storms against the serviceability limit.</div>
+      <div><b>Strain</b>Gauges at the tower base calibrate the virtual sensors that estimate stress where no gauge can go, such as below the seabed.</div>
+      <div><b>Bolt tension</b>Ultrasonic or instrumented bolts feed preload into the flange model, which changes every later storm assessment.</div>
+      <div><b>Damping and mode shapes</b>Damping estimates check the aerodynamic and soil damping in the model; mode-shape changes help locate damage.</div>
+      <div><b>Corrosion, scour, marine growth</b>Cathodic-protection potentials, scour sonar and ROV growth surveys update wall thickness, embedment and added mass.</div>
     </div>
   </section>
 
@@ -408,7 +433,8 @@ button.tab { font: inherit; }
       const b = el("button", { class: "farmcard" + (i === FI ? " on" : ""), type: "button", role: "tab", "aria-selected": i === FI ? "true" : "false" },
         `<span class="fn">${F.name}</span><span class="fr">${F.region} · ${d.turbines.length} × ${d.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}</span>` +
         `<span class="fc">${c.red ? `<span class="pill red">${c.red} act now</span>` : ""}${c.amber ? `<span class="pill amber">${c.amber} inspect</span>` : ""}<span class="pill green">${c.green} no action</span><span class="fr">${F.storm_name} ${F.storm_peak}</span></span>` +
-        (d.history ? `<span class="lu">worst life used ${fmt(worst, 1)}% · design pace ${fmt(pace, 1)}%</span>` : ""));
+        (d.history ? `<span class="lu">worst life used ${fmt(worst, 1)}% · design pace ${fmt(pace, 1)}%</span>` : "") +
+        `<span class="lu">${d.turbines.filter((t) => t.modal && t.modal.alarms.length).length} turbine(s) with frequency alarms</span>`);
       b.addEventListener("click", () => loadFarm(i));
       host.append(b);
     });
@@ -458,7 +484,7 @@ button.tab { font: inherit; }
     T.forEach((t, i) => {
       const w = worst(t);
       const tr = el("tr", { class: i === sel ? "sel" : "", tabindex: 0 },
-        `<td>${t.spec.name}${t.condition ? ' <span style="color:var(--warn)" title="Known condition">◆</span>' : ""}</td>` +
+        `<td>${t.spec.name}${t.condition ? ' <span style="color:var(--warn)" title="Known condition">◆</span>' : ""}${t.modal && t.modal.alarms.length ? ' <span style="color:var(--crit)" title="Natural-frequency alarm">∿</span>' : ""}</td>` +
         `<td><span class="pill ${t.status}">${statusText[t.status]}</span></td>` +
         `<td class="r">${fmt(t.Hmax / t.Hs, 2)}</td><td class="r">${fmt(w.uls, 2)}</td><td class="r">${t.history ? fmt(lifeUsed(t).v, 1) + "%" : "–"}</td>`);
       tr.addEventListener("click", () => select(i));
@@ -609,6 +635,7 @@ button.tab { font: inherit; }
     });
 
     if (t.history) historyCard(host, t);
+    if (t.modal && D.modal) modalCard(host, t);
 
     if (!t.deep) {
       host.append(el("div", { class: "note" }, "Screening only. Nothing triggered a deep-dive for this turbine, so its verdict comes from the full-record screening run."));
@@ -714,6 +741,55 @@ button.tab { font: inherit; }
     const paceEl = document.getElementById("pace"); if (paceEl) paceEl.textContent = fmt(pace, 1) + "%";
   }
 
+  // ---------- natural-frequency tracking ----------
+  let modeSel = null;
+  const MODE_ACTION = {
+    tower_fa: "Check foundation: scour survey, inclinometer, flange preload",
+    tower_ss: "Check foundation and flange; compare fore-aft trend",
+    tower_2: "Inspect tower and flange; check RNA mass changes",
+    blade: "Drone inspection of the blade; review lightning and SCADA logs",
+  };
+  function modalChart(host, t, key, opts = {}) {
+    const M = D.modal, md = t.modal.modes[key];
+    const yrs = M.years, b2b = opts.b2b && md.b2b;
+    const evs = t.modal.events.map((e) => ({ x: (new Date(e.date) - new Date(D.meta.farm.commissioned)) / (365.25 * 864e5), label: e.label }));
+    const alarmDate = b2b ? md.alarm_b2b : md.alarm;
+    const vl = evs.filter((e) => e.label !== "storm").map((e) => ({ x: e.x, color: "--warn" }))
+      .concat(evs.filter((e) => e.label === "storm").map((e) => ({ x: e.x, color: "--line" })));
+    if (alarmDate) vl.push({ x: (new Date(alarmDate) - new Date(D.meta.farm.commissioned)) / (365.25 * 864e5), color: "--crit", label: "alarm" });
+    const top = el("div"), bot = el("div", { style: "margin-top:6px" });
+    host.append(top, bot);
+    chart(top, { series: [{ x: yrs, y: md.f, color: "--accent", points: true, r: 1.3, opacity: 0.6 }, { x: yrs, y: md.pred, color: "--ink", width: 1.2 }],
+      xl: "", yl: "frequency (Hz)", w: opts.w || 640, h: opts.h1 || 180, vlines: vl, legend: [{ label: "measured", color: "--accent" }, { label: "expected (environment, operation)", color: "--ink" }], label: md.label });
+    const dev = b2b ? md.b2b : md.dev, lim = b2b ? md.b2b_lim : md.lim;
+    chart(bot, { series: [{ x: yrs, y: dev, color: "--accent", width: 1 }], xl: "years in service", yl: b2b ? "vs other blades (%)" : "deviation (%)", w: opts.w || 640, h: opts.h2 || 170,
+      hlines: [{ y: lim, label: "+3σ", color: "--crit" }, { y: -lim, label: "−3σ", color: "--crit" }], vlines: vl, label: md.label + " deviation" });
+  }
+  function modalCard(host, t) {
+    const md = t.modal.modes, keys = Object.keys(md);
+    if (!modeSel || !md[modeSel]) modeSel = (t.modal.alarms.length ? keys.find((k) => md[k].alarm || md[k].alarm_b2b) : null) || "tower_fa";
+    const card = el("div", { class: "panel chart" });
+    const alerts = t.modal.alarms.length ? `<div class="alerts">${t.modal.alarms.map((a) => {
+      const kind = a.mode.startsWith("Blade") ? "blade" : a.mode.includes("2nd") ? "tower_2" : a.mode.includes("side") ? "tower_ss" : "tower_fa";
+      return `<div class="alert"><b>${a.date}</b><span>${a.mode} outside its control limits. ${MODE_ACTION[kind]}.</span></div>`; }).join("")}</div>` : `<p class="hint">No frequency alarms since commissioning.</p>`;
+    card.innerHTML = `<div class="panel-h"><h3>Natural frequencies since ${D.meta.farm.commissioned}</h3><span class="hint">design f₁ ${fmt(t.modal.f1_design, 3)} Hz · f₂ ${fmt(t.modal.f2_design, 3)} Hz</span></div>` +
+      `<div class="panel-b"><div style="display:grid;gap:10px">${alerts}<div class="chips2" id="modechips"></div><div id="modalcharts"></div>` +
+      `<p class="cap">Each point is one operational-modal-analysis estimate. The expected value removes temperature, operating state and season using a model fitted on the first year; alarms need three estimates in a row beyond ±3σ. Orange lines: condition events; grey: storms. ${D.modal.cold_site ? "Winter icing lowers all blades together; the blade-to-blade view cancels it." : ""}</p></div></div>`;
+    host.append(card);
+    const chips = card.querySelector("#modechips");
+    const draw = () => {
+      chips.innerHTML = "";
+      keys.forEach((k) => {
+        const c = el("button", { class: "chip" + (k === modeSel ? " on" : "") + (md[k].alarm || md[k].alarm_b2b ? " al" : ""), type: "button" }, md[k].label);
+        c.addEventListener("click", () => { modeSel = k; draw(); });
+        chips.append(c);
+      });
+      const ch = card.querySelector("#modalcharts"); ch.innerHTML = "";
+      modalChart(ch, t, modeSel, { b2b: modeSel.startsWith("blade") });
+    };
+    draw();
+  }
+
   // ---------- interactive turbine model ----------
   const geo = () => { const m = D.meta.turbine; return { Dtop: m.D_tower_top, tb: m.t_tower_base, tt: m.t_tower_top, tp: m.t_pile, embed: m.embedment, rotorD: m.rotor_D, Cd: 1.0, Cm: 2.0 }; };
   let partSel = "flange";
@@ -758,10 +834,36 @@ button.tab { font: inherit; }
       const r = t.whatif && D.history ? whatif(t, WI) : null;
       html = `<h3>Rotor and nacelle</h3>` + kv([["Hub height", "+" + M.z_hub + " m"], ["Rotor diameter (assumed)", GEO.rotorD + " m"], ["RNA mass", fmt(M.m_rna / 1e3, 0) + " t"], ["First natural frequency", fmt(t.f1, 3) + " Hz"]]) +
         sec("This storm", kv([["State", "idling, feathered"], ["Mean thrust used", fmt(M.idle_thrust / 1e6, 2) + " MN"], ["Aerodynamic damping", "≈ 0.3%"]]), true) +
-        sec("What-if now", r ? kv([["Wind at hub", WI.u.toFixed(1) + " m/s"], ["State", r.op ? "operating" : "idling"], ["Mean thrust", fmt(r.T / 1e6, 2) + " MN"], ["Aerodynamic damping fore-aft", r.op ? "≈ 3.5%" : "≈ 0.3%"], ["Thrust moment at tower base", fmt(r.T * (M.z_hub - M.z_interface) / 1e6, 0) + " MN·m"]]) : "", false);
+        sec("What-if now", r ? kv([["Wind at hub", WI.u.toFixed(1) + " m/s"], ["State", r.op ? "operating" : "idling"], ["Mean thrust", fmt(r.T / 1e6, 2) + " MN"], ["Aerodynamic damping fore-aft", r.op ? "≈ 3.5%" : "≈ 0.3%"], ["Thrust moment at tower base", fmt(r.T * (M.z_hub - M.z_interface) / 1e6, 0) + " MN·m"]]) : "", false) +
+        (t.modal ? sec("Blade frequencies", `<div class="chips2" id="insp-bchips"></div><div id="insp-modal"></div>`, false) : "");
+      after = () => {
+        if (!t.modal) return;
+        const det = [...host.querySelectorAll("details")].find((d) => d.querySelector("#insp-modal"));
+        let b = ["A", "B", "C"].find((x) => t.modal.modes["blade_" + x].alarm_b2b) || "A";
+        const draw = () => {
+          const c = host.querySelector("#insp-bchips"); c.innerHTML = "";
+          ["A", "B", "C"].forEach((x) => { const k = "blade_" + x, e = el("button", { class: "chip" + (x === b ? " on" : "") + (t.modal.modes[k].alarm_b2b ? " al" : ""), type: "button" }, "Blade " + x); e.addEventListener("click", () => { b = x; draw(); }); c.append(e); });
+          const h = host.querySelector("#insp-modal"); h.innerHTML = ""; modalChart(h, t, "blade_" + b, { b2b: true, w: 460, h1: 150, h2: 140 });
+        };
+        det.addEventListener("toggle", () => { if (det.open) draw(); });
+        if (det.open) draw();
+      };
     } else if (part === "tower") {
       html = `<h3>Tower</h3>` + kv([["Base / top diameter", `${fmt(M.D_pile, 1)} / ${fmt(GEO.Dtop, 1)} m`], ["Base / top wall", `${GEO.tb * 1000} / ${GEO.tt * 1000} mm`], ["Length", fmt(M.z_hub - M.z_interface, 0) + " m"], ["First natural frequency", fmt(t.f1, 3) + " Hz"], ["Door elevation", "+" + M.z_door + " m"]]) +
-        sec("This storm", kv([["Peak moment at tower base", dd ? fmt(Math.max(...dd.M_flange.map(Math.abs)), 0) + " MN·m (deep-dive)" : fmt(Math.max(...t.screen_series.M_flange.map(Math.abs)), 0) + " MN·m (screening)"], ["First-frequency drop at peak", fmt(t.freq_drop, 1) + "%"]]), true);
+        sec("This storm", kv([["Peak moment at tower base", dd ? fmt(Math.max(...dd.M_flange.map(Math.abs)), 0) + " MN·m (deep-dive)" : fmt(Math.max(...t.screen_series.M_flange.map(Math.abs)), 0) + " MN·m (screening)"], ["First-frequency drop at peak", fmt(t.freq_drop, 1) + "%"]]), true) +
+        (t.modal ? sec("Tower frequencies", `<div class="chips2" id="insp-tchips"></div><div id="insp-modal"></div>`, false) : "");
+      after = () => {
+        if (!t.modal) return;
+        const det = [...host.querySelectorAll("details")].find((d) => d.querySelector("#insp-modal"));
+        let k = ["tower_fa", "tower_ss", "tower_2"].find((x) => t.modal.modes[x].alarm) || "tower_fa";
+        const draw = () => {
+          const c = host.querySelector("#insp-tchips"); c.innerHTML = "";
+          ["tower_fa", "tower_ss", "tower_2"].forEach((x) => { const e = el("button", { class: "chip" + (x === k ? " on" : "") + (t.modal.modes[x].alarm ? " al" : ""), type: "button" }, t.modal.modes[x].label.replace("Tower ", "")); e.addEventListener("click", () => { k = x; draw(); }); c.append(e); });
+          const h = host.querySelector("#insp-modal"); h.innerHTML = ""; modalChart(h, t, k, { w: 460, h1: 150, h2: 140 });
+        };
+        det.addEventListener("toggle", () => { if (det.open) draw(); });
+        if (det.open) draw();
+      };
     } else if (part === "door") {
       html = `<h3>Door frame ${pill(hst.door_frame)}</h3>` + kv([["Elevation", "+" + M.z_door + " m"], ["Faces", "south-east (135°)"], ["Fatigue SCF (local FE)", D.meta.scf.door_frame], ["S-N curve", "DNV-RP-C203 D, in air"], ["Design fatigue factor", D.meta.dff.door_frame]]) +
         sec("This storm", kv(hotRows(t, "door_frame")), true) + sec("What-if now", liveRows(t, "door_frame"), false);
@@ -789,8 +891,13 @@ button.tab { font: inherit; }
     } else if (part === "soil") {
       html = `<h3>Foundation and soil ${pill(hst.foundation)}</h3>` + kv([["Embedment", GEO.embed + " m"], ["Scour", t.spec.scour > 0 ? fmt(t.spec.scour, 1) + " m ◆" : "none recorded"], ["Soil model", "API sand p-y, φ′ = 35°, cyclic"], ["First natural frequency", fmt(t.f1, 3) + " Hz"]]) +
         sec("This storm", kv([["Peak mudline rotation", fmt(f.foundation.rot_peak, 2) + "°"], ["First-frequency drop at peak", fmt(t.freq_drop, 1) + "%"], ["Action trigger", "rotation 0.25° or drop 3%"]]), true) +
-        sec("p-y curves", `<div class="chart" id="insp-py"></div><p class="hint">Production models use site-specific curves (for example PISA) and track stiffness change from the measured frequency.</p>`, false);
-      after = () => { const det = host.querySelectorAll("details")[1]; const draw = () => { const h = document.getElementById("insp-py"); if (h && !h.firstChild) pyCurves(h); }; det.addEventListener("toggle", draw); if (det.open) draw(); };
+        sec("p-y curves", `<div class="chart" id="insp-py"></div><p class="hint">Production models use site-specific curves (for example PISA) and track stiffness change from the measured frequency.</p>`, false) +
+        (t.modal ? sec("Foundation stiffness from the first tower mode", `<div id="insp-modal"></div>`, false) : "");
+      after = () => {
+        const dets = host.querySelectorAll("details");
+        const py = dets[1]; const dpy = () => { const h = document.getElementById("insp-py"); if (h && !h.firstChild) pyCurves(h); }; py.addEventListener("toggle", dpy); if (py.open) dpy();
+        if (t.modal) { const dm = dets[2]; const dmd = () => { const h = host.querySelector("#insp-modal"); if (h && !h.firstChild) modalChart(h, t, "tower_fa", { w: 460, h1: 150, h2: 140 }); }; dm.addEventListener("toggle", dmd); if (dm.open) dmd(); }
+      };
     }
     host.innerHTML = html;
     if (after) after();
