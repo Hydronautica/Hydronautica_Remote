@@ -65,15 +65,21 @@ def _depth_functions(k, z, depth):
     return ez * (1 + e_bed) / den, ez * (1 - e_bed) / den
 
 
-def wave_height(t, eta):
+def wave_height(t, eta, window=None):
     """Height of the largest wave in a record: crest minus deeper adjacent trough.
 
-    The troughs are the lowest points between the highest crest and the
-    neighbouring zero crossings on either side.
+    By default the troughs are the lowest points between the highest crest
+    and the neighbouring zero crossings on either side. If ``window`` is given
+    (same units as t, e.g. 0.75 of the period), the trough is instead the
+    lowest point within +-window of the crest; this does not jump when small
+    ripples near the trough cross zero (e.g. in Dysthe wave groups).
     """
     t = np.asarray(t)
     eta = np.asarray(eta)
     i = int(np.argmax(eta))
+    if window is not None:
+        near = np.abs(t - t[i]) <= window
+        return float(eta[i] - eta[near].min())
     sign = np.sign(eta)
     # first zero crossings left/right of the crest, then the next ones beyond
     def trough(direction):

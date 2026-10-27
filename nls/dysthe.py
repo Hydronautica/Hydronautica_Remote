@@ -301,20 +301,32 @@ def dysthe_focused_wave(eps, period, depth=np.inf, order=2, T0=-2.0, g=G,
 
 
 def dysthe_for_height(H, period, depth=np.inf, order=2, eps_guess=None, **kwargs):
-    """Dysthe focused wave whose crest-to-trough height at the focus is H.
+    """Dysthe focused wave whose largest wave has crest-to-trough height H.
+
+    At large steepness the focused Dysthe group is multi-peaked, so the height
+    at a single "focal point" jumps as eps changes. Instead H is the largest
+    local wave height (crest minus deepest trough within 0.75 periods, from
+    the time series) over positions within half a wavelength of the envelope
+    focus. This is continuous in eps, and it is the engineering quantity: the
+    biggest wave in the group, measured where it is biggest. The returned
+    (t_f, x_f) are that wave's crest time and position.
 
     Returns (wave, focus_time_s, focus_x_m, eps).
     """
     from .kinematics import wave_height
     k0 = (2 * np.pi / period) ** 2 / G
+    lam = 2 * np.pi / k0
     cache = {}
 
     def height(eps):
         wave, t_f, x_f = dysthe_focused_wave(eps, period, depth, order, **kwargs)
         t = wave.physical_times()
-        eta = np.array([wave.eta(x_f, ti) for ti in t]).ravel()
-        cache[eps] = (wave, t_f, x_f)
-        return wave_height(t, eta)
+        xs = x_f + lam * np.linspace(-0.5, 0.5, 21)
+        eta = np.array([wave.eta(xs, ti) for ti in t])          # (time, position)
+        Hx = [wave_height(t, eta[:, j], window=0.75 * period) for j in range(xs.size)]
+        j = int(np.argmax(Hx))
+        cache[eps] = (wave, float(t[np.argmax(eta[:, j])]), float(xs[j]))
+        return Hx[j]
 
     e0 = eps_guess if eps_guess is not None else k0 * H / 5.0
     eps = _solve_height(height, H, e0, tol=1e-3)

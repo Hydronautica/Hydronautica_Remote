@@ -169,5 +169,5 @@ def test_dysthe_for_height():
     wave, t_f, x_f, eps = dysthe_for_height(12.0, 10.0, depth=100.0)
     t = wave.physical_times()
     eta = np.array([wave.eta(x_f, ti) for ti in t]).ravel()
-    assert abs(nls.wave_height(t, eta) - 12.0) < 0.02
+    assert abs(nls.wave_height(t, eta, window=7.5) - 12.0) < 0.02
     assert np.isclose(wave.eta(x_f, t_f), eta.max(), rtol=1e-3)
