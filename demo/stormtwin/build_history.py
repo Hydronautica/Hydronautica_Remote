@@ -71,6 +71,14 @@ def damage_rates(args):
     hsd = bd.hot_spots(tb, model, U, z_mw)
     keep = t >= 30.0                                   # skip the start-up transient
     per_hour = 3600.0 / (bd.RECORD - 30.0)
+    # moment statistics at the hot-spot sections, for the browser what-if model
+    stats = {}
+    for key, M in (("flange", hsd["flange"]["M"]), ("door", hsd["door"]["M"]),
+                   ("mudline", hsd["mudline"]["M"])):
+        m = M[keep]
+        f = m - m.mean()
+        nu = np.sum((f[:-1] < 0) & (f[1:] >= 0)) / (bd.RECORD - 30.0)
+        stats[key] = dict(mean=float(m.mean()), std=float(f.std()), nu=float(nu))
     r, c = rainflow(hsd["flange"]["Fb"][keep] / tb.bolt_As)
     out = {"flange_bolts": bolt_damage(r, c, tb.bolt_d) * per_hour}
     for key, name, curve in (("door", "door_frame", "D_air"),
@@ -79,7 +87,8 @@ def damage_rates(args):
         out[name] = miner_damage(r, c, curve, t=hsd[key]["t"]) * per_hour
     print(f"{spec['name']} Hs={hs:4.1f} Tp={tp_of(hs):4.1f}: "
           + " ".join(f"{k}={v:.2e}" for k, v in out.items()), flush=True)
-    return spec["name"], hs, out
+    props = dict(z_mw=z_mw, f1=float(model.frequencies(n=1)[0]))
+    return spec["name"], hs, out, stats, props
 
 
 # --- synthetic sea-state history ----------------------------------------------------
@@ -143,9 +152,11 @@ if __name__ == "__main__":
     jobs = [(s, hs) for s in specs for hs in HS_BINS]
     with ProcessPoolExecutor(max_workers=4) as pool:
         rates = list(pool.map(damage_rates, jobs))
-    table = {}
-    for name, hs, out in rates:
+    table, stats, props = {}, {}, {}
+    for name, hs, out, st, pr in rates:
         table.setdefault(name, {})[hs] = out
+        stats.setdefault(name, {})[hs] = st
+        props[name] = pr
 
     times, hs_ref = hs_history()
     years = np.array([(tt - COMMISSIONED).total_seconds() / (365.25 * 86400) for tt in times])
@@ -183,8 +194,26 @@ if __name__ == "__main__":
                            storm_days=r2(per_storm, 1),
                            projected_life=float(storm_years / max(total / 100, 1e-9)),
                            rates=r2(d_tab, 12))
+        tb = Turbine(depth=spec["depth"], scour=spec["scour"], preload_frac=spec["preload"])
+        mdl = Model(tb)
+        z_mw = props[name]["z_mw"]
+        from structure import section, bolt_force
+        A_d, _, W_d = section(tb.diameter(tb.z_door), tb.thickness(tb.z_door))
+        A_p, _, W_p = section(tb.D_pile, tb.t_pile)
+        _, bp = bolt_force(tb, 0.0)
+        sec = {k: {"mean": [stats[name][h][k]["mean"] for h in HS_BINS],
+                   "std": [stats[name][h][k]["std"] for h in HS_BINS],
+                   "nu": [stats[name][h][k]["nu"] for h in HS_BINS]} for k in ("flange", "door", "mudline")}
         t["history"] = dict(years=r2(np.append(years[idx], storm_years), 4), hot=hist,
                             exposure=round(expo, 3))
+        t["whatif"] = dict(
+            sections=sec, f1=props[name]["f1"],
+            z=dict(flange=tb.z_interface, door=tb.z_door, mudline=z_mw, hub=tb.z_hub),
+            door=dict(W=W_d, A=A_d, N=mdl.weight_above(tb.z_door), t=float(tb.thickness(tb.z_door))),
+            mudline=dict(W=W_p, A=A_p, N=mdl.weight_above(z_mw), t=tb.t_pile),
+            flange=dict(N=mdl.weight_above(tb.z_interface), n=tb.n_bolts, Dbc=tb.D_bolt_circle,
+                        As=tb.bolt_As, d=tb.bolt_d, **bp, p=0.12, lam=2.1),
+            base_thrust=tb.mean_thrust)
         worst = max(HOT, key=lambda k: hist[k]["total"])
         print(f"{name}: life used {hist[worst]['total']:.1f}% at {worst} after "
               f"{storm_years:.1f} y (design pace {100 * storm_years / 25:.1f}%), "
@@ -195,7 +224,7 @@ if __name__ == "__main__":
         commissioned=COMMISSIONED.strftime("%Y-%m-%d"), storm_peak=STORM_PEAK.strftime("%Y-%m-%d"),
         years_in_service=storm_years, hs_bins=HS_BINS, tp_bins=[tp_of(h) for h in HS_BINS],
         storms=storms,
-        days=r2(years[daily], 4),
+        days=r2(years[daily], 4), hs_mean=float(hs_ref.mean()),
         hs_daily_max=r2([hs_ref[i:i + 24].max() for i in daily], 2))
     with open(os.path.join(HERE, "demo_data.json"), "w") as fh:
         json.dump(data, fh, separators=(",", ":"))

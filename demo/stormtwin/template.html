@@ -143,6 +143,17 @@ table.std td:first-child { font-family: var(--font-data); white-space: nowrap; f
 .offer { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
 .offer .who { font-family: var(--font-data); font-size: 0.75rem; color: var(--muted); }
 .offer ul { margin: 0; padding-left: 18px; font-size: 0.88rem; }
+.wi { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.ctl { display: grid; gap: 12px; }
+.ctl label { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; font-size: 0.86rem; }
+.ctl label span.v { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--accent); }
+.ctl input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.ctl .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { font: inherit; font-size: 0.8rem; padding: 4px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 4px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.wiout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
+.state { font-family: var(--font-data); font-size: 0.8rem; color: var(--muted); }
+@media (max-width: 1000px) { .wi, .wiout { grid-template-columns: minmax(0, 1fr); } .wiout svg.compass { max-width: 240px; } }
 footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
 button.tab { font: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -204,6 +215,29 @@ button.tab { font: inherit; }
     <div class="two">
       <div class="panel chart"><div class="panel-h"><h3>Sea state at the farm</h3></div><div class="panel-b"><div id="hstimeline"></div><p class="cap">Daily maximum significant wave height at the farm reference point. Named storms are marked; the last one is the storm replayed above.</p></div></div>
       <div class="panel chart"><div class="panel-h"><h3>Life used by turbine</h3></div><div class="panel-b"><div id="lifebars"></div><p class="cap">Worst hot spot per turbine. The dashed line is the pace that would use exactly the design life by year 25.</p></div></div>
+    </div>
+  </section>
+
+  <section class="block" id="whatif">
+    <div class="eyebrow">What-if</div>
+    <h2>Change the weather, watch the damage</h2>
+    <p class="muted">Explore how sea state, wind and direction drive damage at <b id="wi-name"></b> (select another turbine above). The panel is anchored to that turbine's base runs and scales them physically: dynamic amplification of the first mode for Tp, rotor damping and thrust for wind, and the position of each hot spot on the circumference for direction.</p>
+    <div class="wi">
+      <div class="panel"><div class="panel-b ctl" style="padding-top:14px">
+        <label for="wi-hs">Significant wave height H<sub>s</sub><span class="v" id="wi-hs-v"></span><input type="range" id="wi-hs" min="0.5" max="12" step="0.1" value="4"></label>
+        <label for="wi-tp">Peak period T<sub>p</sub><span class="v" id="wi-tp-v"></span><input type="range" id="wi-tp" min="4" max="16" step="0.1" value="7.2"></label>
+        <label for="wi-wdir">Wave direction (from)<span class="v" id="wi-wdir-v"></span><input type="range" id="wi-wdir" min="0" max="355" step="5" value="240"></label>
+        <label for="wi-u">Wind speed at hub height<span class="v" id="wi-u-v"></span><input type="range" id="wi-u" min="0" max="40" step="0.5" value="12"></label>
+        <label for="wi-udir">Wind direction (from)<span class="v" id="wi-udir-v"></span><input type="range" id="wi-udir" min="0" max="355" step="5" value="240"></label>
+        <label for="wi-dur">Hold these conditions for<span class="v" id="wi-dur-v"></span><input type="range" id="wi-dur" min="0" max="96" step="1" value="12"></label>
+        <label for="wi-clim">Future sea-state climate<span class="v" id="wi-clim-v"></span><input type="range" id="wi-clim" min="-20" max="20" step="1" value="0"></label>
+        <div class="row"><button class="btn" id="wi-tptyp" type="button">Typical T<sub>p</sub> for H<sub>s</sub></button><button class="btn" id="wi-calm" type="button">Calm, operating</button><button class="btn" id="wi-storm" type="button">Storm, idling</button><button class="btn" id="wi-mis" type="button">Misaligned swell</button></div>
+      </div></div>
+      <div class="detail">
+        <div class="panel"><div class="panel-h"><h3>Instantaneous damage rate</h3><span class="state" id="wi-state"></span></div>
+          <div class="panel-b wiout"><div id="wi-compass"></div><div class="tbl-wrap" id="wi-table"></div></div></div>
+        <div class="panel chart"><div class="panel-h"><h3>Cumulative fatigue: history and projection</h3></div><div class="panel-b"><div id="wi-proj"></div><div class="tbl-wrap" id="wi-life" style="margin-top:8px"></div><p class="cap">Solid: measured history to today. After today: the chosen conditions held for the set duration, then the average rate since commissioning scaled by the future climate. Thin dashed: the same without the what-if event. Grey dashed: design pace.</p></div></div>
+      </div>
     </div>
   </section>
 
@@ -656,6 +690,216 @@ button.tab { font: inherit; }
     const paceEl = document.getElementById("pace"); if (paceEl) paceEl.textContent = fmt(pace, 1) + "%";
   }
 
+  // ---------- what-if model (browser-side, anchored to the base runs) ----------
+  const DOOR_AZ = 135;                       // door faces south-east (degrees from north)
+  const tpTyp = (hs) => Math.max(5.5, 3.6 * Math.sqrt(hs));
+  const lin = (xs, ys, x) => {
+    if (x <= xs[0]) return ys[0] + (ys[1] - ys[0]) * (x - xs[0]) / (xs[1] - xs[0]);
+    for (let i = 1; i < xs.length; i++) if (x <= xs[i]) return ys[i - 1] + (ys[i] - ys[i - 1]) * (x - xs[i - 1]) / (xs[i] - xs[i - 1]);
+    const n = xs.length; return ys[n - 1] + (ys[n - 1] - ys[n - 2]) * (x - xs[n - 1]) / (xs[n - 1] - xs[n - 2]);
+  };
+  const loglog = (xs, ys, x) => {
+    const lx = xs.map(Math.log), ly = ys.map((y) => Math.log(Math.max(y, 1e-300)));
+    return Math.exp(lin(lx, ly, Math.log(Math.max(x, 0.2))));
+  };
+  const rad = (d) => d * Math.PI / 180;
+  function specResp(tp, zeta, f1) {           // rms dynamic factor over a PM spectrum
+    const fp = 1 / tp; let num = 0, den = 0;
+    for (let i = 0; i < 240; i++) {
+      const f = 0.02 + i * 0.0025, S = Math.pow(f, -5) * Math.exp(-1.25 * Math.pow(fp / f, 4));
+      const r = f / f1, H2 = 1 / ((1 - r * r) ** 2 + (2 * zeta * r) ** 2);
+      num += S * H2; den += S;
+    }
+    return Math.sqrt(num / den);
+  }
+  function thrust(U) {                        // 15 MW-class thrust curve (N), cut-in 3, rated 10.6, cut-out 25
+    if (U < 3) return 2e4 * U * U / 9;
+    if (U <= 10.6) return 2.4e6 * (U / 10.6) ** 2;
+    if (U <= 25) return 2.4e6 * Math.pow(10.6 / U, 1.1);
+    return 0.8e6 * (U / 35) ** 2;             // idling, feathered
+  }
+  const operating = (U) => U >= 3 && U <= 25;
+  function snDamage(ranges, probs, curve, t) { // DNV-RP-C203 bilinear, ranges in Pa
+    const c = { D_air: [12.164, 3, 15.606, 5, 1e7], D_seawater_cp: [11.764, 3, 15.606, 5, 1e6] }[curve];
+    const tk = Math.pow(Math.max(1, t / 0.025), 0.2);
+    let D = 0;
+    ranges.forEach((S, i) => { const s = S / 1e6 * tk; if (s <= 0) return;
+      const N1 = Math.pow(10, c[0] - c[1] * Math.log10(s)), N2 = Math.pow(10, c[2] - c[3] * Math.log10(s));
+      D += probs[i] / (N1 <= c[4] ? N1 : N2); });
+    return D;
+  }
+  function boltF(fl, Z) {
+    if (Z <= fl.Z1) return fl.Fv + fl.p * Z;
+    if (Z <= fl.Z2) return fl.F1 + (fl.F2 - fl.F1) * (Z - fl.Z1) / (fl.Z2 - fl.Z1);
+    return fl.F2 + fl.lam * (Z - fl.Z2);
+  }
+  function boltDamage(ranges, probs, d) {     // EN 1993-1-9 detail 50, bolts in tension
+    const sc = 50e6 * (d > 0.03 ? Math.pow(0.03 / d, 0.25) : 1), sD = sc * Math.pow(0.4, 1 / 3), sL = sD * Math.pow(0.05, 0.2);
+    let D = 0;
+    ranges.forEach((s, i) => { const N = s >= sD ? 2e6 * (sc / s) ** 3 : s >= sL ? 5e6 * (sD / s) ** 5 : Infinity; D += probs[i] / N; });
+    return D;
+  }
+  // damage per hour at one point, narrow-band Rayleigh cycles of the moment
+  function pointDamage(key, w, sig, mean, nu) {
+    if (!(sig > 0)) return 0;
+    const n = 80, amax = 6 * sig, da = amax / n, ranges = [], probs = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i + 0.5) * da, p = a / (sig * sig) * Math.exp(-a * a / (2 * sig * sig)) * da;
+      probs.push(p * nu * 3600);
+      if (key === "flange_bolts") {
+        const fl = w.flange, Zm = 4 * mean / (fl.n * fl.Dbc) - fl.N / fl.n, Za = 4 * a / (fl.n * fl.Dbc);
+        ranges.push((boltF(fl, Zm + Za) - boltF(fl, Zm - Za)) / fl.As);
+      } else {
+        const sp = key === "door_frame" ? w.door : w.mudline, scf = D.meta.scf[key];
+        ranges.push(2 * a * scf / sp.W);
+      }
+    }
+    if (key === "flange_bolts") return boltDamage(ranges, probs, w.flange.d);
+    const sp = key === "door_frame" ? w.door : w.mudline;
+    return snDamage(ranges, probs, key === "door_frame" ? "D_air" : "D_seawater_cp", sp.t);
+  }
+  const SEC = { flange_bolts: "flange", door_frame: "door", mudline_weld: "mudline" };
+  function whatif(t, inp) {
+    const w = t.whatif, Hh = D.history, bins = Hh.hs_bins, z0 = 0.015;
+    const op = operating(inp.u);
+    const zfa = z0 + (op ? 0.035 : 0.003), zss = z0 + 0.003;
+    const tp0 = tpTyp(inp.hs), R0 = specResp(tp0, z0, w.f1);
+    const rfa = specResp(inp.tp, zfa, w.f1) / R0, rss = specResp(inp.tp, zss, w.f1) / R0;
+    const dl = rad(inp.wdir - inp.udir);
+    const waveFac = Math.sqrt(Math.cos(dl) ** 2 * rfa * rfa + Math.sin(dl) ** 2 * rss * rss);
+    const T = thrust(inp.u), TI = 0.05 + 0.4 / Math.max(inp.u, 2), g = op ? (inp.u < 10.6 ? 1 : 0.35) : 1;
+    const sT = T * 2 * TI * g;
+    const out = {}; let gap = "closed";
+    HOTS.forEach((k) => {
+      const sc = w.sections[SEC[k]], arm = w.z.hub - w.z[SEC[k]];
+      const s0 = Math.max(lin(bins, sc.std, inp.hs), 0), n0 = Math.max(lin(bins, sc.nu, inp.hs), 0.02), m0 = lin(bins, sc.mean, inp.hs);
+      const sw = s0 * waveFac, nw = n0 * tp0 / inp.tp;
+      const mbar = T * arm, swd = sT * arm * 1.15, nwd = w.f1;
+      const at = (phi) => {
+        const cw = Math.cos(rad(phi - inp.wdir)), cu = Math.cos(rad(phi - inp.udir));
+        const sig = Math.sqrt((sw * cw) ** 2 + (swd * cu) ** 2);
+        const nu = sig > 0 ? Math.sqrt(((sw * cw * nw) ** 2 + (swd * cu * nwd) ** 2)) / sig : nw;
+        return { sig, nu, mean: mbar * cu };
+      };
+      // base: aligned, idling base thrust, worst fibre
+      const Dbase = pointDamage(k, w, s0, m0, n0);
+      const Dtab = loglog(bins, t.history.hot[k].rates, inp.hs);
+      let calib = Dbase > 1e-300 && Dtab > 0 ? Dtab / Dbase : null;
+      if (calib === null) {                   // e.g. bolts with a closed joint at the base state
+        const r = bins.map((h, i) => { const db = pointDamage(k, w, sc.std[i], sc.mean[i], sc.nu[i]); const dt = t.history.hot[k].rates[i]; return db > 0 && dt > 0 ? dt / db : null; }).filter((v) => v !== null);
+        calib = r.length ? r.sort((a, b) => a - b)[Math.floor(r.length / 2)] : 1;
+      }
+      let rose = null, Dk;
+      if (k === "door_frame") Dk = pointDamage(k, w, at(DOOR_AZ).sig, at(DOOR_AZ).mean, at(DOOR_AZ).nu);
+      else {
+        rose = [];
+        for (let j = 0; j < 16; j++) { const q = at(j * 22.5); rose.push(pointDamage(k, w, q.sig, q.mean, q.nu)); }
+        Dk = Math.max(...rose);
+      }
+      out[k] = { rate: Dk * calib, rose: rose && rose.map((v) => v * calib) };
+      if (k === "flange_bolts") {
+        let worst = 0;
+        for (let j = 0; j < 16; j++) { const q = at(j * 22.5); worst = Math.max(worst, q.mean + q.sig * Math.sqrt(2 * Math.log(Math.max(q.nu * 3600, 2)))); }
+        const fl = w.flange, Z = 4 * worst / (fl.n * fl.Dbc) - fl.N / fl.n;
+        gap = Z > fl.Z2 ? "fully open" : Z > fl.Z1 ? "opens" : "closed";
+        out.Mmax = worst;
+      }
+    });
+    out.gap = gap; out.op = op; out.T = T;
+    return out;
+  }
+  function climateMult(t, k, c) {
+    const r = t.history.hot[k].rates, b = D.history.hs_bins;
+    const m = (Math.log(Math.max(r[2], 1e-300)) - Math.log(Math.max(r[0], 1e-300))) / (Math.log(b[2]) - Math.log(b[0]));
+    return Math.pow(1 + c / 100, isFinite(m) ? m : 4);
+  }
+
+  const WI = { hs: 4, tp: 7.2, wdir: 240, u: 12, udir: 240, dur: 12, clim: 0 };
+  const wiIds = ["hs", "tp", "wdir", "u", "udir", "dur", "clim"];
+  const units = { hs: (v) => v.toFixed(1) + " m", tp: (v) => v.toFixed(1) + " s", wdir: (v) => v + "°", u: (v) => v.toFixed(1) + " m/s", udir: (v) => v + "°", dur: (v) => v + " h", clim: (v) => (v > 0 ? "+" : "") + v + "% Hₛ" };
+  function readWI() { wiIds.forEach((k) => { WI[k] = +document.getElementById("wi-" + k).value; document.getElementById(`wi-${k}-v`).textContent = units[k](WI[k]); }); }
+  function setWI(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); readWI(); drawWhatif(); }
+
+  function compass(host, t, res) {
+    const W = 220, c = 110, R = 82;
+    const s = svg("svg", { viewBox: `0 0 ${W} ${W}`, class: "compass", role: "img", "aria-label": "Directions and bolt damage by direction" });
+    s.append(svg("circle", { cx: c, cy: c, r: R, fill: css("--accent-soft"), stroke: css("--line") }));
+    [["N", 0], ["E", 90], ["S", 180], ["W", 270]].forEach(([l, a]) => {
+      const tx = svg("text", { x: c + (R + 12) * Math.sin(rad(a)), y: c - (R + 12) * Math.cos(rad(a)) + 4, "text-anchor": "middle", "font-size": 11, fill: css("--muted"), "font-family": "IBM Plex Mono, monospace" }); tx.textContent = l; s.append(tx);
+    });
+    const rose = res.flange_bolts.rose, mx = Math.max(...rose, 1e-300);
+    rose.forEach((v, j) => {
+      const a0 = rad(j * 22.5 - 11.25), a1 = rad(j * 22.5 + 11.25), r = 14 + (R - 18) * Math.cbrt(v / mx);
+      s.append(svg("path", { d: `M${c} ${c} L${c + r * Math.sin(a0)} ${c - r * Math.cos(a0)} A${r} ${r} 0 0 1 ${c + r * Math.sin(a1)} ${c - r * Math.cos(a1)} Z`, fill: css("--accent"), opacity: 0.25 + 0.6 * (v / mx) }));
+    });
+    s.append(svg("circle", { cx: c, cy: c, r: 12, fill: css("--surface"), stroke: css("--ink"), "stroke-width": 1.5 }));
+    const arrow = (dir, col, len, lab) => {   // arrow coming FROM dir towards the centre
+      const x0 = c + len * Math.sin(rad(dir)), y0 = c - len * Math.cos(rad(dir)), x1 = c + 18 * Math.sin(rad(dir)), y1 = c - 18 * Math.cos(rad(dir));
+      s.append(svg("line", { x1: x0, y1: y0, x2: x1, y2: y1, stroke: css(col), "stroke-width": 3, "marker-end": "" }));
+      const hx = x1, hy = y1, ang = rad(dir);
+      s.append(svg("path", { d: `M${hx} ${hy} L${hx + 7 * Math.sin(ang + 0.5)} ${hy - 7 * Math.cos(ang + 0.5)} L${hx + 7 * Math.sin(ang - 0.5)} ${hy - 7 * Math.cos(ang - 0.5)} Z`, fill: css(col) }));
+      const tx = svg("text", { x: x0 + 10 * Math.sin(rad(dir)), y: y0 - 10 * Math.cos(rad(dir)) + 4, "text-anchor": "middle", "font-size": 10.5, fill: css(col), "font-weight": 600 }); tx.textContent = lab; s.append(tx);
+    };
+    arrow(WI.wdir, "--sea", R - 4, "waves");
+    arrow(WI.udir, "--ink", R - 26, "wind");
+    const dx = c + 12 * Math.sin(rad(DOOR_AZ)), dy = c - 12 * Math.cos(rad(DOOR_AZ));
+    s.append(svg("rect", { x: dx - 4, y: dy - 4, width: 8, height: 8, fill: css("--warn"), transform: `rotate(${DOOR_AZ} ${dx} ${dy})` }));
+    host.innerHTML = ""; host.append(s);
+    host.append(el("div", { class: "cap" }, "Shaded: flange-bolt damage by bolt position. Orange square: door (faces SE)."));
+  }
+
+  function drawWhatif() {
+    const t = T[current];
+    const sec = document.getElementById("whatif");
+    if (!t.whatif || !D.history) { sec.hidden = true; return; }
+    sec.hidden = false;
+    document.getElementById("wi-name").textContent = t.spec.name;
+    const res = whatif(t, WI), h = t.history, yrs = D.history.years_in_service, life = D.meta.design_life;
+    const toDays = (k, Dh) => Dh * D.meta.dff[k] * life * 365;            // design-life days per hour
+    const avgPerHour = (k) => (h.hot[k].total / 100 / D.meta.dff[k]) / (yrs * 8766);
+    document.getElementById("wi-state").textContent =
+      `${res.op ? "operating" : WI.u > 25 ? "idling (above cut-out)" : "idling (below cut-in)"} · thrust ${fmt(res.T / 1e6, 2)} MN · flange joint ${res.gap}`;
+    compass(document.getElementById("wi-compass"), t, res);
+    let tb = `<table class="hstable"><thead><tr><th>Hot spot</th><th class="r">Design-life days per hour</th><th class="r">× average rate</th><th class="r">Over ${WI.dur} h</th></tr></thead><tbody>`;
+    HOTS.forEach((k) => {
+      const r = res[k].rate, x = r / avgPerHour(k), col = x >= 10 ? "var(--crit)" : x >= 2 ? "var(--warn)" : "inherit";
+      tb += `<tr><td class="hsname">${HOTNAME[k]}</td><td class="num" style="text-align:right">${toDays(k, r) < 0.01 ? toDays(k, r).toExponential(1) : fmt(toDays(k, r), 2)}</td>` +
+        `<td class="num" style="text-align:right;color:${col}">${x < 0.01 ? "< 0.01" : fmt(x, x < 10 ? 2 : 0)}×</td><td class="num" style="text-align:right">${fmt(toDays(k, r) * WI.dur, 1)} d</td></tr>`;
+    });
+    tb += `</tbody></table><p class="cap">Expected largest flange moment in an hour: ${fmt(res.Mmax / 1e6, 0)} MN·m. Average rate = mean since commissioning.</p>`;
+    document.getElementById("wi-table").innerHTML = tb;
+
+    // projection
+    const series = [], fut = [];
+    const yEnd = life, lifeRows = [];
+    HOTS.forEach((k) => {
+      series.push({ x: h.years, y: h.hot[k].used, color: HOTVAR[k], width: 2 });
+      const avgYr = h.hot[k].total / yrs, mult = climateMult(t, k, WI.clim);
+      const step = res[k].rate * WI.dur * D.meta.dff[k] * 100;
+      const xs = [yrs, yrs + WI.dur / 8766, yEnd];
+      const base = h.hot[k].total, rate = avgYr * mult;
+      series.push({ x: xs, y: [base, base + step, base + step + rate * (yEnd - yrs - WI.dur / 8766)], color: HOTVAR[k], width: 1.4 });
+      series.push({ x: [yrs, yEnd], y: [base, base + rate * (yEnd - yrs)], color: HOTVAR[k], width: 1, dash: "3 3" });
+      const lifeWith = yrs + (100 - base - step) / rate, lifeWithout = yrs + (100 - base) / rate;
+      lifeRows.push([k, base, step, lifeWithout, lifeWith]);
+    });
+    series.push({ x: [0, yEnd], y: [0, 100], color: "--muted", dash: "5 4", width: 1.2 });
+    chart(document.getElementById("wi-proj"), {
+      series, xl: "years in service", yl: "fatigue life used (%)", h: 240, xd: [0, yEnd],
+      vlines: [{ x: yrs, label: "today", color: "--ink" }],
+      legend: HOTS.map((k) => ({ label: HOTNAME[k], color: HOTVAR[k] })), label: "Fatigue projection",
+    });
+    const fy = (v) => v > 200 ? "> 200 y" : v < yrs ? "exceeded" : fmt(v, 1) + " y";
+    document.getElementById("wi-life").innerHTML = `<table class="hstable"><thead><tr><th>Hot spot</th><th class="r">Used today</th><th class="r">This event</th><th class="r">Fatigue life</th><th class="r">With event + climate</th></tr></thead><tbody>` +
+      lifeRows.map(([k, b, st, l0, l1]) => `<tr><td>${HOTNAME[k]}</td><td class="num" style="text-align:right">${fmt(b, 1)}%</td><td class="num" style="text-align:right">+${st < 0.01 ? st.toExponential(1) : fmt(st, 2)}%</td>` +
+        `<td class="num" style="text-align:right">${fy(yrs + (100 - b) / (h.hot[k].total / yrs))}</td><td class="num" style="text-align:right;color:${l1 < life ? "var(--crit)" : "inherit"}">${fy(l1)}</td></tr>`).join("") + `</tbody></table>`;
+  }
+  wiIds.forEach((k) => document.getElementById("wi-" + k).addEventListener("input", () => { readWI(); drawWhatif(); }));
+  document.getElementById("wi-tptyp").addEventListener("click", () => setWI({ tp: tpTyp(WI.hs).toFixed(1) }));
+  document.getElementById("wi-calm").addEventListener("click", () => setWI({ hs: 1.5, tp: 5.5, u: 11, udir: 240, wdir: 240 }));
+  document.getElementById("wi-storm").addEventListener("click", () => setWI({ hs: 9, tp: 10.8, u: 32, udir: 250, wdir: 250 }));
+  document.getElementById("wi-mis").addEventListener("click", () => setWI({ hs: 2.5, tp: 9, u: 9, udir: 240, wdir: 330 }));
+
   function boltCurve() {
     chart(document.getElementById("boltcurve"), {
       series: [{ x: D.bolt_curve.Z, y: D.bolt_curve.F, color: "--accent", width: 2 }, { x: D.bolt_curve_80.Z, y: D.bolt_curve_80.F, color: "--warn", width: 2, dash: "5 3" }],
@@ -670,8 +914,9 @@ button.tab { font: inherit; }
 
   let current = Math.max(0, T.findIndex((t) => t.status === "red"));
   if (T[current].status !== "red") current = Math.max(0, T.findIndex((t) => t.status === "amber"));
-  function select(i) { current = i; drawMap(i); drawList(i); detail(i); }
+  function select(i) { current = i; drawMap(i); drawList(i); detail(i); if (D.history) drawWhatif(); }
   farmHistory();
+  readWI();
   select(current);
   boltCurve();
   const mq = window.matchMedia("(prefers-color-scheme: dark)");
