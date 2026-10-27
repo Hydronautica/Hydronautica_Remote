@@ -78,8 +78,18 @@ def wave_height(t, eta, window=None):
     eta = np.asarray(eta)
     i = int(np.argmax(eta))
     if window is not None:
-        near = np.abs(t - t[i]) <= window
-        return float(eta[i] - eta[near].min())
+        # Parabolic refinement of the sampled extrema removes the sampling
+        # jitter (~(pi dt/T)^2 / 2 of the amplitude) from crest and trough.
+        def vertex(j):
+            if 0 < j < eta.size - 1:
+                a, b, c = eta[j - 1], eta[j], eta[j + 1]
+                den = a - 2 * b + c
+                if den != 0:
+                    return b - 0.125 * (a - c) ** 2 / den
+            return eta[j]
+        near = np.flatnonzero(np.abs(t - t[i]) <= window)
+        j = near[int(np.argmin(eta[near]))]
+        return float(vertex(i) - vertex(j))
     sign = np.sign(eta)
     # first zero crossings left/right of the crest, then the next ones beyond
     def trough(direction):

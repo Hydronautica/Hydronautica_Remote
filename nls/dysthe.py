@@ -22,6 +22,8 @@ deep-water dispersion relation (the "broader bandwidth MNLS" of Trulsen,
 Kliakhandler, Dysthe & Velarde 2000).
 """
 
+import warnings
+
 import numpy as np
 
 from .kinematics import G, EnvelopeWave
@@ -220,6 +222,12 @@ def _solve_height(fun, target, x0, tol=1e-3, max_iter=30):
         raise RuntimeError("could not bracket the target height")
     side = 0
     for _ in range(max_iter):
+        if abs(hi - lo) < 1e-6 * abs(lo):
+            # The bracket has collapsed onto a jump in fun: no exact root.
+            x = lo if abs(flo) < abs(fhi) else hi
+            warnings.warn(f"target height not reachable exactly (jump in H(eps)); "
+                          f"using eps={x:.5g}, off by {min(abs(flo), abs(fhi)):.3g}")
+            return x
         x = (lo * fhi - hi * flo) / (fhi - flo)
         fx = fun(x) - target
         if abs(fx) < tol * target:
@@ -306,7 +314,7 @@ def dysthe_for_height(H, period, depth=np.inf, order=2, eps_guess=None, **kwargs
     At large steepness the focused Dysthe group is multi-peaked, so the height
     at a single "focal point" jumps as eps changes. Instead H is the largest
     local wave height (crest minus deepest trough within 0.75 periods, from
-    the time series) over positions within half a wavelength of the envelope
+    the time series) over positions within 1.5 wavelengths of the envelope
     focus. This is continuous in eps, and it is the engineering quantity: the
     biggest wave in the group, measured where it is biggest. The returned
     (t_f, x_f) are that wave's crest time and position.
@@ -321,7 +329,7 @@ def dysthe_for_height(H, period, depth=np.inf, order=2, eps_guess=None, **kwargs
     def height(eps):
         wave, t_f, x_f = dysthe_focused_wave(eps, period, depth, order, **kwargs)
         t = wave.physical_times()
-        xs = x_f + lam * np.linspace(-0.5, 0.5, 21)
+        xs = x_f + lam * np.linspace(-1.5, 1.5, 61)
         eta = np.array([wave.eta(xs, ti) for ti in t])          # (time, position)
         Hx = [wave_height(t, eta[:, j], window=0.75 * period) for j in range(xs.size)]
         j = int(np.argmax(Hx))
