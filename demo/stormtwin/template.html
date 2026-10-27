@@ -763,7 +763,7 @@ button.tab { font: inherit; }
       xl: "", yl: "frequency (Hz)", w: opts.w || 640, h: opts.h1 || 180, vlines: vl, legend: [{ label: "measured", color: "--accent" }, { label: "expected (environment, operation)", color: "--ink" }], label: md.label });
     const dev = b2b ? md.b2b : md.dev, lim = b2b ? md.b2b_lim : md.lim;
     chart(bot, { series: [{ x: yrs, y: dev, color: "--accent", width: 1 }], xl: "years in service", yl: b2b ? "vs other blades (%)" : "deviation (%)", w: opts.w || 640, h: opts.h2 || 170,
-      hlines: [{ y: lim, label: "+3σ", color: "--crit" }, { y: -lim, label: "−3σ", color: "--crit" }], vlines: vl, label: md.label + " deviation" });
+      hlines: [{ y: lim, label: "+4σ", color: "--crit" }, { y: -lim, label: "−4σ", color: "--crit" }], vlines: vl, label: md.label + " deviation" });
   }
   function modalCard(host, t) {
     const md = t.modal.modes, keys = Object.keys(md);
@@ -774,7 +774,7 @@ button.tab { font: inherit; }
       return `<div class="alert"><b>${a.date}</b><span>${a.mode} outside its control limits. ${MODE_ACTION[kind]}.</span></div>`; }).join("")}</div>` : `<p class="hint">No frequency alarms since commissioning.</p>`;
     card.innerHTML = `<div class="panel-h"><h3>Natural frequencies since ${D.meta.farm.commissioned}</h3><span class="hint">design f₁ ${fmt(t.modal.f1_design, 3)} Hz · f₂ ${fmt(t.modal.f2_design, 3)} Hz</span></div>` +
       `<div class="panel-b"><div style="display:grid;gap:10px">${alerts}<div class="chips2" id="modechips"></div><div id="modalcharts"></div>` +
-      `<p class="cap">Each point is one operational-modal-analysis estimate. The expected value removes temperature, operating state and season using a model fitted on the first year; alarms need three estimates in a row beyond ±3σ. Orange lines: condition events; grey: storms. ${D.modal.cold_site ? "Winter icing lowers all blades together; the blade-to-blade view cancels it." : ""}</p></div></div>`;
+      `<p class="cap">Each point is one operational-modal-analysis estimate. The expected value removes temperature, operating state and season using a model fitted on the first year; alarms need five estimates in a row beyond ±4σ. Orange lines: condition events; grey: storms. ${D.modal.cold_site ? "Winter icing lowers all blades together; the blade-to-blade view cancels it." : ""}</p></div></div>`;
     host.append(card);
     const chips = card.querySelector("#modechips");
     const draw = () => {

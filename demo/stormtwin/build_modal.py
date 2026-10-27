@@ -35,19 +35,19 @@ from structure import Model, Turbine  # noqa: E402
 CFG = farms.current()
 TURB = farms.TURBINES[CFG["turbine"]]
 OUT = os.path.join(HERE, f"demo_data_{CFG['id']}.json")
-STEP_DAYS = 2
+STEP_DAYS = 3
 
 BLADE_EDGE = {"15MW": 0.66, "10MW": 0.92}     # nominal 1st edgewise frequency (Hz)
 
 # Damage scenarios (synthetic): (turbine, kind, start date, size)
 SCENARIOS = {
     "A": [("A07", "blade_crack", "B", datetime(2024, 5, 10), 0.028),
-          ("A02", "preload_loss", None, datetime(2025, 3, 1), 0.006),
+          ("A02", "preload_loss", None, datetime(2025, 3, 1), 0.012),
           ("A05", "scour", None, None, None)],
     "B": [("B06", "lightning", "C", datetime(2025, 8, 17), 0.012),
           ("B03", "scour", None, None, None)],
     "C": [("C02", "blade_crack", "A", datetime(2023, 4, 1), 0.022),
-          ("C04", "preload_loss", None, datetime(2024, 9, 1), 0.005)],
+          ("C04", "preload_loss", None, datetime(2024, 9, 1), 0.012)],
 }
 COLD_SITE = {"A": False, "B": False, "C": True}
 TEMP = {"A": (10.0, 5.0), "B": (14.0, 8.0), "C": (8.0, 9.0)}     # mean, seasonal amplitude (degC)
@@ -63,7 +63,7 @@ def tower_freqs(tb, scour):
     return float(f[0]), float(f[1])
 
 
-def fit_and_flag(t_days, obs, X, base_days=365.0, k=3.0, run=3):
+def fit_and_flag(t_days, obs, X, base_days=365.0, k=4.0, run=5):
     """Environmental normalisation and control chart.
 
     Fits obs ~ X on the first year, returns the normalised deviation (%),
@@ -121,8 +121,8 @@ if __name__ == "__main__":
         sc = scen.get(name)
         op = (rng.random(n) < 0.82).astype(float)                 # share of time operating each day
         # --- tower 1st mode -------------------------------------------------------
-        setup = 0.004 * (1 - np.exp(-td / 500))                   # soil set-up (stiffening)
-        growth = -0.006 * np.clip(season, 0, None)                # marine growth (summer)
+        setup = 0.002 * (1 - np.exp(-td / 300))                   # soil set-up (stiffening)
+        growth = -0.003 * (season + 1) / 2                        # marine growth (summer peak)
         oper = 0.004 * (op - 0.82)                                # operating vs parked
         temp_t = -0.00015 * (temp - Tm)
         rel = 1 + setup + growth + oper + temp_t
@@ -187,14 +187,14 @@ if __name__ == "__main__":
             rel_b = 100 * (blades[b] - med) / med
             base = td <= 365
             s_b = np.std(rel_b[base])
-            al_b = np.abs(rel_b - np.mean(rel_b[base])) > 3 * s_b
-            run = np.convolve(al_b.astype(int), np.ones(3, int), mode="full")[:n] >= 3
+            al_b = np.abs(rel_b - np.mean(rel_b[base])) > 4 * s_b
+            run = np.convolve(al_b.astype(int), np.ones(5, int), mode="full")[:n] >= 5
             label = f"Blade {b} 1st edgewise"
             modes[f"blade_{b}"] = dict(label=label, f=[round(float(v), 5) for v in blades[b]],
                                        pred=[round(float(v), 5) for v in pred],
                                        dev=[round(float(v), 3) for v in dev], lim=round(float(lim), 3),
                                        b2b=[round(float(v), 3) for v in rel_b - np.mean(rel_b[base])],
-                                       b2b_lim=round(float(3 * s_b), 3),
+                                       b2b_lim=round(float(4 * s_b), 3),
                                        alarm=first_alarm(dates, al), alarm_b2b=first_alarm(dates, run))
             if modes[f"blade_{b}"]["alarm_b2b"]:
                 alarms.append(dict(mode=label + " (blade-to-blade)", date=modes[f"blade_{b}"]["alarm_b2b"]))
