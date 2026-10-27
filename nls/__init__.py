@@ -14,7 +14,11 @@ from .solutions import (
     soliton,
 )
 from .diagnostics import ROGUE_THRESHOLD, amplification, find_rogue_events, invariant_drift, invariants
-from .physical import DeepWater
+from .physical import DeepWater, peregrine_focus_series, peregrine_for_height
+from .kinematics import (LinearWave, NLSWave, SpectralWaveField, frequency,
+                         wave_height, wavenumber)
+from .newwave import NewWave, jonswap
+from .stream_function import StreamFunctionWave
 
 __all__ = [
     "NLSSolver", "Result",
@@ -22,5 +26,7 @@ __all__ = [
     "breather_params", "kuznetsov_ma", "modulated_background", "peregrine",
     "random_wave_field", "soliton",
     "ROGUE_THRESHOLD", "amplification", "find_rogue_events", "invariant_drift", "invariants",
-    "DeepWater",
+    "DeepWater", "peregrine_focus_series", "peregrine_for_height",
+    "LinearWave", "NLSWave", "SpectralWaveField", "frequency", "wave_height",
+    "wavenumber", "NewWave", "jonswap", "StreamFunctionWave",
 ]

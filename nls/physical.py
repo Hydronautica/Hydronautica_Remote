@@ -105,3 +105,34 @@ class DeepWater:
                 f"a0={self.a0:.2f} m, k0*a0={self.eps:.3f}; "
                 f"1 unit X = {1 / self.x_scale:.1f} m, "
                 f"1 unit T = {1 / self.t_scale:.1f} s")
+
+
+def peregrine_focus_series(dw, t, phase=np.pi):
+    """Surface elevation (m) at the focal point x = 0 of a Peregrine wave
+    focusing at t = 0, from the exact solution. phase = pi puts a crest at the
+    focus (psi(0, 0) = -3)."""
+    from .solutions import peregrine
+    t = np.asarray(t, dtype=float)
+    psi = peregrine(dw.to_normalised_x(0.0, t), dw.to_normalised_t(t))
+    return np.real(dw.envelope(psi) * np.exp(1j * (phase - dw.w0 * t)))
+
+
+def peregrine_for_height(H, k0=None, wavelength=None, period=None, phase=np.pi,
+                         g=G):
+    """DeepWater scaling whose Peregrine breather has focal wave height H.
+
+    H is crest-to-trough, measured in the time series at the focus as for
+    :func:`nls.kinematics.wave_height`. Since the envelope width depends on the
+    steepness, a0 is found by fixed-point iteration (H is roughly 5.1 a0).
+    """
+    from .kinematics import wave_height
+    a0 = H / 5.1
+    for _ in range(20):
+        dw = DeepWater(a0, k0=k0, wavelength=wavelength, period=period, g=g)
+        t = np.linspace(-1.5 * dw.period, 1.5 * dw.period, 3001)
+        h = wave_height(t, peregrine_focus_series(dw, t, phase))
+        a0_new = a0 * H / h
+        if abs(a0_new - a0) < 1e-10 * a0:
+            break
+        a0 = a0_new
+    return DeepWater(a0, k0=k0, wavelength=wavelength, period=period, g=g)
