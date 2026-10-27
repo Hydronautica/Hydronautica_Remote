@@ -256,6 +256,22 @@ class Model:
         return m * G
 
 
+def thrust(U):
+    """15 MW-class rotor thrust (N): cut-in 3, rated 10.6, cut-out 25 m/s, then idling."""
+    if U < 3:
+        return 2e4 * U * U / 9
+    if U <= 10.6:
+        return 2.4e6 * (U / 10.6) ** 2
+    if U <= 25:
+        return 2.4e6 * (10.6 / U) ** 1.1
+    return 0.8e6 * (U / 35) ** 2
+
+
+def aero_damping(U):
+    """Fore-aft aerodynamic damping ratio added by the rotor."""
+    return 0.035 if 3 <= U <= 25 else 0.003
+
+
 # --- hydrodynamic loads ------------------------------------------------------------
 
 def morison_nodal(model, eta, u, ax, Cd=1.0, Cm=2.0):
@@ -298,8 +314,8 @@ def bolt_force(tb, Z):
     """
     Fv = 0.7 * tb.bolt_fub * tb.bolt_As * tb.preload_frac
     p, lam = 0.12, 2.1
-    Z1 = 0.25 * Fv
-    Z2 = 0.60 * Fv
+    Z1 = 0.40 * Fv      # gap starts to open (sized to stay closed in normal operation)
+    Z2 = 0.80 * Fv      # gap fully open
     F1 = Fv + p * Z1
     F2 = max(lam * Z2, F1 * 1.05)
     Z = np.asarray(Z, float)

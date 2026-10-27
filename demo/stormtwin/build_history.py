@@ -10,8 +10,10 @@
 3. Accumulation: damage per hour interpolated from the table and summed,
    then the current storm's detailed result (demo_data.json) is added.
 
-Wave-induced fatigue with an idling rotor only: in production the operational
-aerodynamic loads and damping come from SCADA and the aero-elastic model.
+Each sea state is paired with a typical hub wind: an operating rotor (mean
+thrust, aerodynamic damping) up to 25 m/s, idling above. Turbulent wind loads
+are left to the browser what-if model; in production the operational loads
+and damping come from SCADA and the aero-elastic model.
 
 Run after build_data.py:  python build_history.py   (~15-20 min, 4 processes)
 """
@@ -32,9 +34,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import build_data as bd  # noqa: E402
-from structure import Model, Turbine, bolt_damage, miner_damage, rainflow  # noqa: E402
+from structure import (Model, Turbine, aero_damping, bolt_damage, miner_damage,  # noqa: E402
+                       rainflow, thrust)
 
 HS_BINS = [1.5, 3.0, 4.5, 6.0, 7.5, 9.0]
+U_BINS = [8.0, 11.0, 15.0, 20.0, 27.0, 32.0]   # typical hub wind for each sea state
 COMMISSIONED = datetime(2019, 3, 1)
 STORM_PEAK = datetime(2026, 1, 14, 6)        # the storm replayed on the page
 HOT = ("flange_bolts", "door_frame", "mudline_weld")
@@ -51,8 +55,9 @@ def damage_rates(args):
     import warnings
     warnings.filterwarnings("ignore")
     spec, hs = args
+    U = U_BINS[HS_BINS.index(hs)]
     tb = Turbine(depth=spec["depth"], scour=spec["scour"], preload_frac=spec["preload"],
-                 name=spec["name"])
+                 name=spec["name"], damping_ratio=0.015 + aero_damping(U), mean_thrust=thrust(U))
     model = Model(tb)
     model.setup_damping()
     s = dict(spec, Hs=hs, seed=spec["seed"] + int(10 * hs))
@@ -225,6 +230,8 @@ if __name__ == "__main__":
         years_in_service=storm_years, hs_bins=HS_BINS, tp_bins=[tp_of(h) for h in HS_BINS],
         storms=storms,
         days=r2(years[daily], 4), hs_mean=float(hs_ref.mean()),
+        base=dict(U=U_BINS, zeta=[0.015 + aero_damping(u) for u in U_BINS],
+                  thrust=[thrust(u) for u in U_BINS]),
         hs_daily_max=r2([hs_ref[i:i + 24].max() for i in daily], 2))
     with open(os.path.join(HERE, "demo_data.json"), "w") as fh:
         json.dump(data, fh, separators=(",", ":"))

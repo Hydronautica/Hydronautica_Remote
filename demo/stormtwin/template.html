@@ -763,7 +763,8 @@ button.tab { font: inherit; }
     const w = t.whatif, Hh = D.history, bins = Hh.hs_bins, z0 = 0.015;
     const op = operating(inp.u);
     const zfa = z0 + (op ? 0.035 : 0.003), zss = z0 + 0.003;
-    const tp0 = tpTyp(inp.hs), R0 = specResp(tp0, z0, w.f1);
+    const zb = lin(bins, Hh.base.zeta, inp.hs);           // damping of the base run at this Hs
+    const tp0 = tpTyp(inp.hs), R0 = specResp(tp0, zb, w.f1);
     const rfa = specResp(inp.tp, zfa, w.f1) / R0, rss = specResp(inp.tp, zss, w.f1) / R0;
     const dl = rad(inp.wdir - inp.udir);
     const waveFac = Math.sqrt(Math.cos(dl) ** 2 * rfa * rfa + Math.sin(dl) ** 2 * rss * rss);
@@ -781,7 +782,7 @@ button.tab { font: inherit; }
         const nu = sig > 0 ? Math.sqrt(((sw * cw * nw) ** 2 + (swd * cu * nwd) ** 2)) / sig : nw;
         return { sig, nu, mean: mbar * cu };
       };
-      // base: aligned, idling base thrust, worst fibre
+      // base: aligned, base-run wind (mean thrust in the moment statistics), worst fibre
       const Dbase = pointDamage(k, w, s0, m0, n0);
       const Dtab = loglog(bins, t.history.hot[k].rates, inp.hs);
       let calib = Dbase > 1e-300 && Dtab > 0 ? Dtab / Dbase : null;
