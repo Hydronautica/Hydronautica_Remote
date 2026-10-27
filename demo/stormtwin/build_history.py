@@ -16,6 +16,7 @@ are left to the browser what-if model; in production the operational loads
 and damping come from SCADA and the aero-elastic model.
 
 Run after build_data.py:  python build_history.py   (~15-20 min, 4 processes)
+or for selected turbines:  python build_history.py T02 T05
 """
 
 import json
@@ -153,7 +154,8 @@ def r2(x, n=4):
 if __name__ == "__main__":
     with open(os.path.join(HERE, "demo_data.json")) as fh:
         data = json.load(fh)
-    specs = [t["spec"] for t in data["turbines"]]
+    only = sys.argv[1:]          # optional: re-run selected turbines, keep the others
+    specs = [t["spec"] for t in data["turbines"] if not only or t["spec"]["name"] in only]
     jobs = [(s, hs) for s in specs for hs in HS_BINS]
     with ProcessPoolExecutor(max_workers=4) as pool:
         rates = list(pool.map(damage_rates, jobs))
@@ -178,6 +180,8 @@ if __name__ == "__main__":
 
     for t in data["turbines"]:
         name, spec = t["spec"]["name"], t["spec"]
+        if name not in table:
+            continue
         expo = spec["Hs"] / REF_HS
         hs_loc = hs_ref * expo
         hist = {}

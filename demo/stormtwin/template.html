@@ -154,6 +154,21 @@ table.std td:first-child { font-family: var(--font-data); white-space: nowrap; f
 .wiout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
 .state { font-family: var(--font-data); font-size: 0.8rem; color: var(--muted); }
 @media (max-width: 1000px) { .wi, .wiout { grid-template-columns: minmax(0, 1fr); } .wiout svg.compass { max-width: 240px; } }
+.model { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.model svg.elev { width: 100%; height: auto; max-height: 640px; display: block; }
+.part { cursor: pointer; }
+.part:hover .hl, .part:focus .hl { stroke: var(--accent); stroke-width: 2.5; }
+.part.on .hl { stroke: var(--accent); stroke-width: 3; }
+.insp h3 { font-size: 1.3rem; }
+.insp details { border-top: 1px solid var(--line); padding: 8px 0; }
+.insp details:first-of-type { margin-top: 8px; }
+.insp summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; list-style-position: outside; }
+.insp summary::marker { color: var(--accent); }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 16px; font-size: 0.86rem; margin-top: 6px; }
+.kv span:nth-child(odd) { color: var(--muted); }
+.kv span:nth-child(even) { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
+.hint { font-size: 0.8rem; color: var(--muted); }
+@media (max-width: 760px) { .model { grid-template-columns: minmax(0, 1fr); } .model svg.elev { max-width: 260px; margin: 0 auto; } }
 footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
 button.tab { font: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -490,35 +505,6 @@ button.tab { font: inherit; }
     host.append(s);
   }
 
-  // ---------- hot-spot schematic ----------
-  function schematic(host, t, hst) {
-    const d = t.spec.depth, zmw = t.z_mudline_weld, M = D.meta.turbine;
-    const zTop = 34, zBot = zmw - 6;
-    const W = 160, H = 330;
-    const Y = (z) => 10 + (zTop - z) / (zTop - zBot) * (H - 20);
-    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Hot-spot locations" });
-    s.append(svg("rect", { x: 0, y: Y(0), width: W, height: Y(-d) - Y(0), fill: css("--accent-soft") }));
-    s.append(svg("rect", { x: 0, y: Y(-d), width: W, height: H - Y(-d), fill: css("--grid") }));
-    s.append(svg("line", { x1: 0, x2: W, y1: Y(0), y2: Y(0), stroke: css("--sea"), "stroke-width": 1.5 }));
-    const cx = 62;
-    s.append(svg("rect", { x: cx - 13, y: Y(zTop), width: 26, height: Y(zBot + 2) - Y(zTop), fill: css("--surface"), stroke: css("--muted"), "stroke-width": 1.2 }));
-    s.append(svg("line", { x1: cx - 18, x2: cx + 18, y1: Y(M.z_interface), y2: Y(M.z_interface), stroke: css("--ink"), "stroke-width": 3 }));
-    s.append(svg("rect", { x: cx + 13, y: Y(M.z_platform) - 2, width: 22, height: 4, fill: css("--muted") }));
-    if (t.spec.scour > 0) s.append(svg("path", { d: `M${cx - 40} ${Y(-d)} Q ${cx - 16} ${Y(-d - t.spec.scour) + 0} ${cx - 13} ${Y(-d - t.spec.scour)} M${cx + 13} ${Y(-d - t.spec.scour)} Q ${cx + 16} ${Y(-d - t.spec.scour)} ${cx + 40} ${Y(-d)}`, fill: "none", stroke: css("--warn"), "stroke-width": 1.5 }));
-    const items = [["door_frame", M.z_door, "Door"], ["platform", M.z_platform, "Platform"], ["flange_bolts", M.z_interface, "Flange"], ["foundation", -d, "Mudline"], ["mudline_weld", zmw, "Weld"]];
-    const mono = "IBM Plex Mono, monospace";
-    let lastY = -99;
-    items.sort((a, b) => b[1] - a[1]).forEach(([k, z, lab]) => {
-      let y = Y(z);
-      const ly = Math.max(y, lastY + 13); lastY = ly;
-      s.append(svg("circle", { cx, cy: y, r: 5, fill: css(statusVar[hst[k]]), stroke: css("--surface"), "stroke-width": 1.5 }));
-      s.append(svg("line", { x1: cx + 6, x2: 104, y1: y, y2: ly, stroke: css("--line") }));
-      const tx = svg("text", { x: 106, y: ly + 3.5, "font-size": 10, fill: css("--ink"), "font-family": mono }); tx.textContent = lab; s.append(tx);
-    });
-    const tt = svg("text", { x: cx, y: 9, "text-anchor": "middle", "font-size": 9, fill: css("--muted"), "font-family": mono }); tt.textContent = "↑ tower to hub +150 m"; s.append(tt);
-    host.append(s);
-  }
-
   // ---------- detail ----------
   function detail(i) {
     const t = T[i], f = t.final, host = document.getElementById("detail");
@@ -544,13 +530,17 @@ button.tab { font: inherit; }
       `<div><h3>Recommended action</h3><table class="actions">${t.actions.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</table></div></div>`;
     host.append(vd);
 
+    // interactive turbine model
+    const mp = el("div", { class: "panel" });
+    mp.innerHTML = `<div class="panel-h"><h3>Inspect the turbine</h3><span class="hint">Click any part of the model</span></div><div class="panel-b model"><div id="elev"></div><div class="insp" id="insp"></div></div>`;
+    host.append(mp);
+    drawModel(t, hst);
+    inspector(t, partSel);
+
     // hot spots
     const hs = el("div", { class: "panel" });
     hs.innerHTML = `<div class="panel-h"><h3>Hot spots</h3><span class="muted" style="font-size:0.8rem">ULS: utilisation (review 0.7, act 0.9) · Fatigue d: design-life days used by this storm (inspect from 60; RBI update from 90 where not inspectable)</span></div>`;
-    const body = el("div", { class: "panel-b hs" });
-    const sch = el("div");
-    schematic(sch, t, hst);
-    body.append(sch);
+    const body = el("div", { class: "panel-b" });
     const rows = [
       ["flange_bolts", "Tower-base flange bolts", `${D.meta.turbine.n_bolts} × ${D.meta.turbine.bolt}; gap opened ${f.flange_bolts.gap_opening}× in 20 min`],
       ["door_frame", "Door frame", `+${D.meta.turbine.z_door} m; fatigue SCF ${D.meta.scf.door_frame}`],
@@ -615,7 +605,7 @@ button.tab { font: inherit; }
     const bolt = el("div", { class: "panel chart" });
     bolt.innerHTML = `<div class="panel-h"><h3>Flange bolt response in the event</h3></div><div class="panel-b"><div></div><p class="cap">Each dot is one time step of the deep-dive. Past the first marker the joint gap opens and the bolt force climbs steeply.${t.spec.preload < 1 ? " This turbine's reduced preload shifts the whole curve." : ""}</p></div>`;
     host.append(bolt);
-    const bc = t.spec.preload < 1 ? D.bolt_curve_80 : D.bolt_curve;
+    const bc = t.spec.preload < 1 ? D.bolt_curve_low : D.bolt_curve;
     chart(bolt.querySelector(".panel-b > div"), {
       series: [{ x: bc.Z, y: bc.F, color: "--muted", width: 2 }, { x: dd.Z, y: dd.Fb, color: "--accent", points: true, r: 2 }],
       xl: "tension per bolt segment Z (MN)", yl: "bolt force (MN)", h: 220,
@@ -688,6 +678,146 @@ button.tab { font: inherit; }
     const leg = el("div", { class: "legend", style: "margin-top:6px" }, HOTS.map((k) => `<span><i class="dot" style="background:var(${HOTVAR[k]});border-radius:2px"></i>${HOTNAME[k]}</span>`).join(""));
     lb.append(leg);
     const paceEl = document.getElementById("pace"); if (paceEl) paceEl.textContent = fmt(pace, 1) + "%";
+  }
+
+  // ---------- interactive turbine model ----------
+  const GEO = { Dtop: 6.5, tb: 0.042, tt: 0.022, tp: 0.095, embed: 42, rotorD: 240, Cd: 1.0, Cm: 2.0 };
+  let partSel = "flange";
+  const kv = (rows) => `<div class="kv">${rows.map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}</div>`;
+  function hotRows(t, k) {
+    const f = t.final[k];
+    const rows = [["ULS utilisation (this storm)", fmt(f.uls, 2)], ["Fatigue used by this storm", fmt(f.days, 0) + " design-life days"]];
+    if (t.history) rows.push(["Life used since commissioning", fmt(t.history.hot[k].total, 1) + "%"], ["Projected fatigue life", (t.history.hot[k].projected_life > 200 ? "> 200" : fmt(t.history.hot[k].projected_life, 0)) + " y"]);
+    return rows;
+  }
+  function liveRows(t, k) {
+    if (!t.whatif || !D.history) return "<p class='hint'>What-if data not available.</p>";
+    const r = whatif(t, WI), yrs = D.history.years_in_service;
+    const avg = (t.history.hot[k].total / 100 / D.meta.dff[k]) / (yrs * 8766);
+    const days = r[k].rate * D.meta.dff[k] * D.meta.design_life * 365;
+    return kv([["Conditions", `H<sub>s</sub> ${WI.hs.toFixed(1)} m, T<sub>p</sub> ${WI.tp.toFixed(1)} s, wind ${WI.u.toFixed(1)} m/s`],
+      ["Damage rate", (days < 0.01 ? days.toExponential(1) : fmt(days, 2)) + " d/h"], ["Relative to average", fmt(r[k].rate / avg, 2) + "×"]]) +
+      `<p class="hint" style="margin-top:4px">Change the conditions in the What-if section below.</p>`;
+  }
+  function pyCurves(host) {
+    const D0 = D.meta.turbine.D_pile, depths = [2, 6, 12, 24], series = [];
+    const cols = ["--accent", "--sea", "--warn", "--crit"];
+    depths.forEach((z, i) => {
+      const C1 = 2.97, C2 = 3.42, C3 = 53.7, g = 10e3, k = 22e6;
+      const pu = 0.9 * Math.min((C1 * z + C2 * D0) * g * z, C3 * D0 * g * z);
+      const ys = [], ps = [];
+      for (let j = 0; j <= 40; j++) { const y = j * 0.005; ys.push(y * 1000); ps.push(pu * Math.tanh(k * z * y / pu) / 1e6); }
+      series.push({ x: ys, y: ps, color: cols[i], width: 2 });
+    });
+    chart(host, { series, xl: "lateral displacement y (mm)", yl: "soil resistance p (MN/m)", w: 460, h: 220,
+      legend: depths.map((z, i) => ({ label: z + " m", color: cols[i] })), label: "p-y curves" });
+  }
+  function inspector(t, part) {
+    const host = document.getElementById("insp"); if (!host) return;
+    const M = D.meta.turbine, f = t.final, dd = t.deep, hst = hotspotStatus(t);
+    const air = Math.min(t.airgap, dd ? dd.airgap : 99);
+    const pill = (st) => `<span class="pill ${st}">${statusText[st]}</span>`;
+    const sec = (title, body, open) => `<details${open ? " open" : ""}><summary>${title}</summary>${body}</details>`;
+    let html = "", after = null;
+    if (part === "rna") {
+      const r = t.whatif && D.history ? whatif(t, WI) : null;
+      html = `<h3>Rotor and nacelle</h3>` + kv([["Hub height", "+" + M.z_hub + " m"], ["Rotor diameter (assumed)", GEO.rotorD + " m"], ["RNA mass", fmt(M.m_rna / 1e3, 0) + " t"], ["First natural frequency", fmt(t.f1, 3) + " Hz"]]) +
+        sec("This storm", kv([["State", "idling, feathered"], ["Mean thrust used", "0.8 MN"], ["Aerodynamic damping", "≈ 0.3%"]]), true) +
+        sec("What-if now", r ? kv([["Wind at hub", WI.u.toFixed(1) + " m/s"], ["State", r.op ? "operating" : "idling"], ["Mean thrust", fmt(r.T / 1e6, 2) + " MN"], ["Aerodynamic damping fore-aft", r.op ? "≈ 3.5%" : "≈ 0.3%"], ["Thrust moment at tower base", fmt(r.T * (M.z_hub - M.z_interface) / 1e6, 0) + " MN·m"]]) : "", false);
+    } else if (part === "tower") {
+      html = `<h3>Tower</h3>` + kv([["Base / top diameter", `${fmt(M.D_pile, 1)} / ${fmt(GEO.Dtop, 1)} m`], ["Base / top wall", `${GEO.tb * 1000} / ${GEO.tt * 1000} mm`], ["Length", fmt(M.z_hub - M.z_interface, 0) + " m"], ["First natural frequency", fmt(t.f1, 3) + " Hz"], ["Door elevation", "+" + M.z_door + " m"]]) +
+        sec("This storm", kv([["Peak moment at tower base", dd ? fmt(Math.max(...dd.M_flange.map(Math.abs)), 0) + " MN·m (deep-dive)" : fmt(Math.max(...t.screen_series.M_flange.map(Math.abs)), 0) + " MN·m (screening)"], ["First-frequency drop at peak", fmt(t.freq_drop, 1) + "%"]]), true);
+    } else if (part === "door") {
+      html = `<h3>Door frame ${pill(hst.door_frame)}</h3>` + kv([["Elevation", "+" + M.z_door + " m"], ["Faces", "south-east (135°)"], ["Fatigue SCF (local FE)", D.meta.scf.door_frame], ["S-N curve", "DNV-RP-C203 D, in air"], ["Design fatigue factor", D.meta.dff.door_frame]]) +
+        sec("This storm", kv(hotRows(t, "door_frame")), true) + sec("What-if now", liveRows(t, "door_frame"), false);
+    } else if (part === "flange") {
+      html = `<h3>Tower-base flange ${pill(hst.flange_bolts)}</h3>` + kv([["Elevation", "+" + M.z_interface + " m"], ["Bolts", `${M.n_bolts} × ${M.bolt}`], ["Preload", fmt(t.spec.preload * 100, 0) + "% of design" + (t.spec.preload < 1 ? " ◆" : "")], ["Gap opens / fully open", dd ? `${fmt(dd.bolt_params.Z1, 2)} / ${fmt(dd.bolt_params.Z2, 2)} MN per segment` : "0.40 / 0.80 × preload"], ["S-N curve", "EN 1993-1-9 detail 50, bolts"]]) +
+        sec("This storm", kv(hotRows(t, "flange_bolts").concat([["Gap openings (20 min at peak)", f.flange_bolts.gap_opening], ["Gap fully open", f.flange_bolts.full_open ? "yes" : "no"]])) + `<div class="chart" id="insp-bolt" style="margin-top:8px"></div>`, true) +
+        sec("What-if now", liveRows(t, "flange_bolts") + (t.whatif && D.history ? `<p class="hint">Flange joint under the expected largest hourly load: <b>${whatif(t, WI).gap}</b></p>` : ""), false);
+      after = () => {
+        const bc = t.spec.preload < 1 ? D.bolt_curve_low : D.bolt_curve, h = document.getElementById("insp-bolt"); if (!h) return;
+        const ser = [{ x: bc.Z, y: bc.F, color: "--muted", width: 2 }];
+        if (dd) ser.push({ x: dd.Z, y: dd.Fb, color: "--accent", points: true, r: 2 });
+        chart(h, { series: ser, xl: "segment tension Z (MN)", yl: "bolt force (MN)", w: 460, h: 200, label: "Bolt curve" });
+      };
+    } else if (part === "platform") {
+      html = `<h3>Platform and boat landing ${pill(hst.platform)}</h3>` + kv([["Platform underside", "+" + M.z_platform + " m"], ["Largest crest this storm", fmt(Math.max(t.Cmax, dd ? dd.crest : 0), 1) + " m"], ["Crest clearance", fmt(air, 1) + " m"], ["Slamming", dd && dd.slam ? "yes" : "no"]]) +
+        sec("Why it matters", `<p class="hint">Green water on the platform and wave impact on the boat landing damage secondary steel, anodes and J-tube clamps. A clearance under 1.5 m triggers an inspection.</p>`, true);
+    } else if (part === "splash") {
+      html = `<h3>Monopile in the water column</h3>` + kv([["Diameter", fmt(M.D_pile, 1) + " m"], ["Water depth", fmt(t.spec.depth, 1) + " m"], ["Morison C<sub>d</sub> / C<sub>m</sub>", `${GEO.Cd} / ${GEO.Cm}`], ["Wall", GEO.tp * 1000 + " mm"]]) +
+        sec("This storm", kv([["H<sub>s</sub> at peak", fmt(t.Hs, 1) + " m"], ["Largest wave", `${fmt(t.Hmax, 1)} m (${fmt(t.Hmax / t.Hs, 2)} H<sub>s</sub>)`], ["Largest crest", fmt(t.Cmax, 1) + " m"]].concat(dd ? [["Crest particle speed", fmt(dd.u_crest, 1) + " m/s"], ["Wave speed", fmt(dd.c, 1) + " m/s"], ["Breaking", dd.slam ? "yes, slamming applied" : "no"]] : [])) + (dd ? `<div class="chart" id="insp-prof" style="margin-top:8px"></div>` : ""), true);
+      after = () => { const h = document.getElementById("insp-prof"); if (!h || !dd) return;
+        chart(h, { series: [{ x: dd.screen_profile.u, y: dd.screen_profile.z, color: "--muted", dash: "4 3" }, { x: dd.crest_profile.u, y: dd.crest_profile.z, color: "--accent", width: 2 }], xl: "u under the crest (m/s)", yl: "z (m)", w: 460, h: 240, legend: [{ label: "2nd order", color: "--accent" }, { label: "screening", color: "--muted", dash: "4 3" }], label: "Crest velocity profile" }); };
+    } else if (part === "weld") {
+      html = `<h3>Mudline circumferential weld ${pill(hst.mudline_weld)}</h3>` + kv([["Elevation", fmt(t.z_mudline_weld, 1) + " m (largest moment)"], ["Inspectable", "no (below the seabed)"], ["SCF", D.meta.scf.mudline_weld], ["S-N curve", "DNV-RP-C203 D, seawater with CP"], ["Design fatigue factor", D.meta.dff.mudline_weld]]) +
+        sec("This storm", kv(hotRows(t, "mudline_weld")), true) + sec("What-if now", liveRows(t, "mudline_weld"), false);
+    } else if (part === "soil") {
+      html = `<h3>Foundation and soil ${pill(hst.foundation)}</h3>` + kv([["Embedment", GEO.embed + " m"], ["Scour", t.spec.scour > 0 ? fmt(t.spec.scour, 1) + " m ◆" : "none recorded"], ["Soil model", "API sand p-y, φ′ = 35°, cyclic"], ["First natural frequency", fmt(t.f1, 3) + " Hz"]]) +
+        sec("This storm", kv([["Peak mudline rotation", fmt(f.foundation.rot_peak, 2) + "°"], ["First-frequency drop at peak", fmt(t.freq_drop, 1) + "%"], ["Action trigger", "rotation 0.25° or drop 3%"]]), true) +
+        sec("p-y curves", `<div class="chart" id="insp-py"></div><p class="hint">Production models use site-specific curves (for example PISA) and track stiffness change from the measured frequency.</p>`, false);
+      after = () => { const det = host.querySelectorAll("details")[1]; const draw = () => { const h = document.getElementById("insp-py"); if (h && !h.firstChild) pyCurves(h); }; det.addEventListener("toggle", draw); if (det.open) draw(); };
+    }
+    host.innerHTML = html;
+    if (after) after();
+  }
+  function drawModel(t, hst) {
+    const host = document.getElementById("elev"); if (!host) return;
+    const M = D.meta.turbine, d = t.spec.depth, toe = -d - GEO.embed, top = M.z_hub + GEO.rotorD / 2;
+    const W = 260, H = 640, Y = (z) => 12 + (top - z) / (top - toe) * (H - 24);
+    const ex = 2.2, cx = 120, half = (Dm) => Dm * ex * (H - 24) / (top - toe) / 2 * 1.0 + 3;
+    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, class: "elev", role: "group", "aria-label": "Turbine model" });
+    s.append(svg("rect", { x: 0, y: Y(0), width: W, height: Y(-d) - Y(0), fill: css("--accent-soft") }));
+    s.append(svg("rect", { x: 0, y: Y(-d), width: W, height: H - Y(-d), fill: css("--grid") }));
+    s.append(svg("line", { x1: 0, x2: W, y1: Y(0), y2: Y(0), stroke: css("--sea"), "stroke-width": 1.5 }));
+    const statusCol = (st) => css(statusVar[st] || "--muted");
+    const part = (id, label, build) => {
+      const g = svg("g", { class: "part" + (partSel === id ? " on" : ""), tabindex: 0, role: "button", "aria-label": label });
+      build(g);
+      const pick = () => { partSel = id; drawModel(t, hst); inspector(t, id); };
+      g.addEventListener("click", pick);
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+      s.append(g);
+    };
+    const hp = half(M.D_pile), ht = half(GEO.Dtop);
+    // foundation (embedded pile + soil)
+    part("soil", "Foundation and soil", (g) => {
+      g.append(svg("rect", { x: 8, y: Y(-d), width: W - 16, height: Y(toe) - Y(-d) + 6, fill: "transparent", class: "hl", stroke: "transparent" }));
+      g.append(svg("rect", { x: cx - hp, y: Y(-d), width: 2 * hp, height: Y(toe) - Y(-d), fill: css("--surface"), stroke: css("--muted"), class: "hl" }));
+      for (let z = -d - 4; z > toe + 2; z -= 7) { g.append(svg("line", { x1: cx - hp - 14, x2: cx - hp, y1: Y(z), y2: Y(z), stroke: css("--muted"), "stroke-dasharray": "2 2" })); g.append(svg("line", { x1: cx + hp, x2: cx + hp + 14, y1: Y(z), y2: Y(z), stroke: css("--muted"), "stroke-dasharray": "2 2" })); }
+      if (t.spec.scour > 0) g.append(svg("path", { d: `M${cx - hp - 30} ${Y(-d)} Q ${cx - hp - 4} ${Y(-d - t.spec.scour)} ${cx - hp} ${Y(-d - t.spec.scour)} M${cx + hp} ${Y(-d - t.spec.scour)} Q ${cx + hp + 4} ${Y(-d - t.spec.scour)} ${cx + hp + 30} ${Y(-d)}`, fill: "none", stroke: css("--warn"), "stroke-width": 2 }));
+      g.append(svg("circle", { cx: cx + hp + 22, cy: Y(-d - 12), r: 5, fill: statusCol(hst.foundation) }));
+    });
+    part("weld", "Mudline weld", (g) => {
+      g.append(svg("rect", { x: cx - hp - 3, y: Y(t.z_mudline_weld) - 3, width: 2 * hp + 6, height: 6, fill: statusCol(hst.mudline_weld), class: "hl", stroke: "transparent" }));
+    });
+    part("splash", "Monopile in the water column", (g) => {
+      g.append(svg("rect", { x: cx - hp, y: Y(M.z_interface), width: 2 * hp, height: Y(-d) - Y(M.z_interface), fill: css("--surface"), stroke: css("--muted"), class: "hl" }));
+    });
+    part("platform", "Platform and boat landing", (g) => {
+      g.append(svg("rect", { x: cx + hp, y: Y(M.z_platform) - 3, width: 34, height: 6, fill: statusCol(hst.platform), class: "hl", stroke: "transparent" }));
+      g.append(svg("line", { x1: cx - hp - 10, x2: cx - hp, y1: Y(2), y2: Y(2), stroke: css("--muted"), "stroke-width": 3 }));
+    });
+    part("tower", "Tower", (g) => {
+      g.append(svg("path", { d: `M${cx - hp} ${Y(M.z_interface)} L${cx - ht} ${Y(M.z_hub - 4)} L${cx + ht} ${Y(M.z_hub - 4)} L${cx + hp} ${Y(M.z_interface)} Z`, fill: css("--surface"), stroke: css("--muted"), class: "hl" }));
+    });
+    part("door", "Door frame", (g) => {
+      g.append(svg("rect", { x: cx - 4, y: Y(M.z_door + 3), width: 8, height: Y(M.z_door - 1) - Y(M.z_door + 3), fill: statusCol(hst.door_frame), class: "hl", stroke: "transparent", rx: 2 }));
+    });
+    part("flange", "Tower-base flange", (g) => {
+      g.append(svg("rect", { x: cx - hp - 6, y: Y(M.z_interface) - 3, width: 2 * hp + 12, height: 6, fill: statusCol(hst.flange_bolts), class: "hl", stroke: "transparent" }));
+    });
+    part("rna", "Rotor and nacelle", (g) => {
+      g.append(svg("rect", { x: cx - 16, y: Y(M.z_hub) - 7, width: 40, height: 14, rx: 3, fill: css("--surface"), stroke: css("--muted"), class: "hl" }));
+      g.append(svg("line", { x1: cx - 20, x2: cx - 20, y1: Y(M.z_hub + GEO.rotorD / 2), y2: Y(M.z_hub - GEO.rotorD / 2), stroke: css("--muted"), "stroke-width": 3, class: "hl" }));
+      g.append(svg("circle", { cx: cx - 20, cy: Y(M.z_hub), r: 5, fill: css("--ink") }));
+    });
+    // labels
+    const mono = "IBM Plex Mono, monospace";
+    [[M.z_hub, "hub +" + M.z_hub], [M.z_interface, "flange +" + M.z_interface], [0, "MSL"], [-d, "seabed " + fmt(-d, 0)], [toe, "toe " + fmt(toe, 0)]].forEach(([z, l]) => {
+      const tx = svg("text", { x: W - 4, y: Y(z) - 3, "text-anchor": "end", "font-size": 9.5, fill: css("--muted"), "font-family": mono }); tx.textContent = l + " m"; s.append(tx);
+    });
+    host.innerHTML = ""; host.append(s);
+    host.append(el("p", { class: "cap" }, "Widths drawn ×2.2 for clarity. Coloured parts carry this storm's status."));
   }
 
   // ---------- what-if model (browser-side, anchored to the base runs) ----------
@@ -851,6 +981,12 @@ button.tab { font: inherit; }
 
   function drawWhatif() {
     const t = T[current];
+    const ins = document.getElementById("insp");
+    if (ins) {                                        // keep the open sections, refresh live values
+      const open = [...ins.querySelectorAll("details")].map((d) => d.open);
+      inspector(t, partSel);
+      ins.querySelectorAll("details").forEach((d, i) => { if (open[i] !== undefined) d.open = open[i]; });
+    }
     const sec = document.getElementById("whatif");
     if (!t.whatif || !D.history) { sec.hidden = true; return; }
     sec.hidden = false;
@@ -903,9 +1039,9 @@ button.tab { font: inherit; }
 
   function boltCurve() {
     chart(document.getElementById("boltcurve"), {
-      series: [{ x: D.bolt_curve.Z, y: D.bolt_curve.F, color: "--accent", width: 2 }, { x: D.bolt_curve_80.Z, y: D.bolt_curve_80.F, color: "--warn", width: 2, dash: "5 3" }],
+      series: [{ x: D.bolt_curve.Z, y: D.bolt_curve.F, color: "--accent", width: 2 }, { x: D.bolt_curve_low.Z, y: D.bolt_curve_low.F, color: "--warn", width: 2, dash: "5 3" }],
       xl: "tension per bolt segment Z (MN)", yl: "bolt force (MN)", h: 220,
-      legend: [{ label: "design preload", color: "--accent" }, { label: "80% preload", color: "--warn", dash: "5 3" }], label: "Bolt load curve",
+      legend: [{ label: "design preload", color: "--accent" }, { label: Math.round(D.low_preload * 100) + "% preload", color: "--warn", dash: "5 3" }], label: "Bolt load curve",
     });
   }
 

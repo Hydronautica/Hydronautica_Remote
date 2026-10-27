@@ -54,8 +54,8 @@ for r in range(3):
             Hs=round(8.0 + 0.4 * (3 - c) + 0.2 * r, 2),
             seed=100 + i, scour=0.0, preload=1.0))
 FARM[4]["scour"] = 3.5           # T05: scour found in the last survey
-FARM[1]["preload"] = 0.80        # T02: 80% bolt preload at the last campaign
-CONDITION = {"T05": "Scour 3.5 m (last survey)", "T02": "Flange bolt preload 80% (last campaign)"}
+FARM[1]["preload"] = 0.60        # T02: 60% bolt preload found at the last campaign
+CONDITION = {"T05": "Scour 3.5 m (last survey)", "T02": "Flange bolt preload 60% (last campaign)"}
 
 
 def zero_crossing(t, eta):
@@ -410,7 +410,8 @@ if __name__ == "__main__":
                                z_interface=tb_ref.z_interface, z_door=tb_ref.z_door,
                                z_platform=tb_ref.z_platform)),
         bolt_curve=bolt_curve(tb_ref),
-        bolt_curve_80=bolt_curve(Turbine(preload_frac=0.8)),
+        bolt_curve_low=bolt_curve(Turbine(preload_frac=min(f["preload"] for f in FARM))),
+        low_preload=min(f["preload"] for f in FARM),
         turbines=results)
     with open(os.path.join(HERE, "demo_data.json"), "w") as fh:
         json.dump(data, fh, separators=(",", ":"))
