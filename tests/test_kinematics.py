@@ -150,3 +150,36 @@ def test_linear_extrapolation_above_mwl():
     # d(ut)/dz = k om^2 a Sh sin(th); at z = 0, Sh = 1
     th = -om * t
     assert np.isclose(above["ut"], at0["ut"] + zc * k * om**2 * 1.0 * np.sin(th))
+
+
+def test_breaking_height_deep_water_limit():
+    from nls.stream_function import breaking_height
+    T = 10.0
+    exact = 0.141063 * 1.0923**2 * G * T**2 / (2 * np.pi)  # Williams highest wave
+    assert abs(breaking_height(T, 1000.0) / exact - 1) < 0.01
+
+
+def test_stream_function_near_breaking():
+    from nls.stream_function import breaking_height
+    T, d = 10.0, 100.0
+    Hb = breaking_height(T, d)
+    sf = nls.StreamFunctionWave(0.95 * Hb, T, d)
+    assert sf.residual < 1e-4
+    assert np.isclose(sf.crest - sf.trough, 0.95 * Hb)
+    assert 0.6 < sf.crest / sf.H < 0.7          # strongly crest-dominated
+    u_crest = sf.kinematics(0.0, sf.crest - 1e-9)["u"]
+    assert 0.6 < u_crest / sf.c < 1.0
+
+
+def test_stream_function_analytic_jacobian():
+    sf = nls.StreamFunctionWave(12.0, 10.0, 100.0, N=16)
+    v = sf._v * (1 + 1e-3 * np.random.default_rng(0).standard_normal(sf._v.size))
+    r, J = sf._residual(v, 0.12, jacobian=True)
+    F = np.empty_like(J)
+    for i in range(v.size):
+        h = 1e-6 * max(1.0, abs(v[i]))
+        vp, vm = v.copy(), v.copy()
+        vp[i] += h
+        vm[i] -= h
+        F[:, i] = (sf._residual(vp, 0.12) - sf._residual(vm, 0.12)) / (2 * h)
+    assert np.abs(J - F).max() / np.abs(F).max() < 1e-8

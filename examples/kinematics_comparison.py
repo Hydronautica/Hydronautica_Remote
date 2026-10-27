@@ -24,7 +24,7 @@ H, T, d = 12.0, 10.0, 100.0   # wave height (m), period (s), depth (m)
 STRETCH = "wheeler"            # for the linear-type waves: wheeler | linear | none
 
 # --- the three waves ---------------------------------------------------------
-stream = nls.StreamFunctionWave(H, T, d, N=24)
+stream = nls.StreamFunctionWave(H, T, d)
 newwave = nls.NewWave(Tp=T, depth=d, H=H, gamma=3.3)
 
 dw = nls.peregrine_for_height(H, period=T)

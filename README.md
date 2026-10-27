@@ -38,7 +38,7 @@ nls.find_rogue_events(res)     # local maxima above 2√2 × RMS (H > 2 Hs)
 | `nls.diagnostics` | `invariants`, `invariant_drift`, `amplification`, `find_rogue_events` |
 | `nls.physical` | `DeepWater`: scales normalised (X, T, ψ) to metres and seconds for a given carrier period/wavelength and amplitude, and rebuilds the surface elevation η |
 | `nls.kinematics` | `SpectralWaveField` (linear kinematics of a sum of modes with Wheeler / linear-extrapolation stretching), `NLSWave` (kinematics from an NLS run), `LinearWave`, `wave_height`, dispersion helpers |
-| `nls.stream_function` | `StreamFunctionWave`: fully nonlinear regular wave by Fenton's Fourier method |
+| `nls.stream_function` | `StreamFunctionWave`: fully nonlinear regular wave by Fenton's Fourier method (analytic Jacobian, automatic mode count, converges to ~98% of breaking); `breaking_height(T, d)` |
 | `nls.newwave` | `NewWave`: Tromans focused linear wave group from a JONSWAP (or custom) spectrum |
 | `nls.plotting` | Space–time maps, 3D surface, peak-amplitude and snapshot plots |
 
@@ -99,6 +99,34 @@ Points above the surface or below the bed are NaN.
 | NewWave (linear, Wheeler) | 6.93 | −5.07 | 5.12 | 3.33 | 1.30 | 2.76 | 4.34 |
 | NLS Peregrine (Wheeler) | 6.54 | −5.45 | 4.06 | 3.13 | 1.49 | 2.51 | 3.83 |
 
+## Approaching breaking
+
+`breaking_height(T, d)` gives the limiting height of a steady wave of period T
+in depth d. It uses Fenton's fit to Williams' highest waves, with the
+wavelength's growth with height taken from the stream function solution. In
+deep water this is 0.0269 gT², within 0.4% of the exact value.
+
+`examples/breaking_sweep.py` sweeps H from 0.1 to 0.97 H_b (T = 10 s,
+d = 100 m, H_b = 26.4 m) and compares the three models at each height:
+
+- **Stream function**: crest/H rises from 0.51 to 0.66, and u_crest/c from
+  0.06 to 0.80. Normalised accelerations and vertical velocities *fall* as the
+  wave steepens, because the steep wave has a longer wavelength and flatter
+  troughs.
+- **NewWave**: being linear, its shape doesn't change (crest/H = 0.577 at every
+  height). With Wheeler stretching its crest velocity drops below the stream
+  function's above about 0.7 H_b. With linear extrapolation u_crest exceeds the
+  phase speed above about 0.75 H_b, i.e. it predicts kinematic breaking.
+- **NLS Peregrine**: the crest share rises to 0.70, but not through Stokes-type
+  nonlinearity. The envelope narrows to about one wavelength, so the adjacent
+  troughs get shallower. Its accelerations grow fastest (+50% over the stream
+  function at 0.97 H_b). The background steepness reaches k₀a₀ = 0.24 and
+  about 0.2% of the energy sits at k < 0, both well outside where NLS is
+  valid.
+- **Stretching**: at large H, Wheeler versus linear extrapolation changes the
+  crest kinematics of NewWave and NLS by a factor of about 2, more than the
+  difference between wave theories.
+
 ## Examples
 
 Run from the repo root; figures go to `figures/`.
@@ -110,6 +138,7 @@ python examples/kuznetsov_ma.py     # 3 KM periods, error ~2e-5
 python examples/random_sea.py       # random sea, rogue-event detection
 python examples/ocean_peregrine.py  # 10 s swell, 1.5 m: 4.5 m crest, probe time series
 python examples/kinematics_comparison.py  # NLS vs stream function vs NewWave kinematics (~35 s)
+python examples/breaking_sweep.py         # the same, swept up to 0.97 x breaking height (~2 min)
 ```
 
 ## Practical notes
