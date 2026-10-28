@@ -459,8 +459,16 @@ details.sec > * + * { margin-top: 8px; }
 .bl-l select { width: auto; }
 .bl-soil { margin-bottom: 6px; }
 .bl-ro { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-.bl-top { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.bl-top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(15rem, 1fr); gap: 14px; align-items: start; }
 .bl-svg { width: 100%; height: auto; max-height: 470px; display: block; }
+.bl-vt { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.bl-3d { height: 470px; border-radius: 8px; overflow: hidden; background: linear-gradient(var(--sky, #cfe3ef), color-mix(in srgb, var(--sky, #cfe3ef) 60%, var(--bg))); cursor: grab; }
+.bl-3d canvas { display: block; }
+.bl-st { width: 100%; border-collapse: collapse; font-size: 0.76rem; margin: 2px 0 6px; }
+.bl-st th { text-align: left; font-weight: 500; color: var(--muted); font-size: 0.7rem; padding: 2px 4px; }
+.bl-st td { padding: 2px 4px; }
+.bl-st td:nth-child(2), .bl-st td:nth-child(3) { width: 5.2rem; }
+.bl-st td:last-child { width: 2rem; }
 .bl-fq { width: 100%; height: auto; display: block; }
 .bl-h { margin: 14px 0 4px; font-size: 0.86rem; }
 .bl-kv .kv { font-size: 0.8rem; grid-template-columns: minmax(8rem, 1fr) auto; }
@@ -468,7 +476,7 @@ details.sec > * + * { margin-top: 8px; }
 .bl-chk td.mono { font-size: 0.74rem; white-space: normal; }
 .bl-out .grid2 { margin-top: 10px; }
 .ey-type { font: inherit; font-size: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; }
-@media (max-width: 1360px) { .bl-top { grid-template-columns: minmax(0, 1fr); } .bl-draw { max-width: 340px; margin: 0 auto; } }
+@media (max-width: 1360px) { .bl-top { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 1000px) { .bl-cols { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 700px) {
   .bl-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
@@ -1596,6 +1604,8 @@ details.sec > * + * { margin-top: 8px; }
     const white = new THREE.MeshStandardMaterial({ color: 0xe9edf0, roughness: 0.55, metalness: 0.1 });
     const yellow = new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.6 });
     const grey = new THREE.MeshStandardMaterial({ color: 0x8b98a3, roughness: 0.7 });
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0xf6f7f8, roughness: 0.42, metalness: 0.02 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x4a5560, roughness: 0.6 });
     const hiMat = new THREE.MeshStandardMaterial({ color: 0x0a6a8a, emissive: 0x0a6a8a, emissiveIntensity: 0.55, roughness: 0.5 });
     let lit = [], showLabels = true;
     const mark = new THREE.Mesh(new THREE.TorusGeometry(1, 0.08, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true, opacity: 0.95 }));
@@ -1609,23 +1619,12 @@ details.sec > * + * { margin-top: 8px; }
     }
     function buildTurbine(t, i) {
       const m = metaFor(i), g = new THREE.Group();
-      const zi = m.z_interface / U, zh = m.z_hub / U, R = m.rotor_D / 2 / U, rp = m.D_pile / 2 / U, rt = m.D_tower_top / 2 / U, rb = (m.D_tower_base || m.D_pile) / 2 / U;
-      const pile = new THREE.Mesh(new THREE.CylinderGeometry(rp, rp, zi + 4, 20), grey); pile.position.y = (zi - 4) / 2; g.add(pile);
-      const tp = new THREE.Mesh(new THREE.CylinderGeometry(rp * 1.02, rp * 1.02, 0.9, 20), yellow); tp.position.y = zi - 0.45; g.add(tp);
-      const plat = new THREE.Mesh(new THREE.CylinderGeometry(rp * 1.9, rp * 1.9, 0.12, 24), grey); plat.position.y = m.z_platform / U; g.add(plat);
-      const tower = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, zh - zi - 0.4, 20), white); tower.position.y = zi + (zh - zi - 0.4) / 2; g.add(tower);
-      const yaw = new THREE.Group(); yaw.position.y = zh; g.add(yaw);
-      const nac = new THREE.Mesh(new THREE.BoxGeometry(rt * 2.2, rt * 2.2, rt * 6), white); nac.position.z = -rt * 1.6; yaw.add(nac);
-      const rotor = new THREE.Group(); rotor.position.z = rt * 1.8; yaw.add(rotor);
-      const hub = new THREE.Mesh(new THREE.SphereGeometry(rt * 1.1, 16, 12), white); rotor.add(hub);
-      const blades = [];
-      for (let b = 0; b < 3; b++) {
-        const blade = new THREE.Mesh(new THREE.BoxGeometry(R * 0.07, R, R * 0.02), white);
-        blade.geometry.translate(0, R / 2, 0); blade.rotation.z = (b * 2 * Math.PI) / 3; rotor.add(blade); blades.push(blade);
-      }
-      const az = DOOR_AZ * Math.PI / 180, rd = rb - (rb - rt) * (m.z_door - m.z_interface) / (m.z_hub - m.z_interface);
-      const door = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.42, 0.12), grey);
-      door.position.set(Math.sin(az) * rd, m.z_door / U, -Math.cos(az) * rd); door.rotation.y = -az; g.add(door);
+      const zh = m.z_hub / U, R = m.rotor_D / 2 / U, rp = m.D_pile / 2 / U;
+      const T3 = TM.build(m, { white, blade: bladeMat, grey, yellow, dark: darkMat }, -6);
+      T3.g.scale.setScalar(1 / U); g.add(T3.g);
+      const { yaw, rotor, nac, hub, blades, tower, tp, plat, pile, door } = T3;
+      const az = DOOR_AZ * Math.PI / 180, rd = m.Dz(m.z_door) / 2;
+      door.position.set(Math.sin(az) * rd, m.z_door, -Math.cos(az) * rd); door.rotation.y = -az;
       const parts = { rna: [nac, hub, ...blades], blade_A: [blades[0]], blade_B: [blades[1]], blade_C: [blades[2]], tower: [tower], door: [door],
         flange: [tp], platform: [plat], splash: [pile], weld: [pile], soil: [pile] };
       const ring = new THREE.Mesh(new THREE.TorusGeometry(rp * 2.6, 0.32, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffffff }));
@@ -1636,7 +1635,7 @@ details.sec > * + * { margin-top: 8px; }
       g.position.set((t.spec.x * 1000 / U) - center.x, 0, (t.spec.y * 1000 / U) - center.z);
       g.scale.setScalar(TS);
       g.traverse((o) => { o.userData.idx = i; });
-      [["rna", [nac, hub]], ["blade_A", [blades[0]]], ["blade_B", [blades[1]]], ["blade_C", [blades[2]]], ["tower", [tower]], ["door", [door]], ["flange", [tp]], ["platform", [plat]], ["splash", [pile]]]
+      [["rna", [nac, hub, T3.extras[0]]], ["blade_A", [blades[0]]], ["blade_B", [blades[1]]], ["blade_C", [blades[2]]], ["tower", [tower]], ["door", [door]], ["flange", [tp]], ["platform", [plat, ...T3.extras.slice(1)]], ["splash", [pile]]]
         .forEach(([k, ms]) => ms.forEach((o) => { o.userData.part = k; }));
       farmGroup.add(g);
       return { g, yaw, rotor, ring, beam, lab, parts };
@@ -1928,11 +1927,12 @@ details.sec > * + * { margin-top: 8px; }
     const BOLT_AS = { 56: 2.03e-3, 64: 2.68e-3, 72: 3.46e-3, 80: 4.32e-3 };
     const sec = (D, t) => { const A = Math.PI * D * t, I = Math.PI * D ** 3 * t / 8; return [A, I, I / (D / 2)]; };
     const lin = (a, b, n) => Array.from({ length: n }, (_, i) => a + (b - a) * i / n);
+    // diameter and wall along the structure, linear between stations: the monopile's from the interface
+    // down (constant below its lowest station, wall t_pile in the soil), the tower's up to its top
     function geom(ty) {
-      const zi = ty.z_interface, zt = ty.z_hub - 5;
-      const D = (z) => z <= zi ? ty.D_pile : ty.D_tower_base + Math.min(1, Math.max(0, (z - zi) / (zt - zi))) * (ty.D_tower_top - ty.D_tower_base);
-      const t = (z, mud) => z <= zi ? (z < mud ? ty.t_pile : ty.t_mp) : ty.t_tower_base + Math.min(1, Math.max(0, (z - zi) / (zt - zi))) * (ty.t_tower_top - ty.t_tower_base);
-      return { D, t };
+      const zi = ty.z_interface, up = (a) => a.slice().sort((x, y) => x.z - y.z), mp = up(ty.mp), tw = up(ty.tw);
+      const ip = (st, z, k) => { if (z <= st[0].z) return st[0][k]; for (let i = 1; i < st.length; i++) if (z <= st[i].z) { const a = (z - st[i - 1].z) / ((st[i].z - st[i - 1].z) || 1); return st[i - 1][k] + a * (st[i][k] - st[i - 1][k]); } return st[st.length - 1][k]; };
+      return { D: (z) => (z <= zi ? ip(mp, z, "D") : ip(tw, z, "D")), t: (z, mud) => (z <= zi ? (z < mud ? ty.t_pile : ip(mp, z, "t")) : ip(tw, z, "t")) };
     }
     // initial p-y modulus per metre of pile (N/m per m) and ultimate resistance (N/m) at depth zb below the soil surface
     function soilAt(ty, zb, D) {
@@ -2122,12 +2122,25 @@ details.sec > * + * { margin-top: 8px; }
       const t = asBuilt(true);
       return Object.assign(t, { id: "concept-20", name: "20 MW concept (XL monopile)", builtin: true, asBuilt: 0,
         soil: [SAND(8, 32, 12), CLAY(20, 80, 4), SAND(200, 38, 30)], D_pile: 11.5, t_pile: 0.11, t_mp: 0.10, embedment: 50, z_interface: 18, tp_mass: 350e3,
+        mp: [{ z: 18, D: 9.0, t: 0.085 }, { z: 2, D: 9.0, t: 0.09 }, { z: -14, D: 11.5, t: 0.10 }],     // conical section through the splash zone
+        tw: [{ z: 18, D: 9.0, t: 0.05 }, { z: 60, D: 8.4, t: 0.04 }, { z: 163, D: 7.0, t: 0.025 }],
         D_tower_base: 9.0, D_tower_top: 7.0, t_tower_base: 0.05, t_tower_top: 0.025, z_hub: 168,
         rotor_D: 275, blade_mass: 95e3, hub_mass: 260e3, nacelle_mass: 900e3, J_rna: 7.5e8, rated_P: 20, Cp: 0.45, Ct: 0.75, min_rpm: 4.2, rated_rpm: 6.6, n_bolts: 180, bolt_d: 80 });
     }
-    const BUILTIN = [asBuilt(true), asBuilt(false), concept()];
+    // geometry stations (and the summary fields other views read), also for types saved before stations existed
+    function norm(ty) {
+      const zi = ty.z_interface, zt = ty.z_hub - 5;
+      if (!Array.isArray(ty.mp) || !ty.mp.length) ty.mp = [{ z: zi, D: ty.D_pile, t: ty.t_mp || ty.t_pile }];
+      if (!Array.isArray(ty.tw) || ty.tw.length < 2) ty.tw = [{ z: zi, D: ty.D_tower_base || ty.D_pile, t: ty.t_tower_base }, { z: zt, D: ty.D_tower_top, t: ty.t_tower_top }];
+      ty.mp.sort((a, b) => b.z - a.z); ty.mp[0].z = zi; ty.mp = ty.mp.filter((st, i) => i === 0 || (st.z < zi - 0.4 && st.z > -150));
+      ty.tw.sort((a, b) => a.z - b.z); ty.tw[0].z = zi; ty.tw[ty.tw.length - 1].z = zt; ty.tw = ty.tw.filter((st, i, a) => i === 0 || i === a.length - 1 || (st.z > zi + 0.4 && st.z < zt - 0.4));
+      const lm = ty.mp[ty.mp.length - 1], lt = ty.tw[ty.tw.length - 1];
+      Object.assign(ty, { D_pile: lm.D, t_mp: ty.mp[0].t, D_tower_base: ty.tw[0].D, t_tower_base: ty.tw[0].t, D_tower_top: lt.D, t_tower_top: lt.t });
+      return ty;
+    }
+    const BUILTIN = [asBuilt(true), asBuilt(false), concept()].map(norm);
     let store = { types: [], assign: {} };
-    try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (v && Array.isArray(v.types)) store = { types: v.types, assign: v.assign || {} }; } catch (e) { /* storage unavailable */ }
+    try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (v && Array.isArray(v.types)) store = { types: v.types.map(norm), assign: v.assign || {} }; } catch (e) { /* storage unavailable */ }
     const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* storage unavailable */ } };
     const all = () => BUILTIN.concat(store.types);
     const get = (id) => all().find((t) => t.id === id);
@@ -2142,9 +2155,10 @@ details.sec > * + * { margin-top: 8px; }
     // the turbine description the live twin reads (same keys as the farm's design model)
     function meta(ty) {
       const base = D.meta.turbine;
-      if (ty.asBuilt && ty.asBuilt === (base.rotor_D > 220 ? 15 : 10)) return Object.assign({}, base, { rated_P: ty.rated_P, rated_rpm: ty.rated_rpm, blade_mass: ty.blade_mass, cut_in: 3, cut_out: 25, D_tower_base: base.D_pile, type: ty });
+      const g = gm(ty), shape = { Dz: g.D, tz: (z) => g.t(z, -1e9) };
+      if (ty.asBuilt && ty.asBuilt === (base.rotor_D > 220 ? 15 : 10)) return Object.assign({}, base, shape, { rated_P: ty.rated_P, rated_rpm: ty.rated_rpm, blade_mass: ty.blade_mass, cut_in: 3, cut_out: 25, D_tower_base: base.D_pile, type: ty });
       const d = derived(ty);
-      return Object.assign({}, base, { D_pile: ty.D_pile, t_pile: ty.t_pile, embedment: ty.embedment, z_interface: ty.z_interface, z_hub: ty.z_hub,
+      return Object.assign({}, base, shape, { D_pile: g.D(-5), t_pile: ty.t_pile, embedment: ty.embedment, z_interface: ty.z_interface, z_hub: ty.z_hub,
         D_tower_base: ty.D_tower_base, D_tower_top: ty.D_tower_top, t_tower_base: ty.t_tower_base, t_tower_top: ty.t_tower_top, m_rna: d.m_rna, J_rna: ty.J_rna,
         n_bolts: ty.n_bolts, bolt: "M" + ty.bolt_d, D_bolt_circle: ty.D_tower_base - 0.2, z_door: ty.z_interface + 6, z_platform: ty.z_interface + 5,
         rated_thrust: d.rated_thrust, rated_U: d.rated_U, rotor_D: ty.rotor_D, idle_thrust: base.idle_thrust * (ty.rotor_D / base.rotor_D) ** 2,
@@ -2152,6 +2166,7 @@ details.sec > * + * { margin-top: 8px; }
     }
     // first natural frequency relative to the farm's as-built design, at the farm's mean depth
     const ratioCache = new Map();
+    const gmCache = new WeakMap(), gm = (ty) => { if (!gmCache.has(ty)) gmCache.set(ty, TFE.geom(ty)); return gmCache.get(ty); };
     function f1Ratio(ty) {
       const ab = get(farmDefault()); if (ty.id === ab.id) return 1;
       const dep = T.reduce((s, t) => s + t.spec.depth, 0) / T.length, k = key(ty) + "@" + FI;
@@ -2168,9 +2183,89 @@ details.sec > * + * { margin-top: 8px; }
     }
     function assign(ti, id) { const f = D.meta.farm.name; store.assign[f] = store.assign[f] || {}; store.assign[f][T[ti].spec.name] = id; changed(); }
     const isAsBuilt = (ti) => typeOf(ti).id === farmDefault();
-    return { all, get, typeOf, meta, derived, f1Ratio, key, upsert, remove, assign, isAsBuilt, farmDefault, onChange: (f) => listeners.push(f), raw: () => store };
+    return { all, get, typeOf, meta, derived, f1Ratio, norm, key, upsert, remove, assign, isAsBuilt, farmDefault, onChange: (f) => listeners.push(f), raw: () => store };
   })();
   const metaFor = (ti) => TT.meta(TT.typeOf(ti));
+  // ---------- turbine meshes, in metres: shared by the farm view and the builder ----------
+  // Monopile and tower are lathed from the type's diameter stations (tapers and cones show as built);
+  // blades are lofted from a root cylinder into a cambered airfoil with chord, thickness and twist
+  // varying along the span, with pre-bend, cone and shaft tilt.
+  const TM = (() => {
+    const cache = new Map();
+    const smooth = (a, b, x) => { const u = Math.min(1, Math.max(0, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
+    function bladeGeo(R, rHub) {
+      const key = R.toFixed(1) + ":" + rHub.toFixed(2); if (cache.has(key)) return cache.get(key);
+      const L = R - rHub, NP = 30, dRoot = Math.max(0.034 * R, 2.4), cMax = 0.068 * R;
+      const span = []; for (let i = 0; i <= 40; i++) { const u = i / 40; span.push(u < 0.3 ? u * u / 0.3 * 0.5 + u * 0.5 : u); }   // denser at the root
+      const pos = [], idx = [];
+      span.forEach((s) => {
+        const rnd = 1 - smooth(0.015, 0.2, s);                                   // 1: circular root, 0: airfoil
+        let c = s < 0.2 ? dRoot + (cMax - dRoot) * smooth(0.02, 0.2, s) : cMax * (1 - 0.8 * Math.pow((s - 0.2) / 0.8, 1.05));
+        if (s > 0.965) c *= 0.4 + 0.6 * (1 - s) / 0.035;
+        const tc = s < 0.2 ? 0.36 : 0.15 + 0.21 * Math.exp(-(s - 0.2) / 0.16);
+        const tw = (s < 0.18 ? 13 : 13 * Math.pow((1 - s) / 0.82, 2)) * Math.PI / 180, ct = Math.cos(tw), st = Math.sin(tw);
+        const px = 0.5 * rnd + 0.33 * (1 - rnd), bend = 0.035 * L * s * s;
+        for (let j = 0; j < NP; j++) {
+          const u = 2 * Math.PI * j / NP, x = 0.5 * (1 + Math.cos(u)), up = j <= NP / 2 ? 1 : -1;
+          const yt = 5 * tc * (0.2969 * Math.sqrt(x) - 0.126 * x - 0.3516 * x * x + 0.2843 * x ** 3 - 0.1036 * x ** 4);
+          const yc = x < 0.4 ? 0.03 / 0.16 * (0.8 * x - x * x) : 0.03 / 0.36 * (0.2 + 0.8 * x - x * x);
+          const ya = yc + up * yt, yr = 0.5 * Math.sin(u);
+          const cx = (x - px) * c, cz = (rnd * yr + (1 - rnd) * ya) * c;
+          pos.push(cx * ct - cz * st, rHub + s * L, cx * st + cz * ct + bend);
+        }
+      });
+      const ns = span.length;
+      for (let i = 0; i < ns - 1; i++) for (let j = 0; j < NP; j++) { const a = i * NP + j, b = i * NP + (j + 1) % NP, c2 = a + NP, d = b + NP; idx.push(a, c2, b, b, c2, d); }
+      const tip = pos.length / 3; let sx = 0, sz = 0; for (let j = 0; j < NP; j++) { sx += pos[((ns - 1) * NP + j) * 3]; sz += pos[((ns - 1) * NP + j) * 3 + 2]; }
+      pos.push(sx / NP, R + 0.05, sz / NP); for (let j = 0; j < NP; j++) idx.push((ns - 1) * NP + j, tip, (ns - 1) * NP + (j + 1) % NP);
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+      cache.set(key, g); return g;
+    }
+    function lathe(zs, rOf, seg = 40) { return new THREE.LatheGeometry(zs.map((z) => new THREE.Vector2(Math.max(0.05, rOf(z)), z)), seg); }
+    function roundRect(w, h, r) {
+      const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+      s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y); return s;
+    }
+    // m: turbine description (metaFor); mats: {white, blade, grey, yellow, dark}; zBot: lowest elevation drawn
+    function build(m, mats, zBot) {
+      const g = new THREE.Group(), Dz = m.Dz, zi = m.z_interface, zt = m.z_hub - 5, R = m.rotor_D / 2, Dt = Dz(zt);
+      const zsP = []; for (let i = 0; i <= 40; i++) zsP.push(zBot + (zi - zBot) * i / 40);
+      const pile = new THREE.Mesh(lathe(zsP, (z) => Dz(Math.min(z, zi - 0.01)) / 2), mats.grey); g.add(pile);
+      const zsT = []; for (let i = 0; i <= 40; i++) zsT.push(zi + (zt + 1 - zi) * i / 40);
+      const tower = new THREE.Mesh(lathe(zsT, (z) => Dz(Math.max(z, zi + 0.01)) / 2), mats.white); g.add(tower);
+      const rTP = Dz(zi - 0.01) / 2 + 0.15;
+      const tp = new THREE.Mesh(new THREE.CylinderGeometry(rTP, rTP, 5, 40), mats.yellow); tp.position.y = zi - 2.4; g.add(tp);
+      const zp = m.z_platform, rP = Math.max(rTP, Dz(zp) / 2) + 3.2;
+      const plat = new THREE.Group(); plat.position.y = zp; g.add(plat);
+      const deck = new THREE.Mesh(new THREE.CylinderGeometry(rP, rP, 0.5, 48), mats.grey); plat.add(deck);
+      const rail = new THREE.Mesh(new THREE.TorusGeometry(rP - 0.1, 0.09, 6, 64), mats.yellow); rail.rotation.x = Math.PI / 2; rail.position.y = 1.2; plat.add(rail);
+      const landing = []; [-1, 1].forEach((sx) => { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, zp + 4, 10), mats.yellow); b.position.set(sx * 1.3, -(zp + 4) / 2 + 0.2, -(rTP + 1.6)); plat.add(b); landing.push(b); });
+      const doorZ = m.z_door, rd = Dz(doorZ) / 2;
+      const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.3, 0.4), mats.dark); door.position.set(0, doorZ, -rd); g.add(door);
+      // nacelle, spinner and rotor
+      const yaw = new THREE.Group(); yaw.position.y = m.z_hub; g.add(yaw);
+      const wN = 1.45 * Dt, hN = 1.3 * Dt, lN = 3.1 * Dt;
+      const ng = new THREE.ExtrudeGeometry(roundRect(wN, hN, 0.24 * hN), { depth: lN, bevelEnabled: true, bevelThickness: 0.5, bevelSize: 0.4, bevelSegments: 3, curveSegments: 6 });
+      ng.translate(0, 0, -0.62 * lN);
+      const nac = new THREE.Mesh(ng, mats.white); nac.position.y = 0.15 * hN; yaw.add(nac);
+      const cool = new THREE.Mesh(new THREE.BoxGeometry(0.7 * wN, 0.22 * hN, 0.18 * lN), mats.grey); cool.position.set(0, 0.15 * hN + hN / 2 + 0.11 * hN, -0.5 * lN); yaw.add(cool);
+      const tilt = new THREE.Group(); tilt.position.z = 0.38 * lN + 0.6; tilt.rotation.x = -6 * Math.PI / 180; yaw.add(tilt);
+      const rotor = new THREE.Group(); rotor.position.z = 0.04 * R + 1.5; tilt.add(rotor);
+      const Rs = 0.026 * R + 0.8, Ls = 1.5 * Rs, prof = [];
+      for (let i = 0; i <= 16; i++) { const a = i / 16; prof.push(new THREE.Vector2(Math.max(0.02, Rs * Math.sin(a * Math.PI / 2) ** 0.8), Ls * (1 - a) - 0.45 * Ls)); }
+      prof.push(new THREE.Vector2(Rs, -0.8 * Ls));
+      const sg = new THREE.LatheGeometry(prof, 36); sg.rotateX(Math.PI / 2);
+      const hub = new THREE.Mesh(sg, mats.white); rotor.add(hub);
+      const blades = [], bg = bladeGeo(R, 0.85 * Rs);
+      for (let b = 0; b < 3; b++) {
+        const piv = new THREE.Group(); piv.rotation.z = b * 2 * Math.PI / 3; rotor.add(piv);
+        const bl = new THREE.Mesh(bg, mats.blade); bl.rotation.x = 4 * Math.PI / 180; piv.add(bl); blades.push(bl);
+      }
+      return { g, yaw, rotor, nac, hub, blades, tower, tp, plat: deck, pile, door, extras: [cool, rail, ...landing] };
+    }
+    return { build, bladeGeo };
+  })();
   // ---------- live twin: streaming channels from the current sea, wind and rotor state ----------
   // Every channel is a closed-form function of time (sums of wave, turbulence and rotor
   // harmonics passed through each turbine's first mode), so any window can be drawn at
@@ -2191,6 +2286,7 @@ details.sec > * + * { margin-top: 8px; }
     }
     const Hresp = (w, w1, z) => { const r = w / w1, den = (1 - r * r) ** 2 + (2 * z * r) ** 2; return [1 / Math.sqrt(den), Math.atan2(2 * z * r, 1 - r * r)]; };
     function geomAt(m, z) {               // outer diameter and wall at elevation z
+      if (m.Dz) return [m.Dz(z), m.tz(z)];
       if (z >= m.z_interface) { const s = (z - m.z_interface) / (m.z_hub - m.z_interface), Db = m.D_tower_base || m.D_pile; return [Db + (m.D_tower_top - Db) * s, m.t_tower_base + (m.t_tower_top - m.t_tower_base) * s]; }
       return [m.D_pile, m.t_pile];
     }
@@ -2890,7 +2986,7 @@ details.sec > * + * { margin-top: 8px; }
     const r = plant.f1 / tt.f1_true, cat = (a) => { const o = new Float64Array(a.reduce((s2, x) => s2 + x.length, 0)); let i = 0; a.forEach((x) => { o.set(x, i); i += x.length; }); return o; };
     const zc = plant.zc;
     return Object.assign({}, tt, { type: ty, freq_scale: plant.f1 / design.f1, f1_design: design.f1, f1_true: plant.f1, f1_track: tt.f1_track * r, f1_track_sd: tt.f1_track_sd * r,
-      track_hist: tt.track_hist.map((v) => v * r), z: B.z, zc, wet: B.wet, trib: B.wet.map((i) => B.trib[i]), tp: B.tp, D: ty.D_pile, m_rna: TFE.rnaMass(ty),
+      track_hist: tt.track_hist.map((v) => v * r), z: B.z, zc, wet: B.wet, trib: B.wet.map((i) => B.trib[i]), tp: B.tp, D: B.gm.D(-5), Dw: B.wet.map((i) => B.gm.D(B.z[i])), m_rna: TFE.rnaMass(ty),
       n: B.n, nzc: zc.length, ng: F.grid.length, ne: F.n_est, np: F.n_plant, grid: F.grid, hot: TFE.hotSpots(ty, B, tt.depth),
       P: { w: plant.w, phi: plant.phiL, rows: plant.rows, stat: plant.stat },
       E: { f1: grid.map((g) => g.f1), w: Float64Array.from(grid.flatMap((g) => g.w)), phi: cat(grid.map((g) => g.phiL)), rows: cat(grid.map((g) => g.rows)), stat: cat(grid.map((g) => g.stat)) } });
@@ -2942,7 +3038,7 @@ details.sec > * + * { margin-top: 8px; }
     const zeta = P.w.map((w, j) => 0.015 + ld.cAero * P.phi[top * np + j] ** 2 / (2 * w));
     const rho = 1025, Cm = 2.0, Ac = Math.PI * S.D * S.D / 4;
     const comps = M.comps.map((q) => { const k = wnum(q.w, d), Fw = Math.hypot(q.Ffa, q.Fss) || 1, mod = [];
-      for (let j = 0; j < np; j++) { let s = 0; S.wet.forEach((nd, i) => { s += P.phi[nd * np + j] * S.trib[i] * Math.cosh(k * (S.z[nd] + d)) / Math.sinh(k * d); }); mod.push(rho * Cm * Ac * q.a * q.w * q.w * s); }
+      for (let j = 0; j < np; j++) { let s = 0; S.wet.forEach((nd, i) => { s += P.phi[nd * np + j] * S.trib[i] * (S.Dw ? (S.Dw[i] / S.D) ** 2 : 1) * Math.cosh(k * (S.z[nd] + d)) / Math.sinh(k * d); }); mod.push(rho * Cm * Ac * q.a * q.w * q.w * s); }
       return { w: q.w, ph: q.ph, cfa: q.Ffa / Fw, css: q.Fss / Fw, mod }; });
     const H = (w0, z, w) => { const re = w0 * w0 - w * w, im = 2 * z * w0 * w; return [1 / Math.hypot(re, im), Math.atan2(im, re)]; };
     comps.forEach((c) => { c.h = P.w.map((w0, j) => H(w0, zeta[j], c.w)); });
@@ -2992,7 +3088,7 @@ details.sec > * + * { margin-top: 8px; }
     const Hs = M.c.Hs * 1.08, Tp = M.c.Tp, wp = 2 * Math.PI / Tp, kp = wnum(wp, d), w0w = 1.05 * wp, zw = 0.13;
     const sw = 1025 * 2.0 * Math.PI * S.D * S.D / 4 * wp * wp * (Hs / 4) * 1.15;
     const th = rad(Math.abs(M.c.wdir - M.c.udir)), share = { fa: Math.max(0.3, Math.abs(Math.cos(th))), ss: Math.max(0.4, Math.hypot(Math.sin(th), 0.4)) };
-    const gwave = []; for (let j = 0; j < nm; j++) { let s = 0; S.wet.forEach((nd, i) => { s += E.phi[nd * nm + j] * S.trib[i] * Math.cosh(kp * (S.z[nd] + d)) / Math.sinh(kp * d); }); gwave.push(s * sw); }
+    const gwave = []; for (let j = 0; j < nm; j++) { let s = 0; S.wet.forEach((nd, i) => { s += E.phi[nd * nm + j] * S.trib[i] * (S.Dw ? (S.Dw[i] / S.D) ** 2 : 1) * Math.cosh(kp * (S.z[nd] + d)) / Math.sinh(kp * d); }); gwave.push(s * sw); }
     const gF = [], gM = []; for (let j = 0; j < nm; j++) { gF.push(E.phi[top * nm + j]); gM.push((E.phi[top * nm + j] - E.phi[below * nm + j]) / Lt); }
     const wr = 2 * Math.PI * 0.04;
     const Acm = new Float64Array(N * N), Qc = new Float64Array(N * N);
@@ -3209,7 +3305,7 @@ details.sec > * + * { margin-top: 8px; }
       const zTop = S.z[S.n - 1] + 4, zBot = S.z[0] - 2, Y = (z) => 8 + (zTop - z) / (zTop - zBot) * (H - 24);
       g.fillStyle = css("--sea"); g.globalAlpha = 0.12; g.fillRect(0, Y(0), W, Y(-S.depth) - Y(0)); g.globalAlpha = 1;
       g.fillStyle = "#8a6d3b"; g.globalAlpha = 0.16; g.fillRect(0, Y(-S.depth), W, Y(zBot) - Y(-S.depth)); g.globalAlpha = 1;
-      const sx = 54, m = metaFor(ti), Db = m.D_tower_base || m.D_pile, Dz = (z) => (z <= m.z_interface ? m.D_pile : Db + (m.D_tower_top - Db) * Math.min(1, (z - m.z_interface) / (m.z_hub - 5 - m.z_interface)));
+      const sx = 54, m = metaFor(ti), Dz = m.Dz;
       g.fillStyle = css("--muted"); g.globalAlpha = 0.5; g.beginPath(); S.z.forEach((z, i) => { const xx = sx + Dz(z) * 2.2 / 2; i ? g.lineTo(xx, Y(z)) : g.moveTo(xx, Y(z)); });
       for (let i = S.n - 1; i >= 0; i--) g.lineTo(sx - Dz(S.z[i]) * 2.2 / 2, Y(S.z[i])); g.closePath(); g.fill(); g.globalAlpha = 1;
       g.font = "10px IBM Plex Mono, monospace"; g.fillStyle = css("--muted"); g.textAlign = "left"; g.fillText("sea", 4, Y(0) + 11); g.fillText("seabed", 4, Y(-S.depth) + 11);
@@ -3532,12 +3628,85 @@ details.sec > * + * { margin-top: 8px; }
     window.addEventListener("resize", () => { ["tree", "drawer"].forEach((k) => { const v = parseFloat(app.style.getPropertyValue(k === "tree" ? "--tree-w" : "--drawer-w")); if (v) apply(k, v); }); });
   })();
 
+  // ---------- builder 3D view: the type in the sea and soil, with its mode shapes animated ----------
+  const BV = (() => {
+    let R = null, scene, cam, ctl, root = null, T3 = null, raf = 0, host = null, mode = 0, res = null, fitted = "", base = null, ro = null;
+    let M = null;
+    function init() {
+      if (R) return true; if (!window.THREE || !THREE.OrbitControls) return false;
+      try { R = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return false; }
+      if (!R.getContext()) { R = null; return false; }
+      R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      scene = new THREE.Scene(); cam = new THREE.PerspectiveCamera(30, 1, 1, 8000);
+      ctl = new THREE.OrbitControls(cam, R.domElement); ctl.enableDamping = true; ctl.dampingFactor = 0.08;
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x4a5560, 0.8));
+      const sun = new THREE.DirectionalLight(0xffffff, 0.85); sun.position.set(-250, 380, 300); scene.add(sun);
+      const fill = new THREE.DirectionalLight(0xffffff, 0.25); fill.position.set(300, 100, -200); scene.add(fill);
+      M = { white: new THREE.MeshStandardMaterial({ color: 0xeef1f3, roughness: 0.5, metalness: 0.08 }), blade: new THREE.MeshStandardMaterial({ color: 0xf6f7f8, roughness: 0.42, metalness: 0.02 }),
+        grey: new THREE.MeshStandardMaterial({ color: 0x8b98a3, roughness: 0.65, metalness: 0.2 }), yellow: new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.55 }),
+        dark: new THREE.MeshStandardMaterial({ color: 0x4a5560, roughness: 0.6 }) };
+      ro = new ResizeObserver(() => size());
+      return true;
+    }
+    function size() { if (!host || !R) return; const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return; R.setSize(w, h, false); R.domElement.style.width = w + "px"; R.domElement.style.height = h + "px"; cam.aspect = w / h; cam.updateProjectionMatrix(); }
+    function clear() { if (!root) return; scene.remove(root); root.traverse((o) => { if (o.geometry && !o.userData.shared) o.geometry.dispose(); if (o.material && o.userData.ownMat) o.material.dispose(); }); root = null; }
+    function set(ty, r) {
+      if (!init()) return false;
+      clear(); res = r; root = new THREE.Group(); scene.add(root);
+      const m = TT.meta(ty), dep = r.dep, toe = r.B.z[0], W = Math.max(60, ty.D_pile * 7), sea = new THREE.Color(css("--sea") || "#2a6f97");
+      const box = (y0, y1, color, op) => { const b = new THREE.Mesh(new THREE.BoxGeometry(W, y1 - y0, W), new THREE.MeshStandardMaterial({ color, transparent: true, opacity: op, depthWrite: false, roughness: 0.9 }));
+        b.position.y = (y0 + y1) / 2; b.userData.ownMat = true; b.renderOrder = 2; root.add(b); return b; };
+      box(-dep, 0, sea, 0.16);
+      const surf = new THREE.Mesh(new THREE.PlaneGeometry(W, W), new THREE.MeshStandardMaterial({ color: sea, transparent: true, opacity: 0.32, depthWrite: false, roughness: 0.2, side: THREE.DoubleSide }));
+      surf.rotation.x = -Math.PI / 2; surf.userData.ownMat = true; surf.renderOrder = 3; root.add(surf);
+      let top = -dep;
+      ty.soil.forEach((l) => { const bot = Math.max(toe - 8, -dep - l.to); if (bot < top) box(bot, top, l.kind === "clay" ? 0x7b6a92 : 0xb08a46, 0.3); top = bot; });
+      if (top > toe - 8) box(toe - 8, top, ty.soil[ty.soil.length - 1].kind === "clay" ? 0x7b6a92 : 0xb08a46, 0.3);
+      T3 = TM.build(m, M, toe); root.add(T3.g);
+      T3.g.traverse((o) => { if (o.geometry && o.geometry === TM.bladeGeo(m.rotor_D / 2, 0.85 * (0.026 * m.rotor_D / 2 + 0.8))) o.userData.shared = true; });
+      base = [T3.pile, T3.tower].map((ms) => Float32Array.from(ms.geometry.attributes.position.array));
+      view.m = m; view.toe = toe; view.dep = dep;
+      const key = ty.id + ":" + dep;
+      if (key !== fitted) { fitted = key; view(view.k || "whole"); }
+      return true;
+    }
+    function view(k) {                  // camera presets
+      view.k = k; const m = view.m; if (!m) return;
+      const zTop = m.z_hub + m.rotor_D / 2, toe = view.toe;
+      if (k === "rna") { const r = m.rotor_D / 2; ctl.target.set(0, m.z_hub, 0); cam.position.set(r * 0.9, m.z_hub + r * 0.25, r * 1.35); }
+      else if (k === "fdn") { const h = m.z_interface + 10 - toe; ctl.target.set(0, (m.z_interface + toe) / 2, 0); cam.position.set(h * 0.85, (m.z_interface + toe) / 2 + h * 0.15, h * 1.1); }
+      else { const zMid = (zTop + toe) / 2, Hh = zTop - toe, d = 0.56 * Hh / Math.tan(cam.fov * Math.PI / 360) / Math.min(1, Math.max(0.6, cam.aspect)); ctl.target.set(0, zMid, 0); cam.position.set(d * 0.56, zMid + d * 0.1, d * 0.82); }
+      ctl.update();
+    }
+    const phiAt = (j, y) => { const z = res.B.z, nm = res.mod.w.length, ph = res.mod.phiL; if (y <= z[0]) return ph[j]; for (let i = 1; i < z.length; i++) if (y <= z[i]) { const a = (y - z[i - 1]) / (z[i] - z[i - 1]); return ph[(i - 1) * nm + j] * (1 - a) + ph[i * nm + j] * a; } return ph[(z.length - 1) * nm + j]; };
+    function deform(tt) {
+      if (!T3 || !res) return;
+      const j = mode - 1, on = mode > 0, z = res.B.z, ztop = z[z.length - 1];
+      let amp = 0; if (on) { const pt = phiAt(j, ztop), mx = Math.max(...Array.from({ length: z.length }, (_, i) => Math.abs(res.mod.phiL[i * res.mod.w.length + j]))) || 1; amp = 0.035 * (ztop - z[0]) / mx * Math.sin(2 * Math.PI * tt / (j ? 1.3 : 2.6)); }
+      const u = (y) => (on ? amp * phiAt(j, y) : 0);
+      [T3.pile, T3.tower].forEach((ms, k) => { const p = ms.geometry.attributes.position, b0 = base[k]; for (let i = 0; i < p.count; i++) p.array[3 * i] = b0[3 * i] + u(b0[3 * i + 1]); p.needsUpdate = true; });
+      const yh = T3.yaw.position.y; T3.yaw.position.x = u(yh); T3.yaw.rotation.z = on ? -(u(yh) - u(yh - 2)) / 2 : 0;
+      [T3.tp, T3.door].forEach((o) => { o.position.x = (o === T3.door ? o.userData.x0 || 0 : 0) + u(o.position.y); });
+      T3.plat.parent.position.x = u(T3.plat.parent.position.y);
+    }
+    function loop(ts) {
+      raf = requestAnimationFrame(loop);
+      if (!host || !host.isConnected || bldEl.hidden) { cancelAnimationFrame(raf); raf = 0; return; }
+      if (T3) T3.rotor.rotation.z -= 0.016 * (TT.get(bSel) ? TT.get(bSel).rated_rpm : 7) / 60 * 2 * Math.PI;
+      deform(ts / 1000); ctl.update(); R.render(scene, cam);
+    }
+    function mount(el) {
+      if (!init()) { el.innerHTML = `<p class="hint">3D needs WebGL, which this browser did not provide; use the elevation view.</p>`; return; }
+      host = el; el.append(R.domElement); ro.disconnect(); ro.observe(el); size();
+      if (!raf) raf = requestAnimationFrame(loop);
+    }
+    return { set, mount, view, setMode: (k) => { mode = k; }, mode: () => mode, ok: () => init() };
+  })();
   // ---------- turbine builder ----------
   const bldEl = document.getElementById("builder");
   const BF = [
-    ["Pile and monopile", [["D_pile", "Pile and monopile diameter", "m", 1, 0.1, 4, 14], ["t_pile", "Pile wall, below the seabed", "mm", 1e-3, 1, 30, 200], ["t_mp", "Monopile wall, seabed to interface", "mm", 1e-3, 1, 30, 200],
-      ["embedment", "Embedment below the seabed", "m", 1, 0.5, 10, 80], ["z_interface", "Interface (tower-base flange) above MSL", "m", 1, 0.5, 8, 30], ["tp_mass", "Transition piece, platform and appurtenances", "t", 1e3, 5, 0, 1500]]],
-    ["Tower", [["D_tower_base", "Base diameter", "m", 1, 0.1, 3, 12], ["D_tower_top", "Top diameter", "m", 1, 0.1, 2.5, 10], ["t_tower_base", "Base wall", "mm", 1e-3, 1, 12, 120], ["t_tower_top", "Top wall", "mm", 1e-3, 1, 10, 80], ["z_hub", "Hub height above MSL", "m", 1, 1, 60, 220]]],
+    ["Pile and monopile", [["t_pile", "Pile wall in the soil", "mm", 1e-3, 1, 30, 200], ["embedment", "Embedment below the seabed", "m", 1, 0.5, 10, 80], ["z_interface", "Interface (tower-base flange) above MSL", "m", 1, 0.5, 8, 30], ["tp_mass", "Transition piece, platform and appurtenances", "t", 1e3, 5, 0, 1500]]],
+    ["Tower", [["z_hub", "Hub height above MSL", "m", 1, 1, 60, 220]]],
     ["Rotor and nacelle", [["rotor_D", "Rotor diameter", "m", 1, 1, 80, 320], ["blade_mass", "Mass per blade", "t", 1e3, 1, 5, 200], ["hub_mass", "Hub with pitch system", "t", 1e3, 5, 10, 600],
       ["nacelle_mass", "Nacelle: drivetrain, generator, bedplate", "t", 1e3, 5, 50, 2000], ["J_rna", "Rotor-nacelle inertia about the tilt axis", "10⁶ kg·m²", 1e6, 10, 1, 3000]]],
     ["Power and rotor speed", [["rated_P", "Rated power", "MW", 1, 0.5, 1, 30], ["Cp", "Power coefficient below rated, with losses", "–", 1, 0.01, 0.2, 0.55], ["Ct", "Thrust coefficient at rated wind", "–", 1, 0.01, 0.3, 1.0],
@@ -3545,12 +3714,14 @@ details.sec > * + * { margin-top: 8px; }
     ["Tower-base flange", [["n_bolts", "Number of bolts", "", 1, 4, 40, 300]]],
   ];
   const SOILF = { sand: [["phi", "φ′", "°", 25, 45, 0.5], ["gamma", "γ′", "kN/m³", 6, 12, 0.5], ["k", "k", "MN/m³", 2, 60, 1]], clay: [["su", "s<sub>u</sub> top", "kPa", 5, 400, 5], ["su_grad", "+", "kPa/m", 0, 20, 0.5], ["gamma", "γ′", "kN/m³", 4, 11, 0.5], ["eps50", "ε<sub>50</sub>", "", 0.002, 0.03, 0.001]] };
-  let bSel = null, bSite = 0, bTimer = 0, bRes = null;
+  let bSel = null, bSite = 0, bTimer = 0, bRes = null, bView = "3d";
   const uid = () => "t" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
   function bClean(ty) {               // keep the inputs physical so the model always builds
     BF.forEach(([, fs]) => fs.forEach(([k, , , sc, , lo, hi]) => { const v = +ty[k]; ty[k] = Math.min(hi * sc, Math.max(lo * sc, isFinite(v) ? v : lo * sc)); }));
     ty.n_bolts = Math.round(ty.n_bolts); if (!TFE.BOLT_AS[ty.bolt_d]) ty.bolt_d = 72;
     ty.z_hub = Math.max(ty.z_hub, ty.z_interface + 40); ty.rated_rpm = Math.max(ty.rated_rpm, ty.min_rpm + 0.1); ty.cut_out = Math.max(ty.cut_out, ty.cut_in + 8);
+    for (const k of ["mp", "tw"]) ty[k] = (Array.isArray(ty[k]) ? ty[k] : []).slice(0, 10).map((st) => ({ z: isFinite(+st.z) ? +st.z : 0, D: Math.min(15, Math.max(2, +st.D || 6)), t: Math.min(0.2, Math.max(0.01, +st.t || 0.04)) }));
+    TT.norm(ty);
     ty.soil = (ty.soil || []).slice(0, 6); if (!ty.soil.length) ty.soil = [{ to: 200, kind: "sand", phi: 35, gamma: 10, k: 22, su: 60, su_grad: 3, eps50: 0.01 }];
     let last = 0; ty.soil.forEach((l, i) => { l.kind = l.kind === "clay" ? "clay" : "sand"; l.to = i === ty.soil.length - 1 ? 200 : Math.max(last + 0.5, +l.to || last + 5); last = l.to;
       SOILF[l.kind].forEach(([k, , , lo, hi]) => { const v = +l[k]; l[k] = Math.min(hi, Math.max(lo, isFinite(v) ? v : lo)); }); });
@@ -3566,7 +3737,7 @@ details.sec > * + * { margin-top: 8px; }
     // ultimate check: 1.35 × rated thrust at the hub with the design wave's inertia load at its peak (linear soil)
     const Hd = 1.86 * Math.max(...T.map((x) => x.Hs)), Td = Math.max(11, 3.6 * Math.sqrt(Hd / 1.86) + 2), w = 2 * Math.PI / Td, kw = wnum(w, dep);
     const F = new Float64Array(B.nd); F[B.nd - 2] = 1.35 * d.rated_thrust;
-    let Fw = 0; B.wet.forEach((i) => { const f = 1.35 * 1025 * 2.0 * Math.PI * ty.D_pile ** 2 / 4 * w * w * Hd / 2 * Math.cosh(kw * (B.z[i] + dep)) / Math.sinh(kw * dep) * B.trib[i]; F[2 * i] += f; Fw += f; });
+    let Fw = 0; B.wet.forEach((i) => { const f = 1.35 * 1025 * 2.0 * Math.PI * B.gm.D(B.z[i]) ** 2 / 4 * w * w * Hd / 2 * Math.cosh(kw * (B.z[i] + dep)) / Math.sinh(kw * dep) * B.trib[i]; F[2 * i] += f; Fw += f; });
     const st = TFE.statics(B, mod, F), zc = mod.zc;
     const sig = (j) => { const D = B.gm.D(zc[j]), tt = B.gm.t(zc[j], B.mud), [A, , W] = TFE.sec(D, tt); return (Math.abs(st.M[j]) / W + TFE.weightAbove(ty, B, zc[j]) / A) / 1e6; };
     const near = (z) => zc.reduce((b, v, i) => (Math.abs(v - z) < Math.abs(zc[b] - z) ? i : b), 0);
@@ -3634,7 +3805,10 @@ details.sec > * + * { margin-top: 8px; }
     let r; try { r = bCompute(ty); } catch (e) { host.innerHTML = `<p class="hint">The model could not be built: ${String(e.message || e)}</p>`; console.error(e); return; }
     bRes = r;
     const d = r.d, steel = r.mPile + r.mMp + r.mTow, f = r.mod.w.map((w) => w / 2 / Math.PI);
-    host.innerHTML = `<div class="bl-top"><div class="bl-draw">${bDrawing(ty, r)}<div class="legend"><span><i class="dot" style="background:var(--accent)"></i>mode 1 · ${fmt(f[0], 3)} Hz</span><span><i class="dot" style="background:var(--warn)"></i>mode 2 · ${fmt(f[1], 3)} Hz</span></div></div>` +
+    host.innerHTML = `<div class="bl-top"><div class="bl-draw"><div class="bl-vt"><span class="seg">${[["3d", "3D"], ["el", "Elevation"]].map(([v, l]) => `<button type="button" data-vw="${v}" class="${bView === v ? "on" : ""}">${l}</button>`).join("")}</span>` +
+      `<span class="seg" data-cams${bView === "3d" ? "" : " hidden"}>${[["whole", "Whole"], ["rna", "Rotor"], ["fdn", "Foundation"]].map(([v, l]) => `<button type="button" data-cam="${v}" class="${(BV.view.k || "whole") === v ? "on" : ""}">${l}</button>`).join("")}</span>` +
+      `<span class="seg" data-modes>${["Still", "Mode 1", "Mode 2"].map((l, i) => `<button type="button" data-md="${i}" class="${BV.mode() === i ? "on" : ""}">${l}</button>`).join("")}</span></div>` +
+      `<div class="bl-3d" data-v3${bView === "3d" ? "" : " hidden"}></div><div data-el${bView === "el" ? "" : " hidden"}>${bDrawing(ty, r)}</div><div class="legend"><span><i class="dot" style="background:var(--accent)"></i>mode 1 · ${fmt(f[0], 3)} Hz</span><span><i class="dot" style="background:var(--warn)"></i>mode 2 · ${fmt(f[1], 3)} Hz</span></div></div>` +
       `<div class="bl-kv">${kv([["Checked at", `${r.t.spec.name}: ${fmt(r.dep, 1)} m water${r.t.spec.scour ? `, scour ${fmt(r.t.spec.scour, 1)} m` : ""}`],
         ["Natural frequencies", f.slice(0, 3).map((v) => fmt(v, 3)).join(" · ") + " Hz"], ["Rated wind · thrust", `${fmt(d.rated_U, 1)} m/s · ${fmt(d.rated_thrust / 1e6, 2)} MN`],
         ["Tip speed at rated", fmt(d.tip, 0) + " m/s"], ["RNA mass", fmt(d.m_rna / 1e3, 0) + " t"], ["Tower (with secondary steel)", fmt(r.mTow / 1e3, 0) + " t"],
@@ -3644,12 +3818,27 @@ details.sec > * + * { margin-top: 8px; }
       `<div class="grid2"><div data-pc></div><div data-tc></div></div>` +
       `<h4 class="bl-h">Simple checks</h4><div class="tbl-wrap"><table class="list bl-chk"><tbody>${bVerdicts(ty, r).map(([a, b, c]) => `<tr><td>${a}</td><td class="mono">${b}</td><td class="r">${c}</td></tr>`).join("")}</tbody></table></div>` +
       `<p class="cap">Ultimate load: 1.35 × rated thrust at the hub plus the inertia load of a ${fmt(r.Hd, 1)} m, ${fmt(r.Td, 0)} s design wave (1.86 × the farm's storm-peak H<sub>s</sub>), linear p-y springs at their initial stiffness, material factor 1.1 on 355 MPa. Screening only: no buckling, fatigue design, cyclic soil degradation or load-case combinations.</p>`;
+    const v3 = host.querySelector("[data-v3]");
+    if (bView === "3d") { BV.mount(v3); if (!BV.set(ty, r)) { bView = "el"; v3.hidden = true; host.querySelector("[data-el]").hidden = false; } }
+    host.querySelectorAll("[data-vw]").forEach((b) => b.addEventListener("click", () => { bView = b.dataset.vw; bResults(TT.get(bSel)); }));
+    host.querySelectorAll("[data-cam]").forEach((b) => b.addEventListener("click", () => { BV.view(b.dataset.cam); host.querySelectorAll("[data-cam]").forEach((x) => x.classList.toggle("on", x === b)); }));
+    host.querySelectorAll("[data-md]").forEach((b) => b.addEventListener("click", () => { BV.setMode(+b.dataset.md); host.querySelectorAll("[data-md]").forEach((x) => x.classList.toggle("on", x === b)); }));
     const Us = Array.from({ length: 70 }, (_, i) => i * 0.5), m = Object.assign({}, D.meta.turbine, { rated_U: d.rated_U, rated_thrust: d.rated_thrust, rated_P: ty.rated_P, cut_in: ty.cut_in, cut_out: ty.cut_out, idle_thrust: D.meta.turbine.idle_thrust * (ty.rotor_D / D.meta.turbine.rotor_D) ** 2 });
     chart(host.querySelector("[data-pc]"), { series: [{ x: Us, y: Us.map((u) => LIVE.power(u, m)), color: "--accent", width: 2 }], xl: "wind at hub (m/s)", yl: "power (MW)", w: 380, h: 200, label: "Power curve" });
     chart(host.querySelector("[data-tc]"), { series: [{ x: Us, y: Us.map((u) => thrust(u, m) / 1e6), color: "--warn", width: 2 }], xl: "wind at hub (m/s)", yl: "thrust (MN)", w: 380, h: 200, label: "Thrust curve" });
   }
   function bForm() {
     const ty = TT.get(bSel), ro = !!ty.builtin, host = document.getElementById("bl-form");
+    const stations = (g) => {
+      const k = g === "Pile and monopile" ? "mp" : g === "Tower" ? "tw" : null; if (!k) return "";
+      const rows = ty[k], last = rows.length - 1, locked = (i) => i === 0 || (k === "tw" && i === last);
+      return `<table class="bl-st"><thead><tr><th>${k === "mp" ? "Monopile station" : "Tower station"}, m MSL</th><th>⌀ m</th><th>wall mm</th><th></th></tr></thead><tbody>` +
+        rows.map((st, i) => `<tr data-st="${k}" data-i="${i}"><td>${locked(i) ? `<span class="mono">${fmt(st.z, 1)}</span> <span class="muted">${i === 0 ? "interface" : "top (hub − 5 m)"}</span>` : `<input type="number" step="0.5" data-sf="z" value="${st.z}"${ro ? " disabled" : ""}>`}</td>` +
+          `<td><input type="number" step="0.05" data-sf="D" value="${st.D}"${ro ? " disabled" : ""}></td><td><input type="number" step="1" data-sf="t" value="${+(st.t * 1e3).toPrecision(4)}"${ro ? " disabled" : ""}></td>` +
+          `<td>${locked(i) || ro ? "" : `<button class="btn icon" type="button" data-sdel aria-label="Remove station">✕</button>`}</td></tr>`).join("") + `</tbody></table>` +
+        (ro ? "" : `<button class="btn" type="button" data-sadd="${k}">Add station</button>`) +
+        `<p class="cap">${k === "mp" ? "Linear between stations; below the lowest station the diameter stays constant to the pile toe. Add stations for a tapered monopile or a conical transition piece." : "Linear between stations, from the flange to the top. Add stations for a multi-taper or a straight lower section."}</p>`;
+    };
     const inp = (k, lab, unit, sc, step) => `<label class="bl-f"><span>${lab}</span><span class="bl-in"><input type="number" data-k="${k}" step="${step}" value="${+(ty[k] / sc).toPrecision(5)}"${ro ? " disabled" : ""}><i>${unit}</i></span></label>`;
     host.innerHTML = `<label class="bl-f bl-name"><span>Name</span><input type="text" data-k="name" value="${ty.name.replace(/"/g, "&quot;")}"${ro ? " disabled" : ""}></label>` +
       (ro ? `<p class="hint bl-ro">Built-in types are read-only. <button class="btn" type="button" data-dup>Duplicate to edit</button></p>` : "") +
@@ -3658,7 +3847,7 @@ details.sec > * + * { margin-top: 8px; }
         SOILF[l.kind].map(([k, lb, u, , , st]) => `<label>${lb} <input type="number" data-sk="${k}" step="${st}" value="${l[k]}"${ro ? " disabled" : ""}>${u ? " " + u : ""}</label>`).join("") +
         (ro || ty.soil.length === 1 ? "" : `<button class="btn icon" type="button" data-del="${i}" aria-label="Remove layer">✕</button>`) + `</div>`).join("")}</div>` +
         (ro ? "" : `<button class="btn" type="button" data-addl>Add layer</button>`) + `<p class="cap">Sand: API p-y, initial modulus k·depth. Clay: Matlock, small-strain secant stiffness. The live twin also scales the whole profile by each site's factor from frequency tracking.</p></fieldset>` +
-      BF.map(([g, fs]) => `<fieldset class="bl-g"><legend>${g}</legend>${fs.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("")}` +
+      BF.map(([g, fs]) => `<fieldset class="bl-g"><legend>${g}</legend>${stations(g)}${fs.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("")}` +
         (g === "Tower-base flange" ? `<label class="bl-f"><span>Bolt size</span><span class="bl-in"><select data-k="bolt_d"${ro ? " disabled" : ""}>${Object.keys(TFE.BOLT_AS).map((b) => `<option value="${b}"${+b === ty.bolt_d ? " selected" : ""}>M${b} 10.9</option>`).join("")}</select></span></label>` : "") +
         (g === "Rotor and nacelle" && !ro ? `<button class="btn" type="button" data-jest>Estimate inertia from the masses</button>` : "") + `</fieldset>`).join("");
     const edit = (fn) => { if (ro) return; const nt = bClean(JSON.parse(JSON.stringify(TT.get(bSel)))); fn(nt); bClean(nt); TT.upsert(nt); clearTimeout(bTimer); bTimer = setTimeout(() => { bList(); bResults(TT.get(bSel)); bFarm(); }, 300); };
@@ -3668,6 +3857,11 @@ details.sec > * + * { margin-top: 8px; }
       const f = BF.flatMap(([, fs]) => fs).find((q) => q[0] === k); nt[k] = +x.value * f[3]; })));
     host.querySelectorAll("[data-sk]").forEach((x) => x.addEventListener("change", () => edit((nt) => { const i = +x.closest("[data-i]").dataset.i, k = x.dataset.sk; nt.soil[i][k] = k === "kind" ? x.value : +x.value; if (k === "kind") setTimeout(bForm, 0); })));
     host.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => { edit((nt) => { nt.soil.splice(+b.dataset.del, 1); }); setTimeout(bForm, 0); }));
+    host.querySelectorAll("[data-sf]").forEach((x) => x.addEventListener("change", () => { const tr2 = x.closest("[data-st]"); edit((nt) => { const st = nt[tr2.dataset.st][+tr2.dataset.i]; st[x.dataset.sf] = x.dataset.sf === "t" ? +x.value / 1e3 : +x.value; }); setTimeout(bForm, 350); }));
+    host.querySelectorAll("[data-sdel]").forEach((b) => b.addEventListener("click", () => { const tr2 = b.closest("[data-st]"); edit((nt) => { nt[tr2.dataset.st].splice(+tr2.dataset.i, 1); }); setTimeout(bForm, 0); }));
+    host.querySelectorAll("[data-sadd]").forEach((b) => b.addEventListener("click", () => { edit((nt) => { const a = nt[b.dataset.sadd];
+      if (b.dataset.sadd === "tw") { const i = a.length - 1, p0 = a[i - 1], p1 = a[i]; a.splice(i, 0, { z: (p0.z + p1.z) / 2, D: (p0.D + p1.D) / 2, t: (p0.t + p1.t) / 2 }); }
+      else { const l = a[a.length - 1]; a.push({ z: a.length === 1 ? Math.min(l.z - 10, 0) : l.z - 10, D: l.D, t: l.t }); } }); setTimeout(bForm, 0); }));
     const al = host.querySelector("[data-addl]"); if (al) al.addEventListener("click", () => { edit((nt) => { const l = nt.soil[nt.soil.length - 1], prev = nt.soil.length > 1 ? nt.soil[nt.soil.length - 2].to : 0; nt.soil.splice(nt.soil.length - 1, 0, Object.assign({}, l, { to: prev + 10 })); }); setTimeout(bForm, 0); });
     const je = host.querySelector("[data-jest]"); if (je) je.addEventListener("click", () => { edit((nt) => { const R = nt.rotor_D / 2, oh = 0.05 * nt.rotor_D; nt.J_rna = 3 * nt.blade_mass * (0.33 * R) ** 2 / 2 + nt.hub_mass * oh * oh + nt.nacelle_mass * (nt.D_tower_top * 2.2) ** 2 / 3; }); setTimeout(bForm, 0); });
     const dp = host.querySelector("[data-dup]"); if (dp) dp.addEventListener("click", bDuplicate);
