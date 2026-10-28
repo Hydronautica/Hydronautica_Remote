@@ -327,6 +327,45 @@ details.sec > * + * { margin-top: 8px; }
   .dr-b { overflow: visible; }
   .vp-hint { white-space: normal; text-align: center; width: max-content; max-width: calc(100% - 32px); }
 }
+/* live */
+.live { display: flex; flex-direction: column; gap: 10px; }
+.live-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.82rem; }
+.live-h b { font-family: var(--font-data); letter-spacing: 0.1em; color: var(--crit); font-size: 0.76rem; }
+.live-h .win { margin-left: auto; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--crit); display: inline-block; flex: none; margin: 0 2px 0 4px; }
+@media (prefers-reduced-motion: no-preference) { .live-dot { animation: pulse 1.6s ease-in-out infinite; } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { font: inherit; font-size: 0.76rem; padding: 3px 9px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.on { background: var(--accent); color: var(--surface); }
+.live-now { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.live-now div { background: var(--surface); padding: 6px 10px; display: grid; }
+.live-now .k { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.live-now .v { font-size: 0.95rem; }
+.live-rate { font-size: 0.86rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.live-grid { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; align-items: start; }
+.segpick svg { width: 92px; height: auto; display: block; }
+.segpick .sg { cursor: pointer; }
+.segpick .sg:hover { stroke: var(--accent); stroke-width: 2; }
+.segpick .cap { font-size: 0.68rem; text-align: center; }
+.seg-title { font-size: 0.86rem; margin-bottom: 6px; }
+.chs { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ch { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px 4px; min-width: 0; }
+.ch-h { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ch-h .nm { font-size: 0.82rem; font-weight: 600; }
+.ch-h .tag { font-family: var(--font-data); font-size: 0.66rem; color: var(--muted); white-space: nowrap; }
+.ch-h .tag.meas { color: var(--ok); }
+.ch-v { font-size: 0.74rem; margin: 1px 0 2px; }
+.ch-v b { font-size: 0.92rem; font-weight: 500; }
+.ch canvas { width: 100%; height: 78px; display: block; }
+.ch-k { font-size: 0.68rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
+.ch-k i { display: inline-block; width: 12px; height: 2px; margin-left: 6px; }
+.ch-k .k1 { background: var(--muted); } .ch-k .k2 { background: var(--accent); }
+.live-sub { margin-top: 6px; }
+#farm-live .list tbody tr { cursor: pointer; }
+#farm-live .list td.r, #farm-live .list th.r { text-align: right; }
+.vp-farm .live-dot { margin-left: 2px; }
 </style>
 
 <div class="app" id="app">
@@ -350,7 +389,7 @@ details.sec > * + * { margin-top: 8px; }
         <div class="vp-chip vp-farm" id="vp-farm"></div>
         <div class="vp-tools">
           <label class="sel">Colour<select id="vp-color" aria-label="Colour turbines by"><option value="verdict">Verdict</option><option value="life">Life used</option><option value="alarms">Frequency alarms</option></select></label>
-          <label class="sel">Sea<select id="vp-sea" aria-label="Sea state shown"><option value="storm">Storm replay</option><option value="whatif">What-if</option></select></label>
+          <label class="sel">Sea<select id="vp-sea" aria-label="Sea state shown"><option value="live">Live</option><option value="storm">Storm replay</option><option value="whatif">What-if</option></select></label>
         </div>
       </div>
       <div class="vp-msg" id="vp-msg" hidden></div>
@@ -384,6 +423,7 @@ details.sec > * + * { margin-top: 8px; }
 
       <!-- farm -->
       <div class="pane" id="pane-farm" hidden>
+        <div class="panel"><div class="panel-b live" id="farm-live" style="padding-top:12px"></div></div>
         <div class="storm" id="storm"></div>
         <div class="panel"><div class="panel-h"><h3>Turbines</h3></div><div class="panel-b">
           <div class="tbl-wrap"><table class="list" id="list" aria-label="Turbines">
@@ -400,6 +440,7 @@ details.sec > * + * { margin-top: 8px; }
       </div>
 
       <!-- turbine -->
+      <div class="pane live" id="pane-live" hidden></div>
       <div class="pane" id="pane-overview" hidden></div>
       <div class="pane" id="pane-fatigue" hidden></div>
       <div class="pane" id="pane-frequency" hidden></div>
@@ -424,7 +465,7 @@ details.sec > * + * { margin-top: 8px; }
       </div>
 
       <!-- component -->
-      <div class="pane" id="pane-component" hidden><div class="insp" id="insp"></div></div>
+      <div class="pane" id="pane-component" hidden><div class="panel"><div class="panel-b live" id="comp-live" style="padding-top:12px"></div></div><div class="insp" id="insp"></div></div>
 
     </div>
   </aside>
@@ -1342,13 +1383,15 @@ details.sec > * + * { margin-top: 8px; }
     for (let i = 0; i < NS; i++) streakSeed.push([Math.random(), Math.random(), 4 + Math.random() * 26]);
     // turbines
     const farmGroup = new THREE.Group(); scene.add(farmGroup);
-    let turbines = [], center = new THREE.Vector3(), extent = 400, sel = 0, colorMode = "verdict", seaMode = "storm";
+    let turbines = [], center = new THREE.Vector3(), extent = 400, sel = 0, colorMode = "verdict", seaMode = "live";
     let wind = { U: 30, from: 260 }, rpm = 0.3, playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const white = new THREE.MeshStandardMaterial({ color: 0xe9edf0, roughness: 0.55, metalness: 0.1 });
     const yellow = new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.6 });
     const grey = new THREE.MeshStandardMaterial({ color: 0x8b98a3, roughness: 0.7 });
     const hiMat = new THREE.MeshStandardMaterial({ color: 0x0a6a8a, emissive: 0x0a6a8a, emissiveIntensity: 0.55, roughness: 0.5 });
     let lit = [], showLabels = true;
+    const mark = new THREE.Mesh(new THREE.TorusGeometry(1, 0.08, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true, opacity: 0.95 }));
+    mark.rotation.x = Math.PI / 2; mark.renderOrder = 12; mark.visible = false;
     function label(text) {
       const c = document.createElement("canvas"); c.width = 128; c.height = 48;
       const g = c.getContext("2d"); g.font = "600 30px IBM Plex Mono, monospace"; g.textAlign = "center"; g.textBaseline = "middle";
@@ -1439,6 +1482,7 @@ details.sec > * + * { margin-top: 8px; }
     }
     function seaParams() {
       if (seaMode === "whatif") return { Hs: WI.hs, Tp: WI.tp, wdir: WI.wdir, U: WI.u, udir: WI.udir };
+      if (seaMode === "live") { const c = LIVE.cond(); return { Hs: c.Hs, Tp: c.Tp, wdir: c.wdir, U: c.U, udir: c.udir }; }
       const Hs = T.reduce((a, t) => a + t.Hs, 0) / T.length;
       return { Hs, Tp: D.meta.Tp, wdir: 270, U: 32, udir: 260 };
     }
@@ -1452,7 +1496,7 @@ details.sec > * + * { margin-top: 8px; }
       const yawA = (wind.from) * Math.PI / 180;
       turbines.forEach((o) => { o.yaw.rotation.y = Math.PI - yawA; });
       const cap = document.getElementById("vp-cap");
-      cap.textContent = `${seaMode === "storm" ? "Storm replay" : "What-if sea"}: Hs ${fmt(q.Hs, 1)} m, Tp ${fmt(q.Tp, 1)} s, waves from ${q.wdir}°, wind ${fmt(q.U, 0)} m/s from ${q.udir}° (rotors ${op ? "operating" : "idling"}). Waves drawn ${VE}× taller, turbines ${TS}× larger. Drag to orbit, scroll to zoom, right-drag to pan. Click a turbine to analyse it; click it again on a part (blade, nacelle, tower, flange, platform) to open that component.`;
+      cap.textContent = `${{ live: "Live", storm: "Storm replay", whatif: "What-if sea" }[seaMode]}: Hs ${fmt(q.Hs, 1)} m, Tp ${fmt(q.Tp, 1)} s, waves from ${q.wdir}°, wind ${fmt(q.U, 0)} m/s from ${q.udir}° (rotors ${op ? "operating" : "idling"}). Waves drawn ${VE}× taller, turbines ${TS}× larger. Drag to orbit, scroll to zoom, right-drag to pan. Click a turbine to analyse it; click it again on a part (blade, nacelle, tower, flange, platform) to open that component.`;
     }
     // camera
     let fly = null;
@@ -1473,9 +1517,9 @@ details.sec > * + * { margin-top: 8px; }
         door: m.z_door, flange: m.z_interface, platform: m.z_platform, splash: 4, weld: 0, soil: 0 }[part];
       return z === undefined ? null : z / U * TS;
     }
-    function flyTo(i, part) {
+    function flyTo(i, part, zAbs) {
       const o = turbines[i]; if (!o) return;
-      const zp = partHeight(part), close = zp !== null && part !== "tower" && part !== "rna" && !String(part).startsWith("blade");
+      const zp = zAbs !== undefined ? zAbs / U * TS : partHeight(part), close = zp !== null && part !== "tower" && part !== "rna" && !String(part).startsWith("blade");
       const tgt = o.g.position.clone(); tgt.y = zp === null ? 25 : zp;
       const dir = camera.position.clone().sub(controls.target).normalize();
       const pos = tgt.clone().add(dir.multiplyScalar(zp === null ? 200 : close ? 90 : 140)); pos.y = Math.max(pos.y, tgt.y + (close ? 14 : 15), 10);
@@ -1575,6 +1619,13 @@ details.sec > * + * { margin-top: 8px; }
       setFarm, theme, sea: () => { if (seaMode === "whatif") sea(); }, reset: () => { highlight(-1); resetView(true); },
       select: (i) => { sel = i; recolour(); const b = document.getElementById("vp-rogue"); b.hidden = i < 0; if (i >= 0) b.textContent = `Replay largest wave at ${T[i].spec.name}`; },
       focus: (i, part) => { highlight(i, part); flyTo(i, part); },
+      marker: (i, z) => {
+        if (mark.parent) mark.parent.remove(mark);
+        const o = turbines[i]; mark.visible = !!o; if (!o) return;
+        const m = D.meta.turbine, Dz = z >= m.z_interface ? m.D_pile + (m.D_tower_top - m.D_pile) * (z - m.z_interface) / (m.z_hub - m.z_interface) : m.D_pile;
+        mark.material.color = new THREE.Color(css("--accent")); mark.scale.setScalar(Dz / 2 / U * 1.9); mark.position.y = z / U; o.g.add(mark);
+        flyTo(i, null, z);
+      },
       labels: (v) => { showLabels = v; turbines.forEach((o) => { o.lab.visible = v; }); },
       play: (v) => { if (v !== playing) toggle(); },
     };
@@ -1586,6 +1637,335 @@ details.sec > * + * { margin-top: 8px; }
       `Fatigue stress concentration: door frame ${D.meta.scf.door_frame}, mudline weld ${D.meta.scf.mudline_weld}. Deep-water NLS dynamics are applied at intermediate depth (kd above 1.36, where modulational instability exists); the production chain uses finite-depth evolution.` +
       (D.history && D.history.demo_scale ? ` Between-storm fatigue rates are scaled by ${D.history.demo_scale.toPrecision(2)} for this demonstration, because the demo base runs leave out load-reducing effects such as diffraction and directional spreading.` : "");
   }
+  // ---------- live twin: streaming channels from the current sea, wind and rotor state ----------
+  // Every channel is a closed-form function of time (sums of wave, turbulence and rotor
+  // harmonics passed through each turbine's first mode), so any window can be drawn at
+  // any moment and all views stay consistent. Demo stand-in for the twin's real-time solver.
+  const LIVE = (() => {
+    const cache = new Map();
+    let paused = null;
+    const now = () => (paused !== null ? paused : Date.now() / 1000);
+    const rng = (seed) => { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
+    const noise = (t, k) => { const x = Math.sin(Math.floor(t * 25) * 12.9898 + k * 78.233) * 43758.5453; return (x - Math.floor(x)) * 2 - 1; };
+    function cond() {
+      const hs = Math.min(3.2, Math.max(1.2, (D.history ? D.history.hs_mean : 1.5) * 1.5));
+      return { Hs: +hs.toFixed(1), Tp: +(tpTyp(hs) + 0.6).toFixed(1), wdir: 245, U: [13.4, 11.2, 9.6][FI] || 12, udir: 232, dur: 1, clim: 0 };
+    }
+    const Hresp = (w, w1, z) => { const r = w / w1, den = (1 - r * r) ** 2 + (2 * z * r) ** 2; return [1 / Math.sqrt(den), Math.atan2(2 * z * r, 1 - r * r)]; };
+    function geomAt(m, z) {               // outer diameter and wall at elevation z
+      if (z >= m.z_interface) { const s = (z - m.z_interface) / (m.z_hub - m.z_interface); return [m.D_pile + (m.D_tower_top - m.D_pile) * s, m.t_tower_base + (m.t_tower_top - m.t_tower_base) * s]; }
+      return [m.D_pile, m.t_pile];
+    }
+    function power(U, m) {
+      const Pr = m.rotor_D > 220 ? 15 : 10;
+      return U < 3 || U > 25 ? 0 : Pr * Math.min(1, ((U - 3) / (m.rated_U - 3)) ** 3);
+    }
+    function model(ti) {
+      const key = FI + ":" + ti; if (cache.has(key)) return cache.get(key);
+      const t = T[ti], m = D.meta.turbine, c = cond(), r = rng(1000 + FI * 97);
+      const d = t.spec.depth, g = 9.81, rho = 1025, Dp = m.D_pile;
+      const w1 = 2 * Math.PI * t.f1, op = c.U >= 3 && c.U <= 25;
+      const zfa = 0.015 + (op ? 0.035 : 0.003), zss = 0.018;
+      const K = 1.4 * m.m_rna * w1 * w1, zh = m.z_hub, zm = -d - 0.25 * m.embedment, zf = -0.3 * d;
+      const phi = (z) => Math.max(0, (z - zm) / (zh - zm)) ** 2, dphi = (z) => 2 * Math.max(0, z - zm) / (zh - zm) ** 2;
+      const sx = t.spec.x * 1000, sy = t.spec.y * 1000;
+      // waves (directionally spread JONSWAP; phases shared across the farm, lagged by position)
+      const NWV = 36, wp = 2 * Math.PI / c.Tp, S = [], ws = [];
+      for (let i = 0; i < NWV; i++) { const w = wp * (0.6 + 2.4 * (i + 0.5) / NWV); ws.push(w); S.push(Math.pow(w, -5) * Math.exp(-1.25 * Math.pow(wp / w, 4)) * Math.pow(3.3, Math.exp(-((w - wp) ** 2) / (2 * 0.08 ** 2 * wp * wp)))); }
+      const sum = S.reduce((a, b) => a + b, 0), m0 = (c.Hs / 4) ** 2;
+      const comps = [];
+      ws.forEach((w, i) => {
+        const a = Math.sqrt(2 * m0 * S[i] / sum);
+        let k = w * w / g; for (let it = 0; it < 30; it++) k = w * w / (g * Math.tanh(k * d));
+        const th = c.wdir + 25 * (2 * r() - 1), to = rad(th + 180);
+        const lag = k * (sx * Math.sin(to) - sy * Math.cos(to));
+        const dl = rad(th - c.udir), Fw = rho * g * 2.0 * Math.PI * Dp * Dp / 4 * a * Math.tanh(k * d);
+        const [hf, pf] = Hresp(w, w1, zfa), [hs, ps] = Hresp(w, w1, zss);
+        const Ffa = Fw * Math.cos(dl), Fss = Fw * Math.sin(dl);
+        comps.push({ w, ph: 2 * Math.PI * r() - lag, a, Ffa, Fss, Xf: Ffa * phi(zf) / K * hf, cf: Math.cos(pf), sf: Math.sin(pf), Xs: Fss * phi(zf) / K * hs, cs: Math.cos(ps), ss: Math.sin(ps) });
+      });
+      // wind turbulence (Kaimal) through the thrust slope
+      const T0 = thrust(c.U), TI = 0.05 + 0.4 / Math.max(c.U, 2), sig = TI * c.U, L = 340;
+      const dTdU = op ? (c.U < m.rated_U ? 2 * T0 / c.U : -0.6 * T0 / c.U) : 2 * T0 / Math.max(c.U, 1);
+      const rw = rng(4000 + FI * 31 + ti * 7), turb = []; let var0 = 0;
+      for (let j = 0; j < 28; j++) {
+        const f0 = 0.003 * Math.pow(200, j / 27), f1j = 0.003 * Math.pow(200, (j + 1) / 27), f = Math.sqrt(f0 * f1j), df = f1j - f0;
+        const Sk = 4 * L / c.U / Math.pow(1 + 6 * f * L / c.U, 5 / 3);
+        turb.push({ w: 2 * Math.PI * f, ph: 2 * Math.PI * rw(), b: Math.sqrt(2 * Sk * df) }); var0 += Sk * df;
+      }
+      turb.forEach((q) => { q.b *= sig / Math.sqrt(var0); const [h, p] = Hresp(q.w, w1, zfa); q.X = dTdU * q.b / K * h; q.c = Math.cos(p); q.s = Math.sin(p); });
+      // rotor
+      const rpm = op ? Math.min(1, c.U / m.rated_U) * (m.rotor_D > 220 ? 7.5 : 9.0) : 0.3, Om = rpm * 2 * Math.PI / 60;
+      const harm = [[3 * Om, 0.03 * T0], [Om, 0.012 * T0]].map(([w, F]) => { const [h, p] = Hresp(w, w1, zfa); return { w, X: F / K * h, c: Math.cos(p), s: Math.sin(p) }; });
+      const res = t.whatif && D.history ? whatif(t, { hs: c.Hs, tp: c.Tp, wdir: c.wdir, u: c.U, udir: c.udir }) : null, yrs = D.history ? D.history.years_in_service : 1;
+      const rate = res ? Object.fromEntries(HOTS.map((k) => [k, res[k].rate / ((t.history.hot[k].total / 100 / D.meta.dff[k]) / (yrs * 8766))])) : null;
+      const M = { t, m, c, K, zh, zm, zf, phi, dphi, comps, turb, harm, T0, dTdU, x0: T0 / K, Om, rpm, op, rate, ti,
+        fl: t.whatif ? t.whatif.flange : null, mb: m.rotor_D > 220 ? 65e3 : 42e3, R: m.rotor_D / 2,
+        Krot: 3.2e9 * (m.rotor_D > 220 ? 1 : 0.55) * (1 - 0.06 * t.spec.scour) };
+      cache.set(key, M);
+      return M;
+    }
+    function state(M, tt) {
+      let eta = 0, Ffa = 0, Fss = 0, xf = M.x0, xs = 0, af = 0, as = 0, u = 0;
+      for (const q of M.comps) {
+        const p = q.w * tt + q.ph, co = Math.cos(p), si = Math.sin(p), w2 = q.w * q.w;
+        eta += q.a * co; Ffa += q.Ffa * co; Fss += q.Fss * co;
+        const rf = co * q.cf + si * q.sf, rs = co * q.cs + si * q.ss;
+        xf += q.Xf * rf; af -= w2 * q.Xf * rf; xs += q.Xs * rs; as -= w2 * q.Xs * rs;
+      }
+      for (const q of M.turb) {
+        const p = q.w * tt + q.ph, co = Math.cos(p), si = Math.sin(p), rf = co * q.c + si * q.s;
+        u += q.b * co; xf += q.X * rf; af -= q.w * q.w * q.X * rf; xs += 0.12 * q.X * si; as -= 0.12 * q.w * q.w * q.X * si;
+      }
+      for (const q of M.harm) {
+        const p = q.w * tt, rf = Math.cos(p) * q.c + Math.sin(p) * q.s;
+        xf += q.X * rf; af -= q.w * q.w * q.X * rf; xs += 0.5 * q.X * Math.sin(p + 1); as -= 0.5 * q.w * q.w * q.X * Math.sin(p + 1);
+      }
+      return { tt, eta, Ffa, Fss, xf, xs, af, as, U: M.c.U + u, T: M.T0 + M.dTdU * u, az: M.Om * tt };
+    }
+    // section forces at elevation z
+    const weight = (M, z) => { const m = M.m; if (z >= m.z_interface) return 9.81 * (m.m_rna + 0.9 * m.m_rna * (M.zh - z) / (M.zh - m.z_interface)); return 9.81 * 1.9 * m.m_rna + 9.81 * 7850 * Math.PI * m.D_pile * m.t_pile * (m.z_interface - z); };
+    function sec(M, s, z) {
+      const mfa = M.K * s.xf * (M.zh - z) + (z < M.zf ? s.Ffa * (M.zf - z) : 0);
+      const mss = M.K * s.xs * (M.zh - z) + (z < M.zf ? s.Fss * (M.zf - z) : 0);
+      const [Dz, tz] = geomAt(M.m, z), W = Math.PI * Dz * Dz * tz / 4, A = Math.PI * Dz * tz, N = weight(M, z);
+      return { mfa, mss, mres: Math.hypot(mfa, mss), W, A, N, smax: Math.hypot(mfa, mss) / W - N / A };
+    }
+    function segments(M) {
+      const m = M.m, d = M.t.spec.depth, out = [];
+      const add = (pre, z0, z1, n) => { for (let i = 0; i < n; i++) out.push({ id: `${pre}${String(i + 1).padStart(2, "0")}`, z0: z0 + (z1 - z0) * i / n, z1: z0 + (z1 - z0) * (i + 1) / n, region: pre }); };
+      add("P", -d - m.embedment, -d, 5); add("W", -d, m.z_interface - 1, Math.max(4, Math.round((d + m.z_interface) / 8))); add("TP", m.z_interface - 1, m.z_interface + 1, 1);
+      add("T", m.z_interface + 1, m.z_hub - 2, Math.round((m.z_hub - m.z_interface) / 10));
+      out.forEach((g) => { g.zc = (g.z0 + g.z1) / 2; if (g.region === "TP") g.id = "TP"; });
+      return out;
+    }
+    return { now, model, state, sec, segments, cond, noise, power, pause: (v) => { paused = v ? now() : null; }, paused: () => paused !== null, clear: () => cache.clear() };
+  })();
+
+  // channel catalogue: part (and segment elevation) -> channels
+  function liveChannels(M, part, z) {
+    const m = M.m, MN = 1e6, deg = 180 / Math.PI, ch = [];
+    const add = (o) => ch.push(Object.assign({ tag: "Virtual sensor" }, o));
+    const meas = (tag, fn, sd, k) => ({ tag, measured: (s) => fn(s) + sd * LIVE.noise(s.tt, k) });
+    if (part === "segment") {
+      add({ label: "Bending moment, fore-aft", unit: "MN·m", f: (s) => LIVE.sec(M, s, z).mfa / MN });
+      add({ label: "Bending moment, side-side", unit: "MN·m", f: (s) => LIVE.sec(M, s, z).mss / MN });
+      add({ label: "Peak axial stress (outer fibre)", unit: "MPa", f: (s) => LIVE.sec(M, s, z).smax / MN });
+      if (z > -M.t.spec.depth) {
+        add({ label: "Acceleration, fore-aft", unit: "m/s²", f: (s) => M.phi(z) * s.af });
+        add({ label: "Displacement, fore-aft", unit: "mm", f: (s) => M.phi(z) * s.xf * 1000 });
+      }
+    } else if (part === "turbine") {
+      const zi = m.z_interface;
+      add(Object.assign({ label: "Wave elevation at the platform", unit: "m", f: (s) => s.eta }, meas("WR-01 wave radar", (s) => s.eta, 0.04, 1)));
+      add(Object.assign({ label: "Wind speed at hub", unit: "m/s", f: (s) => s.U }, meas("SCADA nacelle anemometer", (s) => s.U, 0.35, 2)));
+      add(Object.assign({ label: "Tower-top acceleration, fore-aft", unit: "m/s²", f: (s) => M.phi(M.zh - 3) * s.af }, meas("ACC-TT accelerometer", (s) => M.phi(M.zh - 3) * s.af, 0.003, 3)));
+      add(Object.assign({ label: `Tower-base moment (+${zi + 3} m)`, unit: "MN·m", f: (s) => LIVE.sec(M, s, zi + 3).mfa / MN }, meas("SG-TB strain gauges", (s) => LIVE.sec(M, s, zi + 3).mfa / MN, 1.5, 4)));
+      add(Object.assign({ label: "Interface tilt, fore-aft", unit: "°", f: (s) => (M.dphi(zi) * s.xf + LIVE.sec(M, s, -M.t.spec.depth).mfa / M.Krot * Math.PI / 180) * deg }, meas("INC-IF inclinometer", (s) => (M.dphi(zi) * s.xf + LIVE.sec(M, s, -M.t.spec.depth).mfa / M.Krot * Math.PI / 180) * deg, 0.002, 5)));
+    } else if (part === "rna") {
+      add({ label: "Electrical power", unit: "MW", tag: "SCADA", f: (s) => LIVE.power(s.U, m) });
+      add({ label: "Rotor speed", unit: "rpm", tag: "SCADA", f: (s) => M.rpm * (M.op ? Math.min(1.04, Math.max(0.6, s.U / m.rated_U)) : 1) });
+      add({ label: "Blade pitch", unit: "°", tag: "SCADA", f: (s) => (M.op && s.U > m.rated_U ? 2.4 * Math.pow(s.U - m.rated_U, 0.8) : 0) });
+      add(Object.assign({ label: "Nacelle acceleration, fore-aft", unit: "m/s²", f: (s) => s.af }, meas("ACC-NAC accelerometer", (s) => s.af, 0.003, 6)));
+      add({ label: "Nacelle acceleration, side-side", unit: "m/s²", f: (s) => s.as });
+    } else if (part.startsWith("blade_")) {
+      const b = "ABC".indexOf(part.slice(-1)), off = 2 * Math.PI * b / 3, rcg = 0.33 * M.R;
+      const flap = (s) => s.T / 3 * 0.66 * M.R * (1 + 0.12 * Math.cos(s.az + off)) / MN;
+      add(Object.assign({ label: "Flapwise root moment", unit: "MN·m", f: flap }, meas(`SG-BR-${part.slice(-1)} root strain`, flap, 0.6, 7 + b)));
+      add({ label: "Edgewise root moment", unit: "MN·m", f: (s) => (M.mb * 9.81 * rcg * Math.sin(s.az + off) + (M.op ? LIVE.power(s.U, m) * 1e6 / Math.max(M.Om, 0.05) / 3 / 0.95 : 0)) / MN });
+      add({ label: "Blade azimuth", unit: "°", tag: "SCADA", f: (s) => (((s.az + off) * 180 / Math.PI) % 360 + 360) % 360 });
+    } else if (part === "flange" && M.fl) {
+      const fl = M.fl, zi = m.z_interface;
+      const Zof = (s) => 4 * LIVE.sec(M, s, zi).mres / (fl.n * fl.Dbc) - fl.N / fl.n;
+      add(Object.assign({ label: "Force in the most loaded bolt", unit: "MN", f: (s) => boltF(fl, Zof(s)) / MN }, meas("BLT-17 ultrasonic bolt", (s) => boltF(fl, Zof(s)) / MN, 0.004, 9)));
+      add({ label: "Segment tension Z", unit: "MN", f: (s) => Zof(s) / MN, hl: [{ y: fl.Z1 / MN, label: "gap opens", color: "--warn" }, { y: fl.Z2 / MN, label: "fully open", color: "--crit" }] });
+      add({ label: "Flange moment (resultant)", unit: "MN·m", f: (s) => LIVE.sec(M, s, zi).mres / MN });
+    } else if (part === "door") {
+      const zd = m.z_door, scf = D.meta.scf.door_frame;
+      const hs = (s) => { const q = LIVE.sec(M, s, zd), a = rad(DOOR_AZ - M.c.udir); return (scf * (q.mfa * Math.cos(a) + q.mss * Math.sin(a)) / q.W - q.N / q.A) / MN; };
+      add({ label: "Hot-spot stress at the door corner", unit: "MPa", f: hs });
+      add({ label: `Moment at the door (+${zd} m)`, unit: "MN·m", f: (s) => LIVE.sec(M, s, zd).mres / MN });
+    } else if (part === "weld") {
+      const zw = M.t.z_mudline_weld, scf = D.meta.scf.mudline_weld;
+      add({ label: "Hot-spot stress at the weld", unit: "MPa", f: (s) => scf * LIVE.sec(M, s, zw).smax / MN });
+      add({ label: `Moment at the weld (${fmt(zw, 1)} m)`, unit: "MN·m", f: (s) => LIVE.sec(M, s, zw).mres / MN });
+    } else if (part === "platform") {
+      add(Object.assign({ label: "Wave elevation", unit: "m", f: (s) => s.eta, hl: [{ y: m.z_platform, label: "platform underside", color: "--warn" }] }, meas("WR-01 wave radar", (s) => s.eta, 0.04, 1)));
+      add({ label: "Crest clearance to platform", unit: "m", f: (s) => m.z_platform - s.eta, hl: [{ y: 1.5, label: "inspection trigger", color: "--crit" }] });
+    } else if (part === "soil") {
+      const zs = -M.t.spec.depth;
+      add({ label: "Mudline moment", unit: "MN·m", f: (s) => LIVE.sec(M, s, zs).mres / MN });
+      add({ label: "Pile rotation at mudline", unit: "°", f: (s) => LIVE.sec(M, s, zs).mres / M.Krot, hl: [{ y: 0.25, label: "action trigger", color: "--warn" }] });
+      add({ label: "Wave force on the pile", unit: "MN", f: (s) => Math.hypot(s.Ffa, s.Fss) / MN });
+    }
+    return ch;
+  }
+
+  // strip chart on canvas; vertical min-max bars when samples are denser than pixels
+  function strip(cv, data, spp, o) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), W = cv.clientWidth, H = cv.clientHeight;
+    if (!W) return;
+    if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    let lo = Infinity, hi = -Infinity;
+    data.forEach((ys) => ys.forEach((v) => { if (v < lo) lo = v; if (v > hi) hi = v; }));
+    (o.hl || []).forEach((h) => { if (h.y >= lo - (hi - lo) && h.y <= hi + (hi - lo)) { lo = Math.min(lo, h.y); hi = Math.max(hi, h.y); } });
+    if (!isFinite(lo)) return;
+    const pad = (hi - lo) * 0.12 || Math.abs(hi) * 0.1 || 1; lo -= pad; hi += pad;
+    const L = 46, R = 6, Y = (v) => 6 + (1 - (v - lo) / (hi - lo)) * (H - 12);
+    g.font = "10px IBM Plex Mono, monospace"; g.textAlign = "right"; g.textBaseline = "middle";
+    ticks(lo, hi, 3).forEach((v) => { g.strokeStyle = css("--grid"); g.lineWidth = 1; g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(W - R, Y(v)); g.stroke(); g.fillStyle = css("--muted"); g.fillText(+v.toFixed(3), L - 5, Y(v)); });
+    (o.hl || []).forEach((h) => { if (h.y < lo || h.y > hi) return; g.strokeStyle = css(h.color); g.setLineDash([4, 3]); g.beginPath(); g.moveTo(L, Y(h.y)); g.lineTo(W - R, Y(h.y)); g.stroke(); g.setLineDash([]); g.fillStyle = css(h.color); g.textAlign = "left"; g.fillText(h.label, L + 4, Y(h.y) - 7); g.textAlign = "right"; });
+    const n = data[0].length / spp, X = (i) => L + (W - L - R) * i / Math.max(1, n - 1);
+    data.forEach((ys, si) => {
+      g.strokeStyle = css(si === 0 && data.length > 1 ? "--muted" : "--accent"); g.lineWidth = si === 0 && data.length > 1 ? 1 : 1.5;
+      g.globalAlpha = si === 0 && data.length > 1 ? 0.8 : 1;
+      g.beginPath();
+      if (spp === 1) ys.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))));
+      else for (let i = 0; i < n; i++) { let a = Infinity, b = -Infinity; for (let k = 0; k < spp; k++) { const v = ys[i * spp + k]; if (v < a) a = v; if (v > b) b = v; } g.moveTo(X(i), Y(a)); g.lineTo(X(i), Y(b) - 0.5); }
+      g.stroke(); g.globalAlpha = 1;
+    });
+  }
+
+  let LV = null;
+  function stopLive() { if (LV) { LV.stop(); LV = null; } }
+  // mount a live view: part = "turbine" (segment picker + sensors) or a component id
+  function liveView(host, ti, part) {
+    stopLive();
+    const M = LIVE.model(ti), t = T[ti], m = M.m, segs = LIVE.segments(M);
+    const range = { turbine: [-1e9, 1e9], tower: [m.z_interface + 1, 1e9], splash: [-t.spec.depth, m.z_interface + 1], soil: [-1e9, -t.spec.depth] }[part];
+    const pick = range ? segs.filter((g) => g.zc >= range[0] && g.zc <= range[1]) : null;
+    let seg = pick ? (part === "soil" ? pick[pick.length - 1] : part === "splash" ? pick[0] : pick.find((g) => g.region === "T") || pick[0]) : null;
+    let win = 30, stopped = false, raf = 0, last = 0, lastPick = 0;
+    const fixed = liveChannels(M, part);
+    host.innerHTML =
+      `<div class="live-h"><span class="live-dot"></span><b>LIVE</b><span class="mono muted" data-clock></span>` +
+      `<span class="seg win">${[30, 120, 600].map((w) => `<button type="button" data-w="${w}" class="${w === win ? "on" : ""}">${w < 60 ? w + " s" : w / 60 + " min"}</button>`).join("")}</span>` +
+      `<button class="btn" type="button" data-pause>${LIVE.paused() ? "Resume" : "Pause"}</button></div>` +
+      (part === "turbine" ? `<div class="live-now" data-now></div>` : "") +
+      (M.rate && { flange: 1, door: 1, weld: 1 }[part] ? `<div class="live-rate" data-rate></div>` : "") +
+      (pick ? `<div class="live-grid"><div class="segpick" data-pick></div><div><div class="seg-title" data-segtitle></div><div class="chs" data-segch></div></div></div>` : "") +
+      (fixed.length ? (part === "turbine" ? `<h3 class="live-sub">Sensors</h3>` : "") + `<div class="chs" data-fixed></div>` : "");
+    const q = (s) => host.querySelector(s);
+    const card = (c) => `<div class="ch"><div class="ch-h"><span class="nm">${c.label}</span><span class="tag${c.measured ? " meas" : ""}">${c.tag}</span></div>` +
+      `<div class="ch-v mono" data-v></div><canvas></canvas>${c.measured ? `<div class="ch-k"><i class="k1"></i>measured <i class="k2"></i>twin</div>` : ""}</div>`;
+    let segCh = [];
+    function mountSeg() {
+      if (!pick) return;
+      segCh = liveChannels(M, "segment", seg.zc);
+      q("[data-segtitle]").innerHTML = `<b>Segment ${seg.id}</b> <span class="muted mono">${fmt(seg.z0, 1)} to ${fmt(seg.z1, 1)} m · ${{ P: "pile below seabed", W: "monopile", TP: "transition piece", T: "tower" }[seg.region]}</span>`;
+      q("[data-segch]").innerHTML = segCh.map(card).join("");
+      if (S3) S3.marker(ti, seg.zc);
+      drawPick(); draw(true);
+    }
+    if (fixed.length) q("[data-fixed]").innerHTML = fixed.map(card).join("");
+    let pickBuilt = false;
+    function drawPick() {
+      if (!pick) return;
+      const s0 = LIVE.state(M, LIVE.now());
+      const util = (g) => Math.min(1, Math.abs(LIVE.sec(M, s0, g.zc).smax) / 60e6);
+      const col = (u) => css(u > 0.8 ? "--crit" : u > 0.5 ? "--warn" : "--ok");
+      const hostP = q("[data-pick]");
+      if (!pickBuilt) {
+        const H = 380, Wd = 92, top = Math.max(...pick.map((g) => g.z1)), bot = Math.min(...pick.map((g) => g.z0));
+        const Yz = (z) => 8 + (top - z) / (top - bot) * (H - 16);
+        let h = `<svg viewBox="0 0 ${Wd} ${H}" role="group" aria-label="Segments; colour shows live stress">`;
+        if (0 <= top && 0 >= bot) h += `<line x1="0" x2="${Wd}" y1="${Yz(0)}" y2="${Yz(0)}" stroke="${css("--sea")}" stroke-dasharray="3 2"/>`;
+        if (-t.spec.depth <= top && -t.spec.depth >= bot) h += `<rect x="0" y="${Yz(-t.spec.depth)}" width="${Wd}" height="${H - Yz(-t.spec.depth)}" fill="${css("--grid")}"/>`;
+        pick.forEach((g) => {
+          const [Dz] = geoAt(g.zc), w = 10 + 16 * Dz / m.D_pile;
+          h += `<rect class="sg" data-id="${g.id}" x="${46 - w / 2}" y="${Yz(g.z1) + 0.5}" width="${w}" height="${Math.max(2, Yz(g.z0) - Yz(g.z1) - 1)}" stroke-width="2" rx="1.5"><title>${g.id}: ${fmt(g.z0, 0)} to ${fmt(g.z1, 0)} m</title></rect>`;
+        });
+        [[m.z_interface, "flange"], [m.z_door, "door"], [t.z_mudline_weld, "weld"]].forEach(([z, l]) => { if (z <= top && z >= bot) h += `<text x="${Wd - 1}" y="${Yz(z) + 3}" text-anchor="end" font-size="8.5" fill="${css("--muted")}" font-family="IBM Plex Mono, monospace">${l}</text>`; });
+        h += `</svg><div class="cap">live stress, 0 to 60 MPa</div>`;
+        hostP.innerHTML = h; pickBuilt = true;
+        hostP.addEventListener("click", (e) => { const r = e.target.closest(".sg"); if (!r) return; seg = pick.find((g) => g.id === r.dataset.id); mountSeg(); });
+      }
+      hostP.querySelectorAll(".sg").forEach((r) => {
+        const g = pick.find((x) => x.id === r.dataset.id), u = util(g);
+        r.setAttribute("fill", col(u)); r.setAttribute("fill-opacity", (0.25 + 0.7 * u).toFixed(2));
+        r.setAttribute("stroke", g === seg ? css("--ink") : "none");
+      });
+    }
+    const geoAt = (z) => (z >= m.z_interface ? [m.D_pile + (m.D_tower_top - m.D_pile) * (z - m.z_interface) / (m.z_hub - m.z_interface)] : [m.D_pile]);
+    function fill(container, chans, states, spp) {
+      if (!container) return;
+      const cards = container.querySelectorAll(".ch");
+      chans.forEach((c, k) => {
+        const el2 = cards[k]; if (!el2) return;
+        const tw = states.map(c.f), ys = c.measured ? [states.map(c.measured), tw] : [tw];
+        strip(el2.querySelector("canvas"), ys, spp, { hl: c.hl });
+        const ref = ys[0], mean = ref.reduce((a, b) => a + b, 0) / ref.length;
+        const sd = Math.sqrt(ref.reduce((a, b) => a + (b - mean) ** 2, 0) / ref.length);
+        let mx = -Infinity, mn = Infinity; ref.forEach((v) => { if (v > mx) mx = v; if (v < mn) mn = v; });
+        const dg = Math.abs(mx) >= 100 ? 0 : Math.abs(mx) >= 10 ? 1 : Math.abs(mx) >= 1 ? 2 : 3;
+        let fit = "";
+        if (c.measured) { let e = 0, v = 0; for (let i = 0; i < tw.length; i++) { e += (ref[i] - tw[i]) ** 2; v += (ref[i] - mean) ** 2; } fit = ` · twin fit ${fmt(100 * Math.max(0, 1 - Math.sqrt(e / Math.max(v, 1e-12))), 0)}%`; }
+        el2.querySelector("[data-v]").innerHTML = `<b>${fmt(ref[ref.length - 1], dg)}</b> ${c.unit} <span class="muted">· σ ${fmt(sd, dg)} · range ${fmt(mn, dg)} to ${fmt(mx, dg)}${fit}</span>`;
+      });
+    }
+    function draw(force) {
+      const tn = LIVE.now(), cv = host.querySelector("canvas");
+      const px = Math.max(120, Math.min(600, cv ? cv.clientWidth - 52 : 360)), spp = win <= 30 ? 1 : win <= 120 ? 2 : 4, n = px * spp;
+      const states = new Array(n);
+      for (let i = 0; i < n; i++) states[i] = LIVE.state(M, tn - win + win * i / (n - 1));
+      q("[data-clock]").textContent = new Date(tn * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + (LIVE.paused() ? " · paused" : "");
+      fill(q("[data-fixed]"), fixed, states, spp);
+      fill(q("[data-segch]"), segCh, states, spp);
+      const nowEl = q("[data-now]");
+      if (nowEl) {
+        const s = states[n - 1], c = M.c, eta = states.map((x) => x.eta), mu = eta.reduce((a, b) => a + b, 0) / n;
+        const hsEst = 4 * Math.sqrt(eta.reduce((a, b) => a + (b - mu) ** 2, 0) / n);
+        const worst = M.rate ? HOTS.reduce((a, k) => (M.rate[k] > M.rate[a] ? k : a), HOTS[0]) : null;
+        nowEl.innerHTML = [["H<sub>s</sub> (radar, window)", fmt(hsEst, 1) + " m"], ["T<sub>p</sub>", fmt(c.Tp, 1) + " s"], ["Wind at hub", fmt(s.U, 1) + " m/s"],
+          ["Power", fmt(LIVE.power(s.U, m), 1) + " MW"], ["Rotor", fmt(M.rpm, 1) + " rpm"],
+          ["Damage rate now", worst ? `${fmt(M.rate[worst], M.rate[worst] < 10 ? 2 : 0)}× avg` : "–"]]
+          .map(([k, v]) => `<div><span class="k">${k}</span><span class="v mono">${v}</span></div>`).join("");
+      }
+      const rt = q("[data-rate]");
+      if (rt && force) {
+        const k = { flange: "flange_bolts", door: "door_frame", weld: "mudline_weld" }[part], x = M.rate[k];
+        rt.innerHTML = `Fatigue damage rate now: <b class="mono" style="color:var(${x >= 10 ? "--crit" : x >= 2 ? "--warn" : "--ok"})">${fmt(x, x < 10 ? 2 : 0)}×</b> the average since commissioning, in today's sea (H<sub>s</sub> ${fmt(M.c.Hs, 1)} m, wind ${fmt(M.c.U, 1)} m/s).`;
+      }
+      if (pick && tn - lastPick > 0.5) { lastPick = tn; drawPick(); }
+    }
+    host.querySelectorAll("[data-w]").forEach((b) => b.addEventListener("click", () => { win = +b.dataset.w; host.querySelectorAll("[data-w]").forEach((x) => x.classList.toggle("on", x === b)); draw(true); }));
+    q("[data-pause]").addEventListener("click", (e) => { LIVE.pause(!LIVE.paused()); e.target.textContent = LIVE.paused() ? "Resume" : "Pause"; draw(true); });
+    function tick(ts) {
+      if (stopped) return;
+      raf = requestAnimationFrame(tick);
+      if (document.hidden || !host.offsetParent || !host.isConnected) return;
+      if (ts - last < (win >= 600 ? 500 : win >= 120 ? 150 : 60)) return;
+      last = ts; draw(false);
+    }
+    if (pick) mountSeg(); else draw(true);
+    raf = requestAnimationFrame(tick);
+    return (LV = { stop: () => { stopped = true; cancelAnimationFrame(raf); if (S3) S3.marker(-1); } });
+  }
+
+  // farm-level live summary, refreshed once a second
+  let FLV = null;
+  function farmLive(host) {
+    if (FLV) FLV.stop();
+    let stopped = false, timer = 0;
+    const draw = () => {
+      if (stopped || !host.isConnected) return;
+      const tn = LIVE.now(), c = LIVE.cond();
+      let tot = 0;
+      const rows = T.map((t, i) => {
+        const M = LIVE.model(i), s = LIVE.state(M, tn), P = LIVE.power(s.U, M.m); tot += P;
+        const mb = LIVE.sec(M, s, M.m.z_interface + 3).mfa / 1e6;
+        return `<tr data-i="${i}"><td>${t.spec.name}</td><td class="r">${fmt(P, 1)}</td><td class="r">${fmt(s.U, 1)}</td><td class="r">${fmt(mb, 0)}</td><td class="r">${fmt(M.phi(M.zh - 3) * s.af, 3)}</td></tr>`;
+      }).join("");
+      host.innerHTML = `<div class="live-h"><span class="live-dot"></span><b>LIVE</b><span class="mono muted">${new Date(tn * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div>` +
+        `<div class="live-now"><div><span class="k">H<sub>s</sub> · T<sub>p</sub></span><span class="v mono">${fmt(c.Hs, 1)} m · ${fmt(c.Tp, 1)} s</span></div><div><span class="k">Wind</span><span class="v mono">${fmt(c.U, 1)} m/s from ${c.udir}°</span></div><div><span class="k">Farm output</span><span class="v mono">${fmt(tot, 0)} MW</span></div></div>` +
+        `<div class="tbl-wrap"><table class="list"><thead><tr><th>Turbine</th><th class="r">Power MW</th><th class="r">Wind m/s</th><th class="r">Tower-base MN·m</th><th class="r">Top acc. m/s²</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      host.querySelectorAll("tr[data-i]").forEach((r) => r.addEventListener("click", () => go({ type: "turbine", farm: FI, t: +r.dataset.i, tab: "live" })));
+    };
+    draw(); timer = setInterval(draw, 1000);
+    return (FLV = { stop: () => { stopped = true; clearInterval(timer); } });
+  }
+
   // ---------- explorer, navigation and drawer ----------
   let current = -1;
   let NAV = { type: "none" };
@@ -1679,19 +2059,21 @@ details.sec > * + * { margin-top: 8px; }
     });
   }
 
-  const PANES = ["portfolio", "farm", "overview", "fatigue", "frequency", "event", "whatif", "component"];
-  const TTABS = [["overview", "Overview"], ["fatigue", "Fatigue"], ["frequency", "Frequencies"], ["event", "Storm event"], ["whatif", "What-if"]];
+  const PANES = ["portfolio", "farm", "live", "overview", "fatigue", "frequency", "event", "whatif", "component"];
+  const TTABS = [["live", "Live"], ["overview", "Overview"], ["fatigue", "Fatigue"], ["frequency", "Frequencies"], ["event", "Storm event"], ["whatif", "What-if"]];
   function showPane(name) { PANES.forEach((n) => { document.getElementById("pane-" + n).hidden = n !== name; }); }
   function showTab(name) {
     NAV.tab = name;
     document.querySelectorAll("#dr-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
     showPane(name);
+    if (name === "live") liveView(document.getElementById("pane-live"), NAV.t, "turbine"); else stopLive();
     if (name === "whatif") drawWhatif();
   }
   function drawDrawer() {
     const dr = document.getElementById("drawer"), tabs = document.getElementById("dr-tabs");
     const ey = document.getElementById("dr-eyebrow"), ti = document.getElementById("dr-title");
     dr.hidden = !drawerOpen || NAV.type === "none";
+    stopLive(); if (FLV) { FLV.stop(); FLV = null; }
     tabs.hidden = NAV.type !== "turbine"; tabs.innerHTML = "";
     if (dr.hidden) return;
     const F = D.meta.farm, pill = (st) => st && st !== "green" ? ` <span class="pill ${st === "alarm" ? "red" : st}">${st === "alarm" ? "frequency alarm" : statusText[st]}</span>` : "";
@@ -1701,17 +2083,18 @@ details.sec > * + * { margin-top: 8px; }
     } else if (NAV.type === "farm") {
       ey.textContent = `${F.region} · ${T.length} × ${D.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}`;
       ti.innerHTML = `${F.name}<div class="muted" style="font-family:var(--font-body);font-size:0.86rem;font-weight:400;margin-top:2px">After the ${F.storm_name.toLowerCase()} of ${F.storm_peak}</div>`;
-      drawStorm(); drawList(-1); farmHistory(); showPane("farm");
+      drawStorm(); drawList(-1); farmHistory(); showPane("farm"); farmLive(document.getElementById("farm-live"));
     } else if (NAV.type === "turbine") {
       const t = T[NAV.t];
       ey.textContent = `${F.name} · ${D.meta.turbine.label}`; ti.innerHTML = t.spec.name + ` <span class="pill ${t.status}">${statusText[t.status]}</span>`;
       TTABS.forEach(([k, l]) => { const b = el("button", { type: "button", role: "tab", "data-tab": k }, l); b.addEventListener("click", () => showTab(k)); tabs.append(b); });
-      detail(NAV.t); showTab(NAV.tab || "overview");
+      detail(NAV.t); showTab(NAV.tab || "live");
     } else if (NAV.type === "component") {
       const t = T[NAV.t];
       ey.textContent = `${F.name} · ${t.spec.name}${PARENT[NAV.part] ? " · " + PARTNAME[PARENT[NAV.part]] : ""}`;
       ti.innerHTML = PARTNAME[NAV.part] + pill(partStatus(t, NAV.part));
       inspector(t, NAV.part); showPane("component");
+      liveView(document.getElementById("comp-live"), NAV.t, NAV.part);
       const kids = (PARTS.find((p) => p.id === NAV.part) || {}).kids;
       if (kids) {
         const row = el("div", { class: "chips2", style: "margin-top:4px" });
@@ -1755,7 +2138,8 @@ details.sec > * + * { margin-top: 8px; }
 
   function farmChip() {
     const F = D.meta.farm, c = { red: 0, amber: 0, green: 0 }; T.forEach((t) => c[t.status]++);
-    document.getElementById("vp-farm").innerHTML = `<b>${F.name}</b><span class="muted">${F.storm_name} ${F.storm_peak}</span>` +
+    const lc = LIVE.cond();
+    document.getElementById("vp-farm").innerHTML = `<b>${F.name}</b><span class="live-dot"></span><span class="muted">Live · H<sub>s</sub> ${fmt(lc.Hs, 1)} m · wind ${fmt(lc.U, 1)} m/s</span>` +
       (c.red ? `<span class="pill red">${c.red} act now</span>` : "") + (c.amber ? `<span class="pill amber">${c.amber} inspect</span>` : "") + `<span class="pill green">${c.green} ok</span>`;
   }
   function renderAll() {
