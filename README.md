@@ -234,6 +234,67 @@ What the sweep shows:
   structures, that regime needs a slamming load model rather than better
   kinematics.
 
+## Scour at monopiles from waves and current
+
+`scour` estimates when scour starts at a monopile and how deep it gets, from a
+metocean record (Hs, Tp and depth-averaged current). It is engineering-level
+screening for deciding where to protect and when to survey; it does not replace
+site-specific CFD or flume work.
+
+```bash
+python -m scour --farm A                          # every turbine of a demo farm, summary table
+python -m scour --farm B --turbine B03 --armour 0.25   # one turbine: full report, plot, rock check, f1 impact
+python -m scour --D 8 --h 25 --d50 0.3 --u-spring 0.6 --years 5
+python -m scour --csv hindcast.csv --D 10 --h 40 --d50 0.25   # your own record: time, hs, tp, uc
+```
+
+**Chain**
+
+1. **Bed shear.** Bed orbital velocity from a JONSWAP spectrum and linear theory,
+   current shear from a log profile (grain roughness d50/12), wave shear with
+   Soulsby's friction factor, combined with Soulsby (1995).
+2. **Thresholds.** Critical Shields number from Soulsby & Whitehouse (1997).
+   Scour starts at the pile when 4× the undisturbed shear (horseshoe vortex) exceeds
+   it, and the whole bed is mobile (live-bed) when the undisturbed shear does.
+3. **Equilibrium depth.** Sumer & Fredsøe (2001) for waves plus current, blended to
+   the current-alone 1.3 D for current-dominated flow, reduced in clear water
+   (Melville & Sutherland flow intensity) and in shallow water (tanh h/D).
+4. **Development.** Hour by hour the depth relaxes towards the instantaneous
+   equilibrium with the Sumer et al. (1992) time scale. When waves mobilise the bed
+   and the equilibrium drops, the hole backfills three times more slowly. Without
+   transport it stays as it is.
+5. **Report.**
+   - **When scour starts:** onset and live-bed currents in calm and storm seas, and
+     the share of time scour is active.
+   - **How deep and how fast:** depth after one year, maximum depth, dates the alert
+     depths are reached, and the growth episodes that drove them.
+   - **Rock armour:** stability of the protection, if given.
+   - **Effect on the structure:** first natural frequency against scour depth from
+     the demo global model.
+   - **Verdict:** red, amber or green against the design scour allowance (default
+     0.5 D).
+
+**Demo farms** (synthetic seabed and tides, unprotected piles):
+
+| Farm | Sand d50 | Spring current | Result |
+|---|---|---|---|
+| A Northern Bank | 0.30 mm | 0.65 m/s | Tide-driven: 0.5 D within 3–4 months, about 1.2 D at most, f1 down 9–10%. Red: protect at installation |
+| B Atlantic Shelf | 0.18 mm | 0.45 m/s | 0.5 D after about 16 months, 0.6 D at most. Red |
+| C Eastern Gulf | 0.40 mm | 0.25 m/s | Weak tides; storms drive brief growth to about 0.3 D. Amber: survey after storms |
+
+Storms partly refill tidal scour holes in this model, as observed by Sumer et al.
+(2013) and in field surveys, so the deepest scour comes from long spring-tide spells
+rather than from the storm peaks.
+
+**Limitations:**
+- One grain size, with no layering or cohesion.
+- No wave–current angle in the time series.
+- The 4× amplification and the Ucw blend are screening choices.
+- The Sumer formulas come from small-scale tests, extrapolated here to a 10 m pile
+  at KC below 4.
+- Calibrate against surveys (and CFD, as outlined in the project notes) before using
+  the numbers for design.
+
 ## Examples
 
 Run from the repo root; figures go to `figures/`.
