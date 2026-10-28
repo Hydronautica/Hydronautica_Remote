@@ -438,6 +438,54 @@ details.sec > * + * { margin-top: 8px; }
 .bl-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 230px minmax(0, 1fr); }
 .bl-side { display: flex; flex-direction: column; gap: 8px; padding: 10px 8px; background: var(--surface); border-right: 1px solid var(--line); min-height: 0; }
 .bl-list { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; min-height: 0; flex: 1; }
+.bl-tn { font: inherit; text-align: left; display: grid; grid-template-columns: 14px minmax(0, 1fr); column-gap: 4px; padding: 6px 8px; border: 0; border-radius: 5px; background: none; color: var(--ink); cursor: pointer; }
+.bl-tn .tw { grid-row: 1 / span 2; align-self: center; color: var(--muted); transition: transform 0.12s; }
+.bl-tn .tw .ico { width: 12px; height: 12px; }
+.bl-tn.open .tw, #mb-list .bl-tn.on .tw, #sb-list .bl-tn.on .tw { transform: rotate(90deg); }
+.bl-tn .nm { font-size: 0.86rem; font-weight: 600; }
+.bl-tn .mt { font-size: 0.7rem; color: var(--muted); font-family: var(--font-data); grid-column: 2; }
+.bl-tn:hover { background: var(--accent-soft); }
+.bl-tn.on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.bl-tc { font: inherit; font-size: 0.8rem; text-align: left; display: flex; gap: 7px; align-items: center; padding: 4px 8px 4px 26px; border: 0; border-radius: 5px; background: none; color: var(--ink); cursor: pointer; }
+.bl-tc:hover { background: var(--accent-soft); }
+.bl-tc.on { background: var(--accent); color: var(--surface); }
+.bl-tc .ico { color: inherit; opacity: 0.8; }
+.bl-tc.on .muted { color: inherit; opacity: 0.75; }
+.bl-sech { margin: 0 0 8px; font-size: 1.05rem; }
+.bl-secnav { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.bl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 8px 0; }
+.bl-card2 { font: inherit; text-align: left; display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 2px 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.bl-card2:hover { border-color: var(--accent); }
+.bl-card2 .ico { grid-row: 1 / span 2; color: var(--accent); margin-top: 2px; }
+.bl-card2 b { font-size: 0.84rem; }
+.bl-card2 span { font-size: 0.72rem; color: var(--muted); font-family: var(--font-data); }
+.bl-modes { margin-left: 4px; }
+.mb-top { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.mb-top .bl-name { flex: 1; min-width: 240px; margin: 0; }
+.mb-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); gap: 16px; align-items: start; }
+.mb-bar { margin-bottom: 6px; }
+.mb-bar .sel input[type=range] { width: 90px; }
+.mb-bar .sel input[type=number], .sb-pal input { font: inherit; font-size: 0.8rem; border: 0; background: transparent; color: var(--ink); }
+.mb-canvas canvas { width: 100%; display: block; border-radius: 8px; cursor: crosshair; touch-action: none; }
+.mb-canvas .bl-3dp { height: 460px; }
+.mb-side { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.mb-pal { display: flex; flex-direction: column; gap: 3px; margin: 6px 0 10px; }
+.mb-pal button { font: inherit; font-size: 0.78rem; text-align: left; display: flex; gap: 8px; align-items: center; padding: 4px 6px; border: 1px solid transparent; border-radius: 5px; background: none; color: var(--ink); cursor: pointer; }
+.mb-pal button.on { border-color: var(--accent); background: var(--accent-soft); }
+.mb-pal i { width: 14px; height: 14px; border-radius: 3px; flex: none; }
+.sb-pal { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; font-size: 0.78rem; }
+.sb-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); cursor: grab; font-size: 0.78rem; user-select: none; }
+.sb-chip:hover { border-color: var(--accent); color: var(--accent); }
+.sb-canvas canvas { cursor: default; }
+.sb-lay { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; font-size: 0.76rem; color: var(--muted); margin: 6px 0; }
+.sb-lay label { display: flex; flex-direction: column; gap: 2px; }
+.sb-lay input, .sb-lay select { font: inherit; font-family: var(--font-data); font-size: 0.8rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 5px; }
+.sb-ck { margin: 6px 0; padding-left: 18px; font-size: 0.78rem; }
+.sb-ck li.crit { color: var(--crit); }
+.sb-ck li.warn { color: var(--warn); }
+.sb-hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
+#mb-main, #sb-main { gap: 10px; }
+@media (max-width: 1000px) { .mb-grid { grid-template-columns: minmax(0, 1fr); } }
 .bl-item { font: inherit; text-align: left; display: flex; flex-direction: column; gap: 1px; padding: 6px 9px; border: 0; border-radius: 5px; background: none; color: var(--ink); cursor: pointer; }
 .bl-item .nm { font-size: 0.86rem; font-weight: 600; }
 .bl-item .mt { font-size: 0.7rem; color: var(--muted); font-family: var(--font-data); }
@@ -562,7 +610,7 @@ details.sec > * + * { margin-top: 8px; }
     <div class="brand"><b>StormTwin</b></div>
     <nav class="crumbs" id="crumbs" aria-label="Location"></nav>
     <span class="badge">Demo · synthetic data</span>
-    <button class="btn" type="button" id="bl-open" title="Create turbine types and choose one for each turbine">Turbine builder</button>
+    <button class="btn" type="button" id="bl-open" title="Build turbine types, seabed maps and site layouts">Builder</button>
     <button class="btn icon gear" type="button" id="set-open" aria-label="Settings" title="Settings"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.4"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg></button>
   </header>
 
@@ -675,8 +723,8 @@ details.sec > * + * { margin-top: 8px; }
 
   <div class="settings builder" id="builder" role="dialog" aria-modal="true" aria-labelledby="bl-title" hidden>
     <div class="set-card bl-card">
-      <div class="set-h"><div class="bl-hd"><h2 id="bl-title">Turbine builder</h2><label class="sel">Check at<select id="bl-site" aria-label="Turbine position the checks use"></select></label></div><button class="btn icon" type="button" id="bl-close" aria-label="Close the turbine builder">×</button></div>
-      <div class="bl-body">
+      <div class="set-h"><div class="bl-hd"><h2 id="bl-title">Builder</h2><span class="seg bl-modes" id="bl-modes" role="tablist" aria-label="Builder"><button type="button" data-mode="turbine" class="on">Turbines</button><button type="button" data-mode="map">Maps</button><button type="button" data-mode="site">Sites</button></span><label class="sel" id="bl-site-wrap">Check at<select id="bl-site" aria-label="Turbine position the checks use"></select></label></div><button class="btn icon" type="button" id="bl-close" aria-label="Close the turbine builder">×</button></div>
+      <div class="bl-body" id="bl-mode-turbine">
         <nav class="bl-side" aria-label="Turbine types">
           <div class="bl-list" id="bl-list"></div>
           <div class="bl-acts"><button class="btn" type="button" id="bl-new">New from this</button><button class="btn" type="button" id="bl-del">Delete</button><button class="btn" type="button" id="bl-export">Export</button><label class="btn" style="text-align:center">Import<input type="file" id="bl-import" accept=".json,application/json" hidden></label></div>
@@ -686,6 +734,16 @@ details.sec > * + * { margin-top: 8px; }
           <div class="bl-pane" id="bl-pane-design"><div class="bl-cols"><div id="bl-form"></div><div class="bl-out" id="bl-out"></div></div><div class="panel" id="bl-farm"></div></div>
           <div class="bl-pane" id="bl-pane-pile" hidden></div><div class="bl-pane" id="bl-pane-uls" hidden></div><div class="bl-pane" id="bl-pane-fat" hidden></div><div class="bl-pane" id="bl-pane-dt" hidden></div>
         </div>
+      </div>
+      <div class="bl-body" id="bl-mode-map" hidden>
+        <nav class="bl-side" aria-label="Maps"><div class="bl-list" id="mb-list"></div>
+          <div class="bl-acts"><button class="btn" type="button" id="mb-new">New map</button><button class="btn" type="button" id="mb-dup">Duplicate</button><button class="btn" type="button" id="mb-del">Delete</button><button class="btn" type="button" id="mb-export">Export</button><label class="btn" style="text-align:center;grid-column:1 / -1">Import map<input type="file" id="mb-import" accept=".json,application/json" hidden></label></div></nav>
+        <div class="bl-main" id="mb-main"></div>
+      </div>
+      <div class="bl-body" id="bl-mode-site" hidden>
+        <nav class="bl-side" aria-label="Sites"><div class="bl-list" id="sb-list"></div>
+          <div class="bl-acts"><button class="btn" type="button" id="sb-new">New site</button><button class="btn" type="button" id="sb-dup">Duplicate</button><button class="btn" type="button" id="sb-del">Delete</button><button class="btn" type="button" id="sb-export">Export layout</button></div></nav>
+        <div class="bl-main" id="sb-main"></div>
       </div>
     </div>
   </div>
@@ -4431,6 +4489,7 @@ details.sec > * + * { margin-top: 8px; }
     document.querySelectorAll("#builder [data-btab]").forEach((b) => { b.classList.toggle("on", b.dataset.btab === name); b.setAttribute("aria-selected", b.dataset.btab === name ? "true" : "false"); });
     document.querySelectorAll("#builder .bl-pane").forEach((p) => { p.hidden = p.id !== "bl-pane-" + name; });
     if (name === "pile") pileView(); else if (name === "uls") ulsView(); else if (name === "fat") fatView(); else if (name === "dt") dtView();
+    if (typeof bList === "function" && TT.get(bSel)) bList();
   }
   const stale = (r) => (r && r.key !== runKey() ? `<p class="hint bl-stale">The type or site has changed since this run. Run again to update.</p>` : "");
   function editable(cb) {                   // apply a change to the selected type, duplicating a built-in first
@@ -4664,7 +4723,11 @@ details.sec > * + * { margin-top: 8px; }
       ["cut_in", "Cut-in wind", "m/s", 1, 0.5, 2, 6, 1], ["cut_out", "Cut-out wind", "m/s", 1, 0.5, 18, 35, 1], ["min_rpm", "Minimum rotor speed", "rpm", 1, 0.1, 1, 20, 1]]],
     ["Tower-base flange", [["n_bolts", "Number of bolts", "", 1, 4, 40, 300, 1]]],
   ];
-  const bTaper = { mp: false, tw: false }, bMore = new Set();
+  const bTaper = { mp: false, tw: false }, bMore = new Set(), bCollapsed = new Set();
+  // design sections shown one at a time, chosen in the tree
+  const BSECS = [["overview", "Overview", "whole"], ["fdn", "Foundation and soil", "soil"], ["pile", "Pile and monopile", "splash"], ["tower", "Tower", "tower"], ["rna", "Rotor and nacelle", "rna"], ["power", "Power and rotor speed", "drivetrain"], ["flange", "Tower-base flange", "flange"], ["mats", "Materials", "weld"]];
+  const BSEC_OF = { "Pile and monopile": "pile", "Tower": "tower", "Rotor and nacelle": "rna", "Power and rotor speed": "power", "Tower-base flange": "flange" };
+  let bSec = "overview";
   const SOILF = { sand: [["phi", "φ′", "°", 25, 45, 0.5], ["gamma", "γ′", "kN/m³", 6, 12, 0.5], ["k", "k", "MN/m³", 2, 60, 1]], clay: [["su", "s<sub>u</sub> top", "kPa", 5, 400, 5], ["su_grad", "+", "kPa/m", 0, 20, 0.5], ["gamma", "γ′", "kN/m³", 4, 11, 0.5], ["eps50", "ε<sub>50</sub>", "", 0.002, 0.03, 0.001]] };
   let bSel = null, bSite = 0, bTimer = 0, bRes = null, bView = "3d";
   const uid = () => "t" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
@@ -4812,14 +4875,26 @@ details.sec > * + * { margin-top: 8px; }
         SOILF[l.kind].map(([k, lb, u, , , st]) => `<label>${lb} <input type="number" data-sk="${k}" step="${st}" value="${l[k]}"${dis}>${u ? " " + u : ""}</label>`).join("") +
         (ro || ty.soil.length === 1 ? "" : `<button class="btn icon" type="button" data-del="${i}" aria-label="Remove layer">×</button>`) + `</div>`).join("")}</div>` +
         (ro ? "" : `<button class="btn" type="button" data-addl>Add layer</button>`) + `<p class="cap">Sand: API p-y, initial modulus k·depth. Clay: Matlock, small-strain secant stiffness.</p>`;
-    host.innerHTML = `<label class="bl-f bl-name"><span>Name</span><input type="text" data-k="name" value="${ty.name.replace(/"/g, "&quot;")}"${dis}></label>` +
+    const secIdx = BSECS.findIndex((q) => q[0] === bSec), secNav = `<div class="bl-secnav">${secIdx > 0 ? `<button class="btn" type="button" data-gosec="${BSECS[secIdx - 1][0]}">← ${BSECS[secIdx - 1][1]}</button>` : "<span></span>"}${secIdx < BSECS.length - 1 ? `<button class="btn" type="button" data-gosec="${BSECS[secIdx + 1][0]}">${BSECS[secIdx + 1][1]} →</button>` : ""}</div>`;
+    const sumry = () => { const mMp = matOf("steel", ty.mat_mp), mTw = matOf("steel", ty.mat_tw);
+      const rows = [["fdn", FDN_MODES.find((q) => q[0] === ty.fdn.mode)[1] + (ty.fdn.mode === "soil" ? ` · ${ty.soil.length} layer${ty.soil.length > 1 ? "s" : ""} (${ty.soil.map((l) => l.kind).join(", ")})` : "")],
+        ["pile", `Ø${fmt(ty.D_pile, 2)} m · wall ${fmt(ty.t_mp * 1e3, 0)} mm · embedded ${fmt(ty.embedment, 0)} m${ty.mp.length > 1 ? " · tapered" : ""}`],
+        ["tower", `Ø${fmt(ty.D_tower_base, 1)} → ${fmt(ty.D_tower_top, 1)} m · hub +${fmt(ty.z_hub, 0)} m${ty.tw.length > 2 ? " · multi-taper" : ""}`],
+        ["rna", `rotor Ø${fmt(ty.rotor_D, 0)} m · RNA ${fmt(TFE.rnaMass(ty) / 1e3, 0)} t`], ["power", `${fmt(ty.rated_P, 1)} MW · ${fmt(ty.rated_rpm, 1)} rpm`],
+        ["flange", `${ty.n_bolts} × M${ty.bolt_d} ${ty.bolt_grade}`], ["mats", `${mMp.id} monopile · ${mTw.id} tower`]];
+      return `<div class="bl-cards">${rows.map(([k, v]) => { const sc = BSECS.find((q) => q[0] === k); return `<button type="button" class="bl-card2" data-gosec="${k}">${ICO[sc[2]] || ""}<b>${sc[1]}</b><span>${v}</span></button>`; }).join("")}</div>`; };
+    host.innerHTML = `<h3 class="bl-sech">${BSECS[Math.max(0, secIdx)][1]}</h3>` +
       (ro ? `<p class="hint bl-ro">Built-in types are read-only. <button class="btn" type="button" data-dup>Duplicate to edit</button></p>` : "") +
-      fdnHTML(ty, ro) +
-      (ty.fdn.mode === "soil" ? `<fieldset class="bl-g"><legend>Soil layers (from the seabed down)</legend>${soilBody}</fieldset>` : `<fieldset class="bl-g bl-g0">${more("soil", "Soil layers (used by the 3D soil-pile analysis)", soilBody)}</fieldset>`) +
-      matsHTML() + BF.map(([g, fs]) => { const basic = fs.filter((f) => !f[7]), adv = fs.filter((f) => f[7]);
+      `<div data-sec="overview"><label class="bl-f bl-name"><span>Name</span><input type="text" data-k="name" value="${ty.name.replace(/"/g, "&quot;")}"${dis}></label>${sumry()}<p class="cap">Pick a group here or in the tree to edit it. Results on the right update as you go.</p></div>` +
+      `<div data-sec="fdn">` + fdnHTML(ty, ro) +
+      (ty.fdn.mode === "soil" ? `<fieldset class="bl-g"><legend>Soil layers (from the seabed down)</legend>${soilBody}</fieldset>` : `<fieldset class="bl-g bl-g0">${more("soil", "Soil layers (used by the 3D soil-pile analysis)", soilBody)}</fieldset>`) + `</div>` +
+      `<div data-sec="mats">${matsHTML()}</div>` + BF.map(([g, fs]) => { const basic = fs.filter((f) => !f[7]).concat(fs.every((f) => f[7]) ? fs : []), adv = fs.every((f) => f[7]) ? [] : fs.filter((f) => f[7]);
+        const extraHere = g === "Tower-base flange";
         const extra = (g === "Tower-base flange" ? `<label class="bl-f"><span>Bolt size</span><span class="bl-in"><select data-k="bolt_d"${dis}>${Object.keys(TFE.BOLT_AS).map((b) => `<option value="${b}"${+b === ty.bolt_d ? " selected" : ""}>M${b} 10.9</option>`).join("")}</select></span></label>` : "") +
           (g === "Rotor and nacelle" && !ro ? `<button class="btn" type="button" data-jest>Estimate inertia from the masses</button>` : "");
-        return `<fieldset class="bl-g"><legend>${g}</legend>${shape(g)}${basic.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("")}${more(g, "More settings", adv.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("") + extra)}</fieldset>`; }).join("");
+        return `<div data-sec="${BSEC_OF[g]}"><fieldset class="bl-g"><legend>${g}</legend>${shape(g)}${basic.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("")}${extraHere ? extra : ""}${adv.length || (extra && !extraHere) ? more(g, "More settings", adv.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("") + (extraHere ? "" : extra)) : ""}</fieldset></div>`; }).join("") + secNav;
+    host.querySelectorAll("[data-sec]").forEach((el2) => { el2.hidden = el2.dataset.sec !== bSec; });
+    host.querySelectorAll("[data-gosec]").forEach((b) => b.addEventListener("click", () => { bSec = b.dataset.gosec; bList(); bForm(); host.scrollIntoView({ block: "nearest" }); }));
     host.querySelectorAll("details[data-more]").forEach((d) => d.addEventListener("toggle", () => { if (d.open) bMore.add(d.dataset.more); else bMore.delete(d.dataset.more); }));
     function matsHTML() {
       const line = (kind, id, t) => { const m = matOf(kind, id); return kind === "steel" ? `E ${m.E} GPa · ρ ${m.rho} kg/m³ · f<sub>y</sub> ${fyOf(m, t)} MPa at ${fmt(t, 0)} mm · f<sub>u</sub> ${m.fu} MPa · ${m.std}` :
@@ -4868,8 +4943,11 @@ details.sec > * + * { margin-top: 8px; }
   function bList() {
     const host = document.getElementById("bl-list"), use = {};
     T.forEach((t, i) => { const id = TT.typeOf(i).id; use[id] = (use[id] || 0) + 1; });
-    host.innerHTML = TT.all().map((ty) => `<button type="button" class="bl-item${ty.id === bSel ? " on" : ""}" data-id="${ty.id}"><span class="nm">${ty.name}</span><span class="mt">${ty.builtin ? "built-in" : "custom"} · ${fmt(ty.rated_P, 0)} MW · Ø${fmt(ty.D_pile, 1)} m${use[ty.id] ? ` · ${use[ty.id]} in ${D.meta.farm.name}` : ""}</span></button>`).join("");
-    host.querySelectorAll("[data-id]").forEach((b) => b.addEventListener("click", () => { bSel = b.dataset.id; bOpenSel(); }));
+    host.innerHTML = TT.all().map((ty) => { const on = ty.id === bSel, open = on && !bCollapsed.has(ty.id);
+      return `<button type="button" class="bl-tn${on ? " on" : ""}${open ? " open" : ""}" data-id="${ty.id}"><span class="tw">${ICO.chev}</span><span class="nm">${ty.name}</span><span class="mt">${ty.builtin ? "built-in" : "custom"} · ${fmt(ty.rated_P, 0)} MW · Ø${fmt(ty.D_pile, 1)} m${use[ty.id] ? ` · ${use[ty.id]} in ${D.meta.farm.name}` : ""}</span></button>` +
+        (open ? BSECS.map(([k, l, ic]) => `<button type="button" class="bl-tc${bSec === k && bTab === "design" ? " on" : ""}" data-sec="${k}">${ICO[ic] || ""}<span>${l}</span></button>`).join("") : ""); }).join("");
+    host.querySelectorAll("[data-id]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.id; if (id === bSel) { bCollapsed.has(id) ? bCollapsed.delete(id) : bCollapsed.add(id); bList(); return; } bSel = id; bCollapsed.delete(id); bSec = "overview"; bOpenSel(); }));
+    host.querySelectorAll("[data-sec]").forEach((b) => b.addEventListener("click", () => { bSec = b.dataset.sec; if (bTab !== "design") bShowTab("design"); bList(); bForm(); }));
     document.getElementById("bl-del").disabled = !!TT.get(bSel).builtin;
   }
   function bFarm() {
@@ -4888,7 +4966,7 @@ details.sec > * + * { margin-top: 8px; }
     bSel = bSel && TT.get(bSel) ? bSel : TT.typeOf(bSite).id;
     const site = document.getElementById("bl-site");
     site.innerHTML = T.map((t, i) => `<option value="${i}"${i === bSite ? " selected" : ""}>${t.spec.name} · ${fmt(t.spec.depth, 1)} m${t.spec.scour ? " · scour " + fmt(t.spec.scour, 1) + " m" : ""}</option>`).join("");
-    bOpenSel(); document.getElementById("bl-close").focus();
+    bOpenSel(); if (bMode !== "turbine") bShowMode(bMode); document.getElementById("bl-close").focus();
   }
   document.getElementById("bl-site").addEventListener("change", (e) => { bSite = +e.target.value; bResults(TT.get(bSel)); });
   document.getElementById("bl-new").addEventListener("click", bDuplicate);
@@ -4913,6 +4991,361 @@ details.sec > * + * { margin-top: 8px; }
   document.getElementById("bl-close").addEventListener("click", () => { bldEl.hidden = true; });
   bldEl.addEventListener("click", (e) => { if (e.target === bldEl) bldEl.hidden = true; });
   TT.onChange(() => { LIVE.clear(); structCache.clear(); if (S3 && S3.retype) S3.retype(); if (drawerOpen) drawDrawer(); });
+  // ---------- map and site builders ----------
+  // Maps: a bathymetry grid with soil zones, exclusion zones and site metocean data. Sites: a map plus turbines of
+  // the types made in the turbine builder, placed by dragging. Both are kept in this browser (and can be exported).
+  const MB = (() => {
+    const KEY = "stormtwin-maps-v1";
+    let store = { maps: [], sites: [] };
+    try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (v && Array.isArray(v.maps)) store = { maps: v.maps, sites: v.sites || [] }; } catch (e) { /* storage unavailable */ }
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* storage unavailable or full */ } };
+    const META0 = { hs: 1.6, tp: 6.5, hs50: 10, A: 8.0, k: 2.1, windDir: 240, waveDir: 250, current: 0.6, tide: 2.5, lat: 54.0, lon: 6.0, soil0: 0 };
+    const blank = (name, W, H, depth) => { const nx = 90, ny = Math.max(20, Math.round(nx * H / W)); return { id: uid(), name, W, H, nx, ny, depth: new Array(nx * ny).fill(depth), soil: new Array(nx * ny).fill(255), excl: new Array(nx * ny).fill(0), meta: Object.assign({}, META0) }; };
+    // built-in maps from the three farms: depths at the turbines spread by inverse distance, with sandbanks
+    let builtins = null;
+    function makeBuiltins() {
+      builtins = { maps: [], sites: [] };
+      ALL.forEach((d, fi) => {
+        const ts = d.turbines.map((t) => t.spec), xs = ts.map((t) => t.x), ys = ts.map((t) => t.y), x0 = Math.min(...xs) - 2.5, y0 = Math.min(...ys) - 2.5, W = Math.max(...xs) - x0 + 2.5, H = Math.max(...ys) - y0 + 2.5;
+        const m = blank(d.meta.farm.name + " (from the farm)", +W.toFixed(1), +H.toFixed(1), 40); m.id = "map-" + d.meta.farm.id; m.builtin = true;
+        m.meta = Object.assign({}, META0, { hs: d.history ? d.history.hs_mean : 1.6, windDir: 232, waveDir: 245 });
+        for (let j = 0; j < m.ny; j++) for (let i = 0; i < m.nx; i++) {
+          const x = (i + 0.5) * m.W / m.nx + x0, y = (j + 0.5) * m.H / m.ny + y0; let sw = 0, sd = 0;
+          ts.forEach((t) => { const w = 1 / (0.15 + (x - t.x) ** 2 + (y - t.y) ** 2); sw += w; sd += w * t.depth; });
+          m.depth[j * m.nx + i] = +(sd / sw + 1.6 * Math.sin(2 * Math.PI * (x * 0.8 + y * 0.6) / 2.2) + 0.6 * Math.sin(5.1 * x + 1.3 * y)).toFixed(2);
+        }
+        builtins.maps.push(m);
+        const ty = d.meta.turbine.rotor_D > 220 ? "asbuilt-15" : "asbuilt-10";
+        builtins.sites.push({ id: "site-" + d.meta.farm.id, name: d.meta.farm.name + " (as built)", builtin: true, mapId: m.id, turbines: ts.map((t) => ({ id: uid(), name: t.name, typeId: ty, x: +(t.x - x0).toFixed(3), y: +(t.y - y0).toFixed(3) })) });
+      });
+    }
+    const maps = () => { if (!builtins) makeBuiltins(); return builtins.maps.concat(store.maps); };
+    const sites = () => { if (!builtins) makeBuiltins(); return builtins.sites.concat(store.sites); };
+    const up = (arr, o) => { const i = arr.findIndex((x) => x.id === o.id); if (i >= 0) arr[i] = o; else arr.push(o); save(); };
+    return { maps, sites, blank, map: (id) => maps().find((m) => m.id === id), site: (id) => sites().find((s) => s.id === id),
+      saveMap: (m) => up(store.maps, m), saveSite: (s) => up(store.sites, s), removeMap: (id) => { store.maps = store.maps.filter((m) => m.id !== id); save(); },
+      removeSite: (id) => { store.sites = store.sites.filter((s) => s.id !== id); save(); }, persist: save, META0 };
+  })();
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  // sampling
+  const mapCell = (m, x, y) => [Math.min(m.nx - 1, Math.max(0, Math.floor(x / m.W * m.nx))), Math.min(m.ny - 1, Math.max(0, Math.floor(y / m.H * m.ny)))];
+  function depthAt(m, x, y) {
+    const fx = Math.min(m.nx - 1.001, Math.max(0, x / m.W * m.nx - 0.5)), fy = Math.min(m.ny - 1.001, Math.max(0, y / m.H * m.ny - 0.5)), i = Math.floor(fx), j = Math.floor(fy), a = fx - i, b = fy - j, d = m.depth, n = m.nx;
+    return d[j * n + i] * (1 - a) * (1 - b) + d[j * n + i + 1] * a * (1 - b) + d[(j + 1) * n + i] * (1 - a) * b + d[(j + 1) * n + i + 1] * a * b;
+  }
+  const soilIdx = (m, x, y) => { const [i, j] = mapCell(m, x, y), v = m.soil[j * m.nx + i]; return v === 255 || v === null || v === undefined ? m.meta.soil0 : v; };
+  const exclAt = (m, x, y) => { const [i, j] = mapCell(m, x, y); return !!m.excl[j * m.nx + i]; };
+  const SOILCOL = ["#d9b25f", "#c98f3e", "#8d7bb0", "#6c5fa0", "#4f8f6e", "#9a6fb8"];
+  const depthCol = (d) => { const u = Math.min(1, Math.max(0, (d - 5) / 75)), a = [196, 230, 236], b = [72, 150, 190], c = [14, 44, 92]; const k = u < 0.5 ? u / 0.5 : (u - 0.5) / 0.5, p = u < 0.5 ? a : b, q = u < 0.5 ? b : c; return [0, 1, 2].map((i) => Math.round(p[i] + (q[i] - p[i]) * k)); };
+  // draw a map into a canvas; returns the transform between map km and canvas px
+  function drawMapCanvas(cv, m, o = {}) {
+    const W = cv.clientWidth || 600, H = Math.round(Math.min(W * m.H / m.W, (o.maxH || 520))), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.style.height = H + "px"; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    const g = cv.getContext("2d"), sc = Math.min(W / m.W, H / m.H), ox = (W - m.W * sc) / 2, oy = (H - m.H * sc) / 2;
+    const pw = Math.max(1, Math.round(m.W * sc * dpr / 2)), ph = Math.max(1, Math.round(m.H * sc * dpr / 2)), img = g.createImageData(pw, ph), step = o.step || 5;
+    const band = new Int16Array(pw * ph);
+    for (let py = 0; py < ph; py++) for (let px = 0; px < pw; px++) { const x = (px + 0.5) / pw * m.W, y = (py + 0.5) / ph * m.H, d = depthAt(m, x, y); band[py * pw + px] = Math.floor(d / step); }
+    for (let py = 0; py < ph; py++) for (let px = 0; px < pw; px++) {
+      const x = (px + 0.5) / pw * m.W, y = (py + 0.5) / ph * m.H, d = depthAt(m, x, y), k = py * pw + px; let [r, gg, b] = depthCol(d);
+      if (o.layer === "soil" || o.soil) { const s2 = soilIdx(m, x, y), c = SOILCOL[s2 % SOILCOL.length], cr = parseInt(c.slice(1, 3), 16), cg = parseInt(c.slice(3, 5), 16), cb = parseInt(c.slice(5, 7), 16), al = o.layer === "soil" ? 0.6 : 0.18; r = r * (1 - al) + cr * al; gg = gg * (1 - al) + cg * al; b = b * (1 - al) + cb * al; }
+      if (exclAt(m, x, y) && ((px + py) % 6 < 2 || o.layer === "excl")) { const al = o.layer === "excl" ? 0.55 : 0.7; r = r * (1 - al) + 209 * al; gg = gg * (1 - al) + 73 * al; b = b * (1 - al) + 91 * al; }
+      if ((px + 1 < pw && band[k + 1] !== band[k]) || (py + 1 < ph && band[k + pw] !== band[k])) { r *= 0.62; gg *= 0.62; b *= 0.62; }
+      img.data.set([r, gg, b, 255], 4 * k);
+    }
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
+    const tmp = document.createElement("canvas"); tmp.width = pw; tmp.height = ph; tmp.getContext("2d").putImageData(img, 0, 0);
+    g.imageSmoothingEnabled = true; g.drawImage(tmp, ox * dpr, oy * dpr, m.W * sc * dpr, m.H * sc * dpr); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // scale bar and north arrow
+    const km = m.W > 12 ? 2 : 1; g.fillStyle = "rgba(255,255,255,0.85)"; g.fillRect(ox + 10, oy + m.H * sc - 26, km * sc + 40, 18);
+    g.fillStyle = "#0e1b27"; g.fillRect(ox + 14, oy + m.H * sc - 14, km * sc, 3); g.font = "10px IBM Plex Mono, monospace"; g.fillText(km + " km", ox + 18 + km * sc, oy + m.H * sc - 11);
+    g.beginPath(); g.moveTo(ox + m.W * sc - 20, oy + 10); g.lineTo(ox + m.W * sc - 26, oy + 26); g.lineTo(ox + m.W * sc - 14, oy + 26); g.closePath(); g.fill(); g.fillText("N", ox + m.W * sc - 24, oy + 38);
+    return { sc, ox, oy, W, H, X: (x) => ox + x * sc, Y: (y) => oy + y * sc, inv: (px, py) => [(px - ox) / sc, (py - oy) / sc] };
+  }
+
+  // ----- builder modes -----
+  let bMode = "turbine", mbSel = null, mbLayer = "depth", mbTool = "raise", mbView = "2d", sbSel = null, sbPick = null;
+  const mbBrush = { r: 0.8, s: 1.5, set: 35, soil: 0 };
+  function bShowMode(mode) {
+    bMode = mode;
+    document.querySelectorAll("#bl-modes [data-mode]").forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
+    ["turbine", "map", "site"].forEach((k) => { document.getElementById("bl-mode-" + k).hidden = k !== mode; });
+    document.getElementById("bl-site-wrap").hidden = mode !== "turbine";
+    if (mode === "map") mbOpen(); else if (mode === "site") sbOpen();
+  }
+  document.querySelectorAll("#bl-modes [data-mode]").forEach((b) => b.addEventListener("click", () => bShowMode(b.dataset.mode)));
+
+  // ----- map builder -----
+  const MB_LAYERS = [["depth", "Bathymetry"], ["soil", "Soil zones"], ["excl", "Exclusion zones"], ["meta", "Metocean and datum"]];
+  function mbList() {
+    const host = document.getElementById("mb-list");
+    host.innerHTML = MB.maps().map((m) => { const on = m.id === mbSel;
+      return `<button type="button" class="bl-tn${on ? " on" : ""}" data-m="${m.id}"><span class="tw">${ICO.chev}</span><span class="nm">${m.name}</span><span class="mt">${m.builtin ? "built-in" : "custom"} · ${fmt(m.W, 1)} × ${fmt(m.H, 1)} km</span></button>` +
+        (on ? MB_LAYERS.map(([k, l]) => `<button type="button" class="bl-tc${mbLayer === k ? " on" : ""}" data-ml="${k}">${l}</button>`).join("") : ""); }).join("");
+    host.querySelectorAll("[data-m]").forEach((b) => b.addEventListener("click", () => { mbSel = b.dataset.m; mbOpen(); }));
+    host.querySelectorAll("[data-ml]").forEach((b) => b.addEventListener("click", () => { mbLayer = b.dataset.ml; mbOpen(); }));
+    document.getElementById("mb-del").disabled = !MB.map(mbSel) || !!MB.map(mbSel).builtin;
+  }
+  function mbOpen() {
+    if (!MB.map(mbSel)) mbSel = MB.maps()[0].id;
+    mbList(); mbMain();
+  }
+  function mbEditable() {                     // the selected map, duplicated first if it is built in
+    let m = MB.map(mbSel); if (!m.builtin) return m;
+    const c = clone(m); c.id = uid(); c.builtin = false; c.name = m.name.replace(/ \(from the farm\)$/, "") + " (copy)"; MB.saveMap(c); mbSel = c.id; return c;
+  }
+  function mbMain() {
+    const host = document.getElementById("mb-main"), m = MB.map(mbSel), ro = !!m.builtin;
+    const ds = m.depth, dmin = Math.min(...ds), dmax = Math.max(...ds);
+    const tools = mbLayer === "depth" ? [["raise", "Shallower"], ["lower", "Deeper"], ["smooth", "Smooth"], ["set", "Set depth"]] : mbLayer === "soil" ? [["soil", "Paint"], ["soilerase", "Erase"]] : mbLayer === "excl" ? [["excl", "Paint"], ["exclerase", "Erase"]] : [];
+    if (tools.length && !tools.some(([k]) => k === mbTool)) mbTool = tools[0][0];
+    const side = mbLayer === "meta" ? mbMetaForm(m, ro) : mbLayer === "depth" ? mbDepthPanel(m) : mbLayer === "soil" ? mbSoilPanel(m) : `<p class="cap">Paint areas turbines must avoid: export cables, pipelines, wrecks, shipping lanes, unexploded ordnance. The site builder flags turbines placed inside them.</p>`;
+    host.innerHTML = `<div class="mb-top"><label class="bl-f bl-name"><span>Name</span><input type="text" data-mn value="${m.name.replace(/"/g, "&quot;")}"${ro ? " disabled" : ""}></label>` +
+      (ro ? `<p class="hint bl-ro">Built-in maps are read-only. Painting or editing makes a copy.</p>` : "") + `</div>` +
+      `<div class="mb-grid"><div><div class="bl-row mb-bar">${tools.length ? `<span class="seg">${tools.map(([k, l]) => `<button type="button" data-tool="${k}" class="${mbTool === k ? "on" : ""}">${l}</button>`).join("")}</span>` : ""}` +
+      (tools.length ? `<label class="sel">Brush<input type="range" data-br min="0.2" max="3" step="0.1" value="${mbBrush.r}"><span class="mono" data-brv>${fmt(mbBrush.r, 1)} km</span></label>` : "") +
+      (mbLayer === "depth" ? (mbTool === "set" ? `<label class="sel">Depth<input type="number" data-bset value="${mbBrush.set}" step="1" style="width:4rem">m</label>` : `<label class="sel">Strength<input type="number" data-bs value="${mbBrush.s}" step="0.5" style="width:3.6rem">m</label>`) : "") +
+      `<span class="seg" style="margin-left:auto">${[["2d", "Map"], ["3d", "3D"]].map(([k, l]) => `<button type="button" data-mv="${k}" class="${mbView === k ? "on" : ""}">${l}</button>`).join("")}</span></div>` +
+      `<div class="mb-canvas"><canvas data-mc${mbView === "3d" ? " hidden" : ""}></canvas><div class="bl-3dp" data-m3${mbView === "3d" ? "" : " hidden"}></div></div>` +
+      `<div class="bl-row"><span class="mono muted" data-mread>Move over the map to read depth and soil.</span><span class="muted" style="margin-left:auto">depth ${fmt(dmin, 1)}–${fmt(dmax, 1)} m · contours every 5 m</span></div></div>` +
+      `<div class="mb-side">${side}</div></div>`;
+    const cv = host.querySelector("[data-mc]");
+    let tf = null; const render = () => { if (mbView === "2d") tf = drawMapCanvas(cv, MB.map(mbSel), { layer: mbLayer }); };
+    render();
+    host.querySelectorAll("[data-tool]").forEach((b) => b.addEventListener("click", () => { mbTool = b.dataset.tool; mbMain(); }));
+    host.querySelectorAll("[data-mv]").forEach((b) => b.addEventListener("click", () => { mbView = b.dataset.mv; mbMain(); }));
+    const br = host.querySelector("[data-br]"); if (br) br.addEventListener("input", () => { mbBrush.r = +br.value; host.querySelector("[data-brv]").textContent = fmt(mbBrush.r, 1) + " km"; });
+    const bs = host.querySelector("[data-bs]"); if (bs) bs.addEventListener("change", () => { mbBrush.s = Math.max(0.1, +bs.value); });
+    const bset = host.querySelector("[data-bset]"); if (bset) bset.addEventListener("change", () => { mbBrush.set = Math.max(1, +bset.value); });
+    host.querySelector("[data-mn]").addEventListener("change", (e) => { const mm = mbEditable(); mm.name = e.target.value.trim() || "Unnamed map"; MB.saveMap(mm); mbList(); });
+    mbWireSide(host, render);
+    // painting
+    let painting = false, dirty = false, raf = 0;
+    const apply = (ev) => {
+      if (!tf || !tools.length) return; const rc = cv.getBoundingClientRect(), [x, y] = tf.inv(ev.clientX - rc.left, ev.clientY - rc.top); if (x < 0 || y < 0 || x > m.W || y > m.H) return;
+      const mm = mbEditable(), R = mbBrush.r, dx = mm.W / mm.nx, dy = mm.H / mm.ny, i0 = Math.max(0, Math.floor((x - R) / dx)), i1 = Math.min(mm.nx - 1, Math.ceil((x + R) / dx)), j0 = Math.max(0, Math.floor((y - R) / dy)), j1 = Math.min(mm.ny - 1, Math.ceil((y + R) / dy));
+      const old = mm.depth.slice();
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const cx = (i + 0.5) * dx, cy = (j + 0.5) * dy, r2 = ((cx - x) ** 2 + (cy - y) ** 2) / (R * R); if (r2 > 1) continue; const w = Math.exp(-3 * r2), k = j * mm.nx + i;
+        if (mbTool === "raise") mm.depth[k] = Math.max(1, mm.depth[k] - 0.25 * mbBrush.s * w);
+        else if (mbTool === "lower") mm.depth[k] = Math.min(200, mm.depth[k] + 0.25 * mbBrush.s * w);
+        else if (mbTool === "set") mm.depth[k] += (mbBrush.set - mm.depth[k]) * 0.35 * w;
+        else if (mbTool === "smooth") { let s2 = 0, n = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const ii = i + a, jj = j + b; if (ii >= 0 && jj >= 0 && ii < mm.nx && jj < mm.ny) { s2 += old[jj * mm.nx + ii]; n++; } } mm.depth[k] += (s2 / n - mm.depth[k]) * 0.5 * w; }
+        else if (mbTool === "soil") mm.soil[k] = mbBrush.soil; else if (mbTool === "soilerase") mm.soil[k] = 255;
+        else if (mbTool === "excl") mm.excl[k] = 1; else if (mbTool === "exclerase") mm.excl[k] = 0;
+      }
+      dirty = true; if (mm.id !== m.id) { mbOpen(); return; }
+      if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); });
+    };
+    cv.addEventListener("pointerdown", (e) => { if (!tools.length) return; painting = true; cv.setPointerCapture(e.pointerId); apply(e); });
+    cv.addEventListener("pointermove", (e) => {
+      if (painting) apply(e);
+      if (tf) { const rc = cv.getBoundingClientRect(), [x, y] = tf.inv(e.clientX - rc.left, e.clientY - rc.top), mm = MB.map(mbSel);
+        if (x >= 0 && y >= 0 && x <= mm.W && y <= mm.H) host.querySelector("[data-mread]").textContent = `x ${fmt(x, 2)} km · y ${fmt(y, 2)} km · depth ${fmt(depthAt(mm, x, y), 1)} m · ${SOIL_PROFILES[soilIdx(mm, x, y)][0]}${exclAt(mm, x, y) ? " · exclusion zone" : ""}`; }
+    });
+    const end = () => { if (painting && dirty) { MB.saveMap(MB.map(mbSel)); dirty = false; } painting = false; };
+    cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+    if (mbView === "3d") mb3d(host.querySelector("[data-m3]"), m);
+  }
+  function mbDepthPanel(m) {
+    return `<h4 class="bl-h" style="margin-top:0">Shape the seabed</h4><p class="cap">Drag on the map with a tool. Shallower and deeper move the seabed by up to the strength per stroke, smooth evens it out, set depth pulls it towards a value.</p>` +
+      `<details class="bl-more" open><summary>Generate a seabed</summary>` + [["mean", "Mean depth", 38, "m"], ["relief", "Sandbank height", 6, "m"], ["wave", "Sandbank spacing", 2.5, "km"], ["orient", "Sandbank direction", 30, "°"], ["slope", "Regional slope", 1.2, "m/km"], ["slopeDir", "Deepening towards", 270, "°"], ["seed", "Random seed", 7, ""]].map(([k, l, v, u]) => `<label class="bl-f"><span>${l}</span><span class="bl-in"><input type="number" data-g="${k}" value="${v}" step="any"><i>${u}</i></span></label>`).join("") +
+      `<button class="btn" type="button" data-gen>Generate (replaces the depths)</button></details>` +
+      `<details class="bl-more"><summary>Map extent</summary><label class="bl-f"><span>Width (west–east)</span><span class="bl-in"><input type="number" data-ext="W" value="${m.W}" step="0.5"><i>km</i></span></label><label class="bl-f"><span>Height (south–north)</span><span class="bl-in"><input type="number" data-ext="H" value="${m.H}" step="0.5"><i>km</i></span></label><p class="cap">Changing the extent resamples the grid (${m.nx} × ${m.ny} cells).</p></details>` +
+      `<details class="bl-more"><summary>Import depths</summary><p class="cap">CSV of x (km), y (km), depth (m), one point per line, for example from a survey or GEBCO export converted to local coordinates. Points are gridded by inverse distance.</p><label class="btn">Load XYZ file<input type="file" data-xyz accept=".csv,.txt,.xyz" hidden></label></details>`;
+  }
+  function mbSoilPanel(m) {
+    return `<h4 class="bl-h" style="margin-top:0">Soil zones</h4><p class="cap">Pick a soil profile and paint where it applies. Unpainted seabed uses the default. Turbines placed in the site builder take the profile under them.</p>` +
+      `<div class="mb-pal">${SOIL_PROFILES.map(([nm], i) => `<button type="button" data-sw="${i}" class="${mbBrush.soil === i ? "on" : ""}"><i style="background:${SOILCOL[i % SOILCOL.length]}"></i>${nm}</button>`).join("")}</div>` +
+      `<label class="bl-f"><span>Default profile</span><span class="bl-in"><select data-s0>${SOIL_PROFILES.map(([nm], i) => `<option value="${i}"${m.meta.soil0 === i ? " selected" : ""}>${nm}</option>`).join("")}</select></span></label>`;
+  }
+  function mbMetaForm(m, ro) {
+    const f = (k, l, u, step) => `<label class="bl-f"><span>${l}</span><span class="bl-in"><input type="number" data-meta="${k}" value="${m.meta[k]}" step="${step}"${ro ? " disabled" : ""}><i>${u}</i></span></label>`;
+    return `<h4 class="bl-h" style="margin-top:0">Metocean and datum</h4>` + f("hs", "Mean significant wave height", "m", 0.1) + f("tp", "Mean peak period", "s", 0.1) + f("hs50", "50-year significant wave height", "m", 0.1) +
+      f("A", "Wind Weibull scale at 10 m", "m/s", 0.1) + f("k", "Wind Weibull shape", "", 0.05) + f("windDir", "Prevailing wind from", "°", 5) + f("waveDir", "Prevailing waves from", "°", 5) +
+      `<details class="bl-more"><summary>More settings</summary>` + f("current", "Tidal current, peak", "m/s", 0.1) + f("tide", "Tidal range", "m", 0.1) + f("lat", "Reference latitude", "°", 0.01) + f("lon", "Reference longitude", "°", 0.01) +
+      `<p class="cap">Depths are below mean sea level. The site builder uses the wind climate and prevailing direction for its energy yield and wake estimate.</p></details>`;
+  }
+  function mbWireSide(host, render) {
+    host.querySelectorAll("[data-meta]").forEach((x) => x.addEventListener("change", () => { const mm = mbEditable(); mm.meta[x.dataset.meta] = +x.value; MB.saveMap(mm); }));
+    host.querySelectorAll("[data-sw]").forEach((b) => b.addEventListener("click", () => { mbBrush.soil = +b.dataset.sw; mbTool = "soil"; mbMain(); }));
+    const s0 = host.querySelector("[data-s0]"); if (s0) s0.addEventListener("change", () => { const mm = mbEditable(); mm.meta.soil0 = +s0.value; MB.saveMap(mm); mbOpen(); });
+    const gen = host.querySelector("[data-gen]"); if (gen) gen.addEventListener("click", () => {
+      const p = Object.fromEntries([...host.querySelectorAll("[data-g]")].map((x) => [x.dataset.g, +x.value])), mm = mbEditable(), rn = randn(p.seed || 1), ph = [rn(), rn(), rn(), rn()].map((v) => v * 3);
+      const th = rad(p.orient), sd = rad(p.slopeDir), cx = mm.W / 2, cy = mm.H / 2;
+      for (let j = 0; j < mm.ny; j++) for (let i = 0; i < mm.nx; i++) { const x = (i + 0.5) * mm.W / mm.nx, y = (j + 0.5) * mm.H / mm.ny, along = (x - cx) * Math.sin(th) - (y - cy) * Math.cos(th), across = (x - cx) * Math.cos(th) + (y - cy) * Math.sin(th);
+        const bank = Math.sin(2 * Math.PI * across / Math.max(p.wave, 0.3) + 0.4 * Math.sin(along * 0.9 + ph[0])), noise = 0.35 * Math.sin(1.7 * x + ph[1]) * Math.sin(1.3 * y + ph[2]) + 0.2 * Math.sin(3.1 * x - 2.3 * y + ph[3]);
+        mm.depth[j * mm.nx + i] = +Math.max(2, p.mean - p.relief * bank + p.relief * noise + p.slope * ((x - cx) * Math.sin(sd) - (y - cy) * Math.cos(sd))).toFixed(2); }
+      MB.saveMap(mm); mbOpen(); });
+    host.querySelectorAll("[data-ext]").forEach((x) => x.addEventListener("change", () => {
+      const mm = mbEditable(), W = x.dataset.ext === "W" ? Math.max(1, +x.value) : mm.W, H = x.dataset.ext === "H" ? Math.max(1, +x.value) : mm.H, nm = MB.blank(mm.name, W, H, 30);
+      for (let j = 0; j < nm.ny; j++) for (let i = 0; i < nm.nx; i++) { const xx = Math.min(mm.W, (i + 0.5) * W / nm.nx), yy = Math.min(mm.H, (j + 0.5) * H / nm.ny), k = j * nm.nx + i, [ci, cj] = mapCell(mm, xx, yy); nm.depth[k] = +depthAt(mm, xx, yy).toFixed(2); nm.soil[k] = mm.soil[cj * mm.nx + ci]; nm.excl[k] = mm.excl[cj * mm.nx + ci]; }
+      Object.assign(mm, { W, H, nx: nm.nx, ny: nm.ny, depth: nm.depth, soil: nm.soil, excl: nm.excl }); MB.saveMap(mm); mbOpen(); }));
+    const xyz = host.querySelector("[data-xyz]"); if (xyz) xyz.addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (!f) return;
+      f.text().then((txt) => { const pts = txt.split(/\r?\n/).map((l) => l.trim().split(/[,;\s]+/).map(Number)).filter((r) => r.length >= 3 && r.every(isFinite)); if (pts.length < 3) throw new Error("fewer than three x, y, depth points");
+        const mm = mbEditable(), xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), x0 = Math.min(...xs), y0 = Math.min(...ys), W = Math.max(1, Math.max(...xs) - x0), H = Math.max(1, Math.max(...ys) - y0), nm = MB.blank(mm.name, +W.toFixed(2), +H.toFixed(2), 30);
+        const sub = pts.length > 4000 ? pts.filter((_, i) => i % Math.ceil(pts.length / 4000) === 0) : pts;
+        for (let j = 0; j < nm.ny; j++) for (let i = 0; i < nm.nx; i++) { const x = x0 + (i + 0.5) * W / nm.nx, y = y0 + (j + 0.5) * H / nm.ny; let sw = 0, sd = 0; for (const p of sub) { const w = 1 / (1e-4 + (p[0] - x) ** 2 + (p[1] - y) ** 2) ** 1.5; sw += w; sd += w * Math.abs(p[2]); } nm.depth[j * nm.nx + i] = +(sd / sw).toFixed(2); }
+        Object.assign(mm, { W: nm.W, H: nm.H, nx: nm.nx, ny: nm.ny, depth: nm.depth, soil: nm.soil, excl: nm.excl }); MB.saveMap(mm); mbOpen(); })
+        .catch((err) => { host.querySelector("[data-mread]").textContent = "Could not read that file: " + err.message; }); e.target.value = ""; });
+  }
+  function mb3d(el2, m) {
+    const VE = 40, v = V3("map", el2, { target: [m.W * 500, -m.depth[0] * VE / 2, m.H * 500], pos: [m.W * 500 - m.W * 600, Math.max(m.W, m.H) * 450, m.H * 500 + m.H * 1100] }); if (!v) return;
+    const g = new THREE.PlaneGeometry(m.W * 1000, m.H * 1000, m.nx - 1, m.ny - 1); g.rotateX(-Math.PI / 2); g.translate(m.W * 500, 0, m.H * 500);
+    const p = g.attributes.position, col = new Float32Array(p.count * 3);
+    for (let k = 0; k < p.count; k++) { const i = k % m.nx, j = Math.floor(k / m.nx), d = m.depth[j * m.nx + i]; p.setY(k, -d * VE); const [r, gg, b] = depthCol(d); col.set([r / 255, gg / 255, b / 255], 3 * k);
+      if (m.excl[j * m.nx + i]) col.set([0.82, 0.29, 0.36], 3 * k); }
+    g.setAttribute("color", new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+    v.scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide })));
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(m.W * 1000, m.H * 1000), new THREE.MeshStandardMaterial({ color: 0x2a6f97, transparent: true, opacity: 0.25, depthWrite: false })); sea.rotation.x = -Math.PI / 2; sea.position.set(m.W * 500, 0, m.H * 500); v.scene.add(sea);
+  }
+  document.getElementById("mb-new").addEventListener("click", () => { const m = MB.blank("New map", 12, 9, 35); MB.saveMap(m); mbSel = m.id; mbLayer = "depth"; mbOpen(); });
+  document.getElementById("mb-dup").addEventListener("click", () => { const m = clone(MB.map(mbSel)); m.id = uid(); m.builtin = false; m.name = m.name.replace(/ \(from the farm\)$/, "") + " (copy)"; MB.saveMap(m); mbSel = m.id; mbOpen(); });
+  document.getElementById("mb-del").addEventListener("click", () => { const m = MB.map(mbSel); if (!m || m.builtin) return; MB.removeMap(m.id); mbSel = null; mbOpen(); });
+  const saveFile = (filename, data, type) => { const use = window.claude && window.claude.use, fallback = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type })); a.download = filename; document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); };
+    if (!use) { fallback(); return; } Promise.resolve(use("downloads")).then((dl) => (dl ? dl.save({ filename, data }) : fallback())).catch(() => {}); };
+  document.getElementById("mb-export").addEventListener("click", () => { const m = clone(MB.map(mbSel)); delete m.builtin; saveFile((m.name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "map") + ".json", JSON.stringify(m), "application/json"); });
+  document.getElementById("mb-import").addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (!f) return;
+    f.text().then((txt) => { const v = JSON.parse(txt); if (!Array.isArray(v.depth) || !v.nx || !v.ny || v.depth.length !== v.nx * v.ny) throw new Error("not a map file"); const m = Object.assign(MB.blank(v.name || "Imported map", +v.W || 10, +v.H || 8, 30), v, { id: uid(), builtin: false }); m.meta = Object.assign({}, MB.META0, v.meta || {}); m.soil = m.soil || new Array(m.nx * m.ny).fill(255); m.excl = m.excl || new Array(m.nx * m.ny).fill(0); MB.saveMap(m); mbSel = m.id; mbOpen(); })
+      .catch((err) => { document.getElementById("mb-main").insertAdjacentHTML("afterbegin", `<p class="hint">Could not import: ${err.message}</p>`); }); e.target.value = ""; });
+
+  // ----- site builder -----
+  function sbList() {
+    const host = document.getElementById("sb-list");
+    host.innerHTML = MB.sites().map((s) => { const on = s.id === sbSel;
+      return `<button type="button" class="bl-tn${on ? " on" : ""}" data-s="${s.id}"><span class="tw">${ICO.chev}</span><span class="nm">${s.name}</span><span class="mt">${s.builtin ? "built-in" : "custom"} · ${s.turbines.length} turbines</span></button>` +
+        (on ? s.turbines.map((t) => `<button type="button" class="bl-tc${sbPick === t.id ? " on" : ""}" data-st="${t.id}">${t.name} <span class="muted">· ${(TT.get(t.typeId) || { name: "?" }).name.replace(/ \(as built\)$/, "")}</span></button>`).join("") : ""); }).join("");
+    host.querySelectorAll("[data-s]").forEach((b) => b.addEventListener("click", () => { sbSel = b.dataset.s; sbPick = null; sbOpen(); }));
+    host.querySelectorAll("[data-st]").forEach((b) => b.addEventListener("click", () => { sbPick = b.dataset.st; sbOpen(); }));
+    document.getElementById("sb-del").disabled = !MB.site(sbSel) || !!MB.site(sbSel).builtin;
+  }
+  function sbOpen() { if (!MB.site(sbSel)) sbSel = MB.sites()[0].id; sbList(); sbMain(); }
+  function sbEditable() {
+    let s = MB.site(sbSel); if (!s.builtin) return s;
+    const c = clone(s); c.id = uid(); c.builtin = false; c.name = s.name.replace(/ \(as built\)$/, "") + " (copy)"; MB.saveSite(c); sbSel = c.id; return c;
+  }
+  // energy yield with wake losses: 12 wind sectors around the map's prevailing direction, Weibull wind at each hub height
+  function sbYield(s, m) {
+    const N = s.turbines.length, sectors = 12, kap = 1.2, w0 = Array.from({ length: sectors }, (_, k) => Math.exp(kap * Math.cos(rad(k * 30 - m.meta.windDir)))), ws = w0.reduce((a, b) => a + b, 0);
+    const tys = s.turbines.map((t) => TT.get(t.typeId) || TT.get(TT.farmDefault())), metas = tys.map((ty) => TT.meta(ty));
+    const gross = new Float64Array(N), net = new Float64Array(N);
+    if (!N) return { gross, net, tys };
+    for (let k = 0; k < sectors; k++) {
+      const p = w0[k] / ws, to = rad(k * 30 + 180), fx = Math.sin(to), fz = -Math.cos(to);
+      for (let U10 = 0.5; U10 < 32; U10 += 1) {
+        for (let a = 0; a < N; a++) {
+          const ty = tys[a], hubF = Math.pow(ty.z_hub / 10, 0.11), A = m.meta.A * hubF, kk = m.meta.k, U = U10 * hubF;
+          const f = kk / A * Math.pow(U / A, kk - 1) * Math.exp(-Math.pow(U / A, kk)) * hubF;      // pdf in U10
+          let sum = 0; const ta = s.turbines[a];
+          for (let b = 0; b < N; b++) { if (b === a) continue; const tb = s.turbines[b], dx = (ta.x - tb.x) * 1000, dz = (ta.y - tb.y) * 1000, xd = dx * fx + dz * fz; if (xd <= 0) continue;
+            const r = Math.abs(dx * fz - dz * fx), ctb = Math.min(0.9, thrust(U, metas[b]) / (0.5 * 1.225 * Math.PI * tys[b].rotor_D ** 2 / 4 * U * U)); if (U < tys[b].cut_in || U > tys[b].cut_out) continue;
+            sum += (WAKE_ROTOR * wakeDeficit(ctb, xd, r, tys[b].rotor_D)) ** 2; }
+          const u = U * (1 - Math.min(0.9, Math.sqrt(sum))), wgt = p * f * 8766;
+          gross[a] += wgt * LIVE.power(U, metas[a]); net[a] += wgt * LIVE.power(u, metas[a]);
+        }
+      }
+    }
+    return { gross, net, tys };
+  }
+  function sbChecks(s, m, t, ty) {
+    const out = [], d = depthAt(m, t.x, t.y);
+    if (d < 15 || d > 60) out.push(["warn", `depth ${fmt(d, 1)} m is outside 15–60 m, the usual monopile range`]);
+    if (exclAt(m, t.x, t.y)) out.push(["crit", "inside an exclusion zone"]);
+    if (t.x < 0 || t.y < 0 || t.x > m.W || t.y > m.H) out.push(["crit", "outside the map"]);
+    let nn = Infinity; s.turbines.forEach((o) => { if (o !== t) nn = Math.min(nn, Math.hypot(o.x - t.x, o.y - t.y) * 1000 / ty.rotor_D); });
+    if (nn < 4) out.push(["crit", `${fmt(nn, 1)} rotor diameters from the nearest turbine (under 4 D)`]); else if (nn < 6) out.push(["warn", `${fmt(nn, 1)} D to the nearest turbine (wake losses rise below about 6 D)`]);
+    return { list: out, nn, d };
+  }
+  let sbYieldTimer = 0;
+  function sbMain() {
+    const host = document.getElementById("sb-main"), s = MB.site(sbSel), m = MB.map(s.mapId) || MB.maps()[0], ro = !!s.builtin;
+    host.innerHTML = `<div class="mb-top"><label class="bl-f bl-name"><span>Name</span><input type="text" data-sn value="${s.name.replace(/"/g, "&quot;")}"${ro ? " disabled" : ""}></label>` +
+      `<label class="sel">Map<select data-smap>${MB.maps().map((mm) => `<option value="${mm.id}"${mm.id === m.id ? " selected" : ""}>${mm.name}</option>`).join("")}</select></label>` +
+      (ro ? `<p class="hint bl-ro">Built-in sites are read-only. Placing or moving a turbine makes a copy.</p>` : "") + `</div>` +
+      `<div class="sb-pal"><span class="muted">Drag onto the map:</span>${TT.all().map((ty) => `<span class="sb-chip" draggable="true" data-ty="${ty.id}" title="${fmt(ty.rated_P, 0)} MW · rotor ${fmt(ty.rotor_D, 0)} m">${ICO.turbine} ${ty.name.replace(/ \(as built\)$/, "")}</span>`).join("")}</div>` +
+      `<div class="mb-grid"><div><div class="mb-canvas sb-canvas"><canvas data-sc></canvas></div>` +
+      `<div class="bl-row"><label class="bl-tg"><input type="checkbox" data-swk${sbShowWake ? " checked" : ""}> Show wakes for the prevailing wind (${m.meta.windDir}°, 10 m/s)</label><label class="bl-tg"><input type="checkbox" data-ssoil${sbShowSoil ? " checked" : ""}> Show soil zones</label><span class="mono muted" data-sread style="margin-left:auto"></span></div>` +
+      `<details class="bl-more"><summary>Grid layout</summary><div class="sb-lay">${[["rows", "Rows", 3, ""], ["cols", "Columns", 4, ""], ["sx", "Spacing along rows", 7, "D"], ["sy", "Spacing between rows", 6, "D"], ["ang", "Row direction", 90, "°"], ["stag", "Stagger alternate rows", 0, "D"]].map(([k, l, v, u]) => `<label>${l}<input type="number" data-lay="${k}" value="${v}" step="any"> ${u}</label>`).join("")}` +
+      `<label>Type<select data-layty>${TT.all().map((ty) => `<option value="${ty.id}">${ty.name}</option>`).join("")}</select></label></div><button class="btn" type="button" data-laygo>Place the grid at the map centre (replaces the turbines)</button></details></div>` +
+      `<div class="mb-side" data-sside></div></div>`;
+    const cv = host.querySelector("[data-sc]"); let tf = null, drag = null;
+    const draw = () => {
+      tf = drawMapCanvas(cv, m, { soil: sbShowSoil, maxH: 560 }); const g = cv.getContext("2d");
+      if (sbShowWake && s.turbines.length) {               // deficit field for the prevailing wind
+        const to = rad(m.meta.windDir + 180), fx = Math.sin(to), fz = -Math.cos(to), nxp = 120, nyp = Math.round(nxp * m.H / m.W);
+        for (let j = 0; j < nyp; j++) for (let i = 0; i < nxp; i++) { const x = (i + 0.5) * m.W / nxp, y = (j + 0.5) * m.H / nyp; let sum = 0;
+          s.turbines.forEach((t) => { const ty = TT.get(t.typeId) || TT.get(TT.farmDefault()), dx = (x - t.x) * 1000, dz = (y - t.y) * 1000, xd = dx * fx + dz * fz; if (xd > 0) sum += wakeDeficit(0.78, xd, Math.abs(dx * fz - dz * fx), ty.rotor_D) ** 2; });
+          const df = Math.sqrt(sum); if (df < 0.01) continue; g.fillStyle = `rgba(255,255,255,${Math.min(0.55, df * 1.6)})`; g.fillRect(tf.X(i * m.W / nxp), tf.Y(j * m.H / nyp), m.W / nxp * tf.sc + 1, m.H / nyp * tf.sc + 1); }
+      }
+      s.turbines.forEach((t) => { const ty = TT.get(t.typeId) || TT.get(TT.farmDefault()), x = tf.X(t.x), y = tf.Y(t.y), ck = sbChecks(s, m, t, ty).list, bad = ck.some((c) => c[0] === "crit") ? "#d1495b" : ck.length ? "#e09f3e" : "#ffffff";
+        g.strokeStyle = "rgba(255,255,255,0.6)"; g.lineWidth = 1; g.beginPath(); g.arc(x, y, Math.max(3, ty.rotor_D / 2000 * tf.sc), 0, 2 * Math.PI); g.stroke();
+        g.fillStyle = bad; g.beginPath(); g.arc(x, y, t.id === sbPick ? 6.5 : 4.5, 0, 2 * Math.PI); g.fill(); g.strokeStyle = t.id === sbPick ? "#0a6a8a" : "#0e1b27"; g.lineWidth = t.id === sbPick ? 2.5 : 1; g.stroke();
+        g.fillStyle = "#fff"; g.font = "600 10px IBM Plex Mono, monospace"; g.textAlign = "center"; g.fillText(t.name, x, y - 9); });
+      const to = rad(m.meta.windDir + 180), cx = tf.X(m.W) - 30, cy = tf.Y(m.H) - 34; g.strokeStyle = "#fff"; g.lineWidth = 2; g.beginPath(); g.moveTo(cx - 14 * Math.sin(to), cy + 14 * Math.cos(to)); g.lineTo(cx + 14 * Math.sin(to), cy - 14 * Math.cos(to)); g.stroke(); g.fillStyle = "#fff"; g.beginPath(); g.arc(cx + 14 * Math.sin(to), cy - 14 * Math.cos(to), 3, 0, 2 * Math.PI); g.fill();
+    };
+    draw();
+    const at = (e) => { const rc = cv.getBoundingClientRect(); return tf.inv(e.clientX - rc.left, e.clientY - rc.top); };
+    const hit = (x, y) => s.turbines.find((t) => Math.hypot((t.x - x) * tf.sc, (t.y - y) * tf.sc) < 9);
+    const nextName = (ss) => { let k = ss.turbines.length + 1; const used = new Set(ss.turbines.map((t) => t.name)); while (used.has("T" + String(k).padStart(2, "0"))) k++; return "T" + String(k).padStart(2, "0"); };
+    host.querySelectorAll("[data-ty]").forEach((c) => c.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", c.dataset.ty); e.dataTransfer.effectAllowed = "copy"; }));
+    cv.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; });
+    cv.addEventListener("drop", (e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain"); if (!TT.get(id)) return; const [x, y] = at(e); if (x < 0 || y < 0 || x > m.W || y > m.H) return;
+      const ss = sbEditable(), t = { id: uid(), name: nextName(ss), typeId: id, x: +x.toFixed(3), y: +y.toFixed(3) }; ss.turbines.push(t); MB.saveSite(ss); sbPick = t.id; sbOpen(); });
+    cv.addEventListener("pointerdown", (e) => { const [x, y] = at(e), t = hit(x, y); if (!t) { sbPick = null; sbSide(); draw(); sbList(); return; }
+      if (s.builtin) { const idx = s.turbines.indexOf(t), ss = sbEditable(); sbPick = ss.turbines[idx].id; sbOpen(); return; }      // first press on a built-in site makes the copy
+      sbPick = t.id; drag = { id: t.id, moved: false }; cv.setPointerCapture(e.pointerId); draw(); sbSide(); });
+    cv.addEventListener("pointermove", (e) => { const [x, y] = at(e); host.querySelector("[data-sread]").textContent = x >= 0 && y >= 0 && x <= m.W && y <= m.H ? `${fmt(x, 2)}, ${fmt(y, 2)} km · ${fmt(depthAt(m, x, y), 1)} m` : "";
+      if (!drag) return; const t = s.turbines.find((q) => q.id === drag.id); t.x = +Math.min(m.W, Math.max(0, x)).toFixed(3); t.y = +Math.min(m.H, Math.max(0, y)).toFixed(3); drag.moved = true; draw(); });
+    const up2 = () => { if (drag && drag.moved) { MB.saveSite(MB.site(sbSel)); drag = null; sbOpen(); } drag = null; };
+    cv.addEventListener("pointerup", up2); cv.addEventListener("pointercancel", up2);
+    host.querySelector("[data-sn]").addEventListener("change", (e) => { const ss = sbEditable(); ss.name = e.target.value.trim() || "Unnamed site"; MB.saveSite(ss); sbList(); });
+    host.querySelector("[data-smap]").addEventListener("change", (e) => { const ss = sbEditable(); ss.mapId = e.target.value; MB.saveSite(ss); sbOpen(); });
+    host.querySelector("[data-swk]").addEventListener("change", (e) => { sbShowWake = e.target.checked; draw(); });
+    host.querySelector("[data-ssoil]").addEventListener("change", (e) => { sbShowSoil = e.target.checked; draw(); });
+    host.querySelector("[data-laygo]").addEventListener("click", () => {
+      const p = Object.fromEntries([...host.querySelectorAll("[data-lay]")].map((x) => [x.dataset.lay, +x.value])), tyId = host.querySelector("[data-layty]").value, ty = TT.get(tyId), Dk = ty.rotor_D / 1000, th = rad(p.ang), ss = sbEditable();
+      ss.turbines = []; const rows = Math.max(1, Math.round(p.rows)), cols = Math.max(1, Math.round(p.cols)), ex = [Math.sin(th), -Math.cos(th)], ey = [Math.cos(th), Math.sin(th)];
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const a = (c - (cols - 1) / 2) * p.sx * Dk + (r % 2 ? p.stag * Dk : 0), b = (r - (rows - 1) / 2) * p.sy * Dk;
+        ss.turbines.push({ id: uid(), name: "T" + String(ss.turbines.length + 1).padStart(2, "0"), typeId: tyId, x: +(m.W / 2 + a * ex[0] + b * ey[0]).toFixed(3), y: +(m.H / 2 + a * ex[1] + b * ey[1]).toFixed(3) }); }
+      MB.saveSite(ss); sbPick = null; sbOpen(); });
+    sbSide();
+    function sbSide() {
+      const side = host.querySelector("[data-sside]"), ss = MB.site(sbSel), t = ss.turbines.find((q) => q.id === sbPick);
+      let html = "";
+      if (t) { const ty = TT.get(t.typeId) || TT.get(TT.farmDefault()), ck = sbChecks(ss, m, t, ty);
+        html += `<h4 class="bl-h" style="margin-top:0">${t.name}</h4><label class="bl-f"><span>Name</span><span class="bl-in"><input type="text" data-tn value="${t.name}"></span></label>` +
+          `<label class="bl-f"><span>Type</span><span class="bl-in"><select data-tty>${TT.all().map((q) => `<option value="${q.id}"${q.id === t.typeId ? " selected" : ""}>${q.name}</option>`).join("")}</select></span></label>` +
+          kv([["Position", `${fmt(t.x, 2)}, ${fmt(t.y, 2)} km`], ["Water depth", fmt(ck.d, 1) + " m"], ["Soil", SOIL_PROFILES[soilIdx(m, t.x, t.y)][0]], ["Nearest turbine", isFinite(ck.nn) ? fmt(ck.nn, 1) + " D" : "–"], ["Rotor · hub", `${fmt(ty.rotor_D, 0)} m · +${fmt(ty.z_hub, 0)} m`]]) +
+          (ck.list.length ? `<ul class="sb-ck">${ck.list.map(([c, txt]) => `<li class="${c}">${txt}</li>`).join("")}</ul>` : `<p class="cap" style="color:var(--ok)">No issues at this position.</p>`) +
+          `<div class="bl-row"><button class="btn" type="button" data-topen>Open the type in the turbine builder</button><button class="btn" type="button" data-tdel>Remove</button></div><hr class="sb-hr">`; }
+      html += `<h4 class="bl-h"${t ? "" : ' style="margin-top:0"'}>Site</h4><div data-sum><p class="muted">Computing the energy yield…</p></div>`;
+      side.innerHTML = html;
+      if (t) {
+        side.querySelector("[data-tn]").addEventListener("change", (e) => { const s2 = sbEditable(), q = s2.turbines.find((x) => x.name === t.name) || s2.turbines.find((x) => x.id === t.id); q.name = e.target.value.trim() || q.name; MB.saveSite(s2); sbOpen(); });
+        side.querySelector("[data-tty]").addEventListener("change", (e) => { const s2 = sbEditable(), q = s2.turbines.find((x) => x.name === t.name); q.typeId = e.target.value; MB.saveSite(s2); sbPick = q.id; sbOpen(); });
+        side.querySelector("[data-tdel]").addEventListener("click", () => { const s2 = sbEditable(); s2.turbines = s2.turbines.filter((x) => x.name !== t.name); MB.saveSite(s2); sbPick = null; sbOpen(); });
+        side.querySelector("[data-topen]").addEventListener("click", () => { bSel = t.typeId; bShowMode("turbine"); bOpenSel(); });
+      }
+      clearTimeout(sbYieldTimer); sbYieldTimer = setTimeout(() => {
+        const el2 = side.querySelector("[data-sum]"); if (!el2) return; const Y = sbYield(ss, m), N = ss.turbines.length;
+        const cap = Y.tys.reduce((a, ty) => a + ty.rated_P, 0), G = Y.gross.reduce((a, b) => a + b, 0), Nn = Y.net.reduce((a, b) => a + b, 0), ds = ss.turbines.map((q) => depthAt(m, q.x, q.y));
+        const issues = ss.turbines.filter((q) => sbChecks(ss, m, q, TT.get(q.typeId) || TT.get(TT.farmDefault())).list.length).length;
+        el2.innerHTML = N ? kv([["Turbines · capacity", `${N} · ${fmt(cap, 0)} MW`], ["Water depth", `${fmt(Math.min(...ds), 1)}–${fmt(Math.max(...ds), 1)} m`], ["Gross energy", fmt(G / 1e3, 0) + " GWh/yr"], ["Net of wakes", fmt(Nn / 1e3, 0) + " GWh/yr"], ["Wake loss", fmt(100 * (1 - Nn / Math.max(G, 1e-9)), 1) + " %"], ["Capacity factor (net)", fmt(100 * Nn / Math.max(cap * 8766, 1e-9), 1) + " %"], ["Turbines with issues", String(issues)]]) +
+          `<div class="tbl-wrap" style="margin-top:8px"><table class="list bl-ltt"><thead><tr><th>Turbine</th><th class="r">Depth</th><th class="r">Net GWh</th><th class="r">Wake loss</th></tr></thead><tbody>` +
+          ss.turbines.map((q, i) => `<tr${q.id === sbPick ? ' style="font-weight:600"' : ""}><td>${q.name}</td><td class="r mono">${fmt(ds[i], 1)}</td><td class="r mono">${fmt(Y.net[i] / 1e3, 1)}</td><td class="r mono">${fmt(100 * (1 - Y.net[i] / Math.max(Y.gross[i], 1e-9)), 1)} %</td></tr>`).join("") + `</tbody></table></div>` +
+          `<p class="cap">Weibull wind from the map (A ${m.meta.A} m/s, k ${m.meta.k} at 10 m, scaled to each hub), 12 sectors weighted around ${m.meta.windDir}°, Gaussian wakes added in quadrature, no electrical or availability losses.</p>`
+          : `<p class="cap">Drag a turbine type onto the map, or use Grid layout.</p>`;
+      }, 60);
+    }
+  }
+  let sbShowWake = false, sbShowSoil = false;
+  document.getElementById("sb-new").addEventListener("click", () => { const s = { id: uid(), name: "New site", mapId: mbSel && MB.map(mbSel) ? mbSel : MB.maps()[0].id, turbines: [] }; MB.saveSite(s); sbSel = s.id; sbPick = null; sbOpen(); });
+  document.getElementById("sb-dup").addEventListener("click", () => { const s = clone(MB.site(sbSel)); s.id = uid(); s.builtin = false; s.name = s.name.replace(/ \(as built\)$/, "") + " (copy)"; s.turbines.forEach((t) => { t.id = uid(); }); MB.saveSite(s); sbSel = s.id; sbOpen(); });
+  document.getElementById("sb-del").addEventListener("click", () => { const s = MB.site(sbSel); if (!s || s.builtin) return; MB.removeSite(s.id); sbSel = null; sbOpen(); });
+  document.getElementById("sb-export").addEventListener("click", () => { const s = clone(MB.site(sbSel)), m = MB.map(s.mapId); delete s.builtin;
+    const rows = ["name,type,x_km,y_km,depth_m"].concat(s.turbines.map((t) => `${t.name},${(TT.get(t.typeId) || {}).name || t.typeId},${t.x},${t.y},${fmt(depthAt(m, t.x, t.y), 2)}`));
+    saveFile((s.name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "site") + "_layout.csv", rows.join("\n"), "text/csv"); });
+  document.addEventListener("keydown", (e) => { if (bldEl.hidden || bMode !== "site" || !sbPick || !(e.key === "Delete" || e.key === "Backspace") || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    const s = MB.site(sbSel); if (s.builtin) return; s.turbines = s.turbines.filter((t) => t.id !== sbPick); MB.saveSite(s); sbPick = null; sbOpen(); });
   // ---------- settings ----------
   const setEl = document.getElementById("settings");
   function rulesTable() {
