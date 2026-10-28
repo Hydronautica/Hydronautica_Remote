@@ -387,6 +387,33 @@ details.sec > * + * { margin-top: 8px; }
 .vp-legend .wk { display: inline-flex; align-items: center; gap: 5px; }
 .wgrad { display: inline-block; width: 44px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, var(--wake-lo), var(--wake-hi)); }
 @media (max-width: 860px) { .vp-wi { top: auto; bottom: 96px; width: min(236px, calc(100% - 24px)); } }
+
+/* drivetrain: FE load chain and virtual sensing */
+.rna-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 8px; font-size: 0.8rem; }
+.rna-bar .rna-lb { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.rna-ex { margin-left: auto; display: inline-flex; gap: 5px; align-items: center; font-size: 0.8rem; }
+.rna-3d { position: relative; aspect-ratio: 4 / 3; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--sky); margin-bottom: 10px; }
+.rna-3d [data-gl], .rna-3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.rna-cb { position: absolute; right: 8px; top: 8px; bottom: 34px; width: 52px; display: grid; grid-template-rows: auto 1fr auto; justify-items: center; gap: 3px; font: 0.64rem var(--font-data); color: var(--ink); pointer-events: none; }
+.rna-cb i { width: 10px; border-radius: 2px; border: 1px solid var(--line); }
+.rna-leg { position: absolute; left: 8px; bottom: 6px; right: 8px; font-size: 0.7rem; background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 2px 6px; border-radius: 4px; pointer-events: none; }
+.rna-chain { display: grid; grid-template-columns: minmax(5.5rem, auto) minmax(0, 1fr) minmax(0, 1fr); gap: 2px 10px; font-size: 0.74rem; align-items: baseline; }
+.rna-chain .h { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.rna-chain .r { text-align: right; white-space: nowrap; }
+.rna-chain .sd { color: var(--muted); margin-left: 4px; }
+.rna-age .ar { display: grid; grid-template-columns: minmax(0, 12rem) minmax(0, 1fr) 3.6rem; gap: 8px; align-items: center; font-size: 0.78rem; padding: 2px 0; }
+.rna-age .r { text-align: right; }
+.rna-age .tr { position: relative; height: 9px; background: var(--grid); border-radius: 2px; }
+.rna-age .fl { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 2px; }
+.rna-age .fl.over { background: var(--crit); }
+.rna-age .one { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+.rna-age .ref { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; background: var(--warn); border-radius: 1px; }
+.rna-age .tr0 { position: relative; height: 12px; font: 0.62rem var(--font-data); color: var(--muted); }
+.rna-age .tr0 span { position: absolute; transform: translateX(-50%); }
+.rna-st th.on { color: var(--accent); }
+.rna-st td:first-child { font-size: 0.76rem; }
+.rna-notes { font-size: 0.8rem; padding-left: 18px; margin: 8px 0 0; display: grid; gap: 4px; color: var(--muted); }
+@media (max-width: 520px) { .rna-age .ar { grid-template-columns: minmax(0, 8.5rem) minmax(0, 1fr) 3.2rem; } .rna-chain { font-size: 0.66rem; gap: 2px 6px; } }
 </style>
 
 <div class="app" id="app">
@@ -474,6 +501,7 @@ details.sec > * + * { margin-top: 8px; }
 
       <!-- turbine -->
       <div class="pane live" id="pane-live" hidden></div>
+      <div class="pane live" id="pane-drivetrain" hidden></div>
       <div class="pane" id="pane-overview" hidden></div>
       <div class="pane" id="pane-fatigue" hidden></div>
       <div class="pane" id="pane-frequency" hidden></div>
@@ -1644,7 +1672,7 @@ details.sec > * + * { margin-top: 8px; }
     }
     function partHeight(part) {
       const m = D.meta.turbine;
-      const z = { rna: m.z_hub, blade_A: m.z_hub + m.rotor_D / 4, blade_B: m.z_hub, blade_C: m.z_hub, tower: (m.z_hub + m.z_interface) / 2,
+      const z = { rna: m.z_hub, drivetrain: m.z_hub, blade_A: m.z_hub + m.rotor_D / 4, blade_B: m.z_hub, blade_C: m.z_hub, tower: (m.z_hub + m.z_interface) / 2,
         door: m.z_door, flange: m.z_interface, platform: m.z_platform, splash: 4, weld: 0, soil: 0 }[part];
       return z === undefined ? null : z / U * TS;
     }
@@ -2117,22 +2145,355 @@ details.sec > * + * { margin-top: 8px; }
     return (FLV = { stop: () => { stopped = true; clearInterval(timer); } });
   }
 
+  // ---------- drivetrain: FE load chain + virtual sensing, streamed from the live twin ----------
+  // The rotor-nacelle FE models (hub, shaft + gearbox housing, bedplate) are loaded on demand
+  // from rna_chain.json. Each 0.25 s sample: blade-root loads from the live rotor state ->
+  // simulated measurements for the chosen sensor set -> best linear estimate of the 21 chain
+  // inputs -> every link, stress and damage from the unit-load matrices.
+  let RNAD = null, RNAP = null;
+  const b64 = (s, Tp) => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Tp(u.buffer); };
+  function loadRNA() {
+    if (!RNAP) RNAP = fetch("rna_chain.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((d) => (RNAD = prepRNA(d)));
+    return RNAP;
+  }
+  function prepRNA(d) {
+    const P = {};
+    for (const k of ["hub", "dt", "bed"]) {
+      const p = d.parts[k], nv = p.nv, nc = p.names.length, g = b64(p.grid, Uint8Array), s8 = b64(p.S, Int8Array);
+      const S = new Float32Array(s8.length);
+      for (let c = 0; c < nc; c++) { const a = p.s_scale[c]; for (let i = 0; i < nv * 6; i++) S[c * nv * 6 + i] = s8[c * nv * 6 + i] * a; }
+      const loc = k === "hub" ? d.geo.hub : [0, 0, 0], base = new Float32Array(nv * 3);
+      for (let v = 0; v < nv; v++) for (let j = 0; j < 3; j++) base[3 * v + j] = p.origin[j] + g[3 * v + j] * p.h - loc[j];
+      P[k] = { nv, nc, S, base, tris: b64(p.tris, Uint16Array), nShaft: p.n_shaft_tris || 0, near: b64(p.nearbc, Uint8Array), mass: p.mass_t, names: p.names };
+    }
+    // weights for normal stress on a plane at one vertex, per unit case
+    const wN = (n) => [n[0] * n[0], n[1] * n[1], n[2] * n[2], 2 * n[0] * n[1], 2 * n[1] * n[2], 2 * n[2] * n[0]];
+    const spotW = (sp) => { const p = P[sp.part], w = wN(sp.normal), out = new Float64Array(p.nc); for (let c = 0; c < p.nc; c++) { let a = 0; for (let j = 0; j < 6; j++) a += w[j] * p.S[(c * p.nv + sp.vertex) * 6 + j]; out[c] = a / 1e6; } return out; };
+    const spots = { hub: spotW(d.spots.hub), housing: spotW(d.spots.housing), bedplate: spotW(d.spots.bedplate) };
+    const sh = d.spots.main_shaft, ring = sh.ring.map((v) => { const o = new Float64Array(9); for (let c = 0; c < 9; c++) o[c] = P.dt.S[(c * P.dt.nv + v) * 6] / 1e6; return o; });
+    spots.shaft = { ring, ang: sh.angles, phi0: sh.phi0 };
+    return Object.assign(d, { P, spotsW: spots });
+  }
+  const RNA_SETS = [["S0", "SCADA + nacelle accelerometer"], ["S1", "+ tower-top strain gauges"], ["S2", "+ blade-root strain gauges"], ["S3", "+ two local drivetrain gauges"]];
+  let rnaSet = 2, rnaExplode = false;
+  const CAST_SN = [80e6, 2e6, 7, 13], SHAFT_SN = [320e6, 1e6, 5, 9], DESIGN_LIFE = 20 * 8766 * 3600;
+  const snN = (s, c) => c[1] * Math.pow(c[0] / Math.max(s, 1e-9), s >= c[0] ? c[2] : c[3]);
+  function rainflowJS(x) {                     // ASTM E1049 on turning points; returns [range, count] pairs
+    const tp = []; for (let i = 0; i < x.length; i++) { if (i && x[i] === x[i - 1]) continue; if (tp.length >= 2 && (x[i] - tp[tp.length - 1]) * (tp[tp.length - 1] - tp[tp.length - 2]) > 0) tp[tp.length - 1] = x[i]; else tp.push(x[i]); }
+    const out = [], st = [];
+    for (const v of tp) { st.push(v); while (st.length >= 3) { const X = Math.abs(st[st.length - 1] - st[st.length - 2]), Y = Math.abs(st[st.length - 2] - st[st.length - 3]); if (X < Y) break; if (st.length === 3) { out.push([Y, 0.5]); st.shift(); } else { out.push([Y, 1]); st.splice(st.length - 3, 2); } } }
+    for (let i = 0; i + 1 < st.length; i++) out.push([Math.abs(st[i + 1] - st[i]), 0.5]);
+    return out;
+  }
+  // small dense linear algebra
+  function cholSolve(A, B, n, m) {            // A n×n SPD (flat), B n×m (flat) -> A⁻¹B
+    const L = new Float64Array(n * n);
+    for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) { let s = A[i * n + j]; for (let k = 0; k < j; k++) s -= L[i * n + k] * L[j * n + k]; L[i * n + j] = i === j ? Math.sqrt(Math.max(s, 1e-12)) : s / L[j * n + j]; }
+    const X = new Float64Array(B);
+    for (let c = 0; c < m; c++) {
+      for (let i = 0; i < n; i++) { let s = X[i * m + c]; for (let k = 0; k < i; k++) s -= L[i * n + k] * X[k * m + c]; X[i * m + c] = s / L[i * n + i]; }
+      for (let i = n - 1; i >= 0; i--) { let s = X[i * m + c]; for (let k = i + 1; k < n; k++) s -= L[k * n + i] * X[k * m + c]; X[i * m + c] = s / L[i * n + i]; }
+    }
+    return X;
+  }
+  // per-turbine closed-form turbulence the rotor sees blade by blade (seeded, so all views agree)
+  const rnaGen = new Map();
+  function rnaTurb(ti) {
+    const key = FI + ":" + ti; if (rnaGen.has(key)) return rnaGen.get(key);
+    let s = 7919 + FI * 131 + ti * 17; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const band = (fc, bw, sd) => { const c = []; for (let i = 0; i < 12; i++) c.push([2 * Math.PI * Math.max(0.003, fc + bw * (2 * rnd() - 1)), 2 * Math.PI * rnd()]); const k = sd * Math.sqrt(2 / 12); return (t) => { let a = 0; for (const [w, p] of c) a += Math.cos(w * t + p); return a * k; }; };
+    const g = { a: band(0.02, 0.02, 1), b: band(0.02, 0.02, 1), own: [0, 1, 2].map(() => band(0.25, 0.2, 1)), lat: band(0.02, 0.02, 1), mp: [0, 1, 2].map(() => band(0.2, 0.15, 1)), q: band(0.02, 0.02, 1), ay: band(0.5, 0.3, 1) };
+    rnaGen.set(key, g); return g;
+  }
+  // blade-root loads (MN, MN m, blade frame) for the rotor state; prior=true gives the model's no-turbulence part
+  function bladeLoads(M, s, tt, prior, meas) {
+    const R = RNAD.turbine, m = M.m, scale = m.rotor_D / 236, g = rnaTurb(M.ti), op = M.op;
+    const mb = R.blade_mass * Math.pow(scale, 2.5), rr = R.r_root, rcg = R.blade_cg * scale, rf = R.r_flap * scale - rr, re = R.r_edge * scale - rr;
+    const Om = M.Om, psi = s.az;
+    const A = prior ? meas.A : [s.af, 9.81 + 0.02 * g.ay(tt), s.as];
+    const T = prior ? meas.T : s.T;
+    const q = prior ? meas.Q : (op ? LIVE.power(s.U, m) * 1e6 / Math.max(Om, 0.05) / 0.95 : 0.8e6 * g.q(tt));
+    const x = new Float64Array(21);
+    for (let k = 0; k < 3; k++) {
+      const pk = psi + 2 * Math.PI * k / 3, c = Math.cos(pk), sn = Math.sin(pk);
+      const er = [0, c, sn], et = [0, -sn, c];
+      const turb = prior ? 0 : (op ? 0.06 * g.a(tt) * c + 0.06 * g.b(tt) * sn + 0.03 * g.own[k](tt) : 0.15 * g.own[k](tt));
+      const rel = 1 + (op ? 0.05 * c : 0) + turb;
+      const ff = T / 3 * rel, qk = q / 3 * (1 + (op ? 0.6 * (rel - 1) : 0));
+      const fin = [0, qk / (re + rr) * et[1], qk / (re + rr) * et[2] + (op || prior ? 0 : 0.08e6 * g.lat(tt))];
+      const Fi = A.map((a) => -mb * a), cf = mb * Om * Om * (rr + rcg);
+      const F = [ff + fin[0] + Fi[0], fin[1] + Fi[1] + cf * er[1], fin[2] + Fi[2] + cf * er[2]];
+      const cr = (u, v) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+      const mp = -0.3e6 + (prior ? 0 : 0.15e6 * g.mp[k](tt));
+      const m1 = cr(er.map((v) => v * rf), [ff, 0, 0]), m2 = cr(er.map((v) => v * re), fin), m3 = cr(er.map((v) => v * rcg), Fi);
+      const Mv = [0, 1, 2].map((j) => m1[j] + m2[j] + m3[j] + mp * er[j]);
+      const dot = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+      x[6 * k] = F[0] / 1e6; x[6 * k + 1] = dot(F, et) / 1e6; x[6 * k + 2] = dot(F, er) / 1e6;
+      x[6 * k + 3] = -dot(Mv, et) / 1e6; x[6 * k + 4] = Mv[0] / 1e6; x[6 * k + 5] = dot(Mv, er) / 1e6;
+    }
+    const cp = Math.cos(psi), sp = Math.sin(psi);
+    x[18] = A[0]; x[19] = cp * A[1] + sp * A[2]; x[20] = -sp * A[1] + cp * A[2];
+    return x;
+  }
+  // linear maps x -> links at azimuth psi (rows of 21)
+  function chainMaps(psi) {
+    const C = RNAD.chain, c = Math.cos(psi), s = Math.sin(psi);
+    const rot = (r0, r1, r2) => [r0, r1.map((v, i) => c * v - s * r2[i]), r1.map((v, i) => s * v + c * r2[i])];
+    const H = C.R_hub.map((r) => r.map((v) => v / 1e6));
+    const fl = [...rot(H[0], H[1], H[2]), ...rot(H[3], H[4], H[5])];
+    const acc = [[0, 1, 2].map(() => 0), [], []]; for (let i = 0; i < 3; i++) acc[i] = new Array(21).fill(0);
+    acc[0][18] = 1; acc[1][19] = c; acc[1][20] = -s; acc[2][19] = s; acc[2][20] = c;
+    const Ldt = [...fl, ...acc];
+    const mul = (R, L, k = 1e-6) => R.map((r) => { const o = new Array(21).fill(0); r.forEach((v, i) => { if (v) for (let j = 0; j < 21; j++) o[j] += v * L[i][j] * k; }); return o; });
+    const mb = mul(C.R_mb, Ldt), aL = mul(C.R_armL, Ldt), aR = mul(C.R_armR, Ldt);
+    const Lbed = [...mb, ...aL.slice(0, 3), ...aR.slice(0, 3), ...acc];
+    return { fl, acc, Ldt, Lbed, mb, aL, aR, yaw: mul(C.R_yaw, Lbed) };
+  }
+  function sensorRows(mp, set) {
+    const rows = [], sd = [], tags = [];
+    rows.push(mp.fl[3]); sd.push(0.4); tags.push("SCADA torque");
+    mp.acc.forEach((r) => { rows.push(r); sd.push(0.01); }); tags.push("nacelle accelerometer");
+    if (set >= 1) { [3, 4, 5].forEach((i) => { rows.push(mp.yaw[i]); sd.push(0.5); }); tags.push("tower-top strain gauges (Mx, My, Mz)"); }
+    if (set >= 2) { for (let k = 0; k < 3; k++) for (const j of [3, 4]) { const r = new Array(21).fill(0); r[6 * k + j] = 1; rows.push(r); sd.push(0.5); } tags.push("blade-root strain gauges ×3 (flap, edge)"); }
+    if (set >= 3) RNAD.gauges.forEach((gq) => { const L = gq.part === "dt" ? mp.Ldt : mp.Lbed, r = new Array(21).fill(0); gq.row.forEach((w, c) => { for (let j = 0; j < 21; j++) r[j] += w * L[c][j]; }); rows.push(r); sd.push(0.5); tags.push(`strain gauge on the ${gq.part === "dt" ? "gearbox torque arm" : "bedplate seat"}`); });
+    return { rows, sd, tags };
+  }
+  const dotRow = (r, x) => { let a = 0; for (let j = 0; j < 21; j++) a += r[j] * x[j]; return a; };
+  // one 0.25 s sample: truth, measurement, estimate, posterior sd of chosen outputs
+  function rnaSample(M, tt, set) {
+    const s = LIVE.state(M, tt), op = M.op, Pm = RNAD.prior[op ? "op" : "storm"], n = 21;
+    const xT = bladeLoads(M, s, tt, false), mp = chainMaps(s.az), sr = sensorRows(mp, set), m = sr.rows.length;
+    const y = sr.rows.map((r, i) => dotRow(r, xT) + sr.sd[i] * LIVE.noise(tt, 40 + i));
+    const Umeas = s.U + 0.35 * LIVE.noise(tt, 2), Tm = M.T0 + M.dTdU * (Umeas - M.c.U);
+    const meas = { A: [mp.acc[0], mp.acc[1], mp.acc[2]].map((r) => dotRow(r, xT)), T: op ? Tm : M.T0, Q: y[0] * 1e6 };
+    const mu = bladeLoads(M, s, tt, true, meas);
+    const PH = new Float64Array(n * m), S = new Float64Array(m * m);
+    for (let i = 0; i < n; i++) for (let a = 0; a < m; a++) { let v = 0; const r = sr.rows[a]; for (let j = 0; j < n; j++) v += Pm[i][j] * r[j]; PH[i * m + a] = v; }
+    for (let a = 0; a < m; a++) for (let b = 0; b < m; b++) { let v = 0; const r = sr.rows[a]; for (let i = 0; i < n; i++) v += r[i] * PH[i * m + b]; S[a * m + b] = v + (a === b ? sr.sd[a] ** 2 : 0); }
+    const inn = y.map((v, a) => v - dotRow(sr.rows[a], mu));
+    const KT = cholSolve(S, (() => { const B = new Float64Array(m * n); for (let a = 0; a < m; a++) for (let i = 0; i < n; i++) B[a * n + i] = PH[i * m + a]; return B; })(), m, n);   // S⁻¹ H P
+    const xE = new Float64Array(n); for (let i = 0; i < n; i++) { let v = mu[i]; for (let a = 0; a < m; a++) v += KT[a * n + i] * inn[a]; xE[i] = v; }
+    return { tt, s, mp, xT, xE, KT, PH, m, tags: sr.tags };
+  }
+  // outputs from a chain input vector
+  function rnaOut(mp, x) {
+    const v = (rows) => rows.map((r) => dotRow(r, x));
+    const fl = v(mp.fl), Ldt = v(mp.Ldt), Lbed = v(mp.Lbed), mb = v(mp.mb), aL = v(mp.aL), aR = v(mp.aR), yaw = v(mp.yaw);
+    const W = RNAD.spotsW, sp = (w, L) => { let a = 0; for (let c = 0; c < w.length; c++) a += w[c] * L[c]; return a; };
+    return { x, fl, Ldt, Lbed, mb, aL, aR, yaw, hub: sp(W.hub, x), housing: sp(W.housing, Ldt), bedplate: sp(W.bedplate, Lbed) };
+  }
+  function shaftPoint(o, psi) {               // axial stress at a material point turning with the shaft
+    const sh = RNAD.spotsW.shaft, a = ((sh.phi0 + psi + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+    const val = sh.ring.map((w) => { let s = 0; for (let c = 0; c < 9; c++) s += w[c] * o.Ldt[c]; return s; });
+    const n = sh.ang.length; let j = 0; while (j < n && sh.ang[j] < a) j++;
+    const i0 = (j - 1 + n) % n, i1 = j % n; let a0 = sh.ang[i0], a1 = sh.ang[i1]; if (a1 <= a0) a1 += 2 * Math.PI; let aa = a; if (aa < a0) aa += 2 * Math.PI;
+    return val[i0] + (val[i1] - val[i0]) * (aa - a0) / Math.max(1e-9, a1 - a0);
+  }
+  // live component ageing over the window (design-life seconds per second)
+  function rnaAgeing(samples, M, which) {
+    const dt = 0.25, dur = samples.length * dt, R = RNAD.turbine, o = samples.map((q) => q[which]);
+    const fat = (series, sn) => rainflowJS(series).reduce((a, [r, c]) => a + c / snN(r * 1e6, sn), 0) * DESIGN_LIFE / dur;
+    const rpm = M.rpm, out = {};
+    out.hub = fat(o.map((q) => q.hub), CAST_SN); out.housing = fat(o.map((q) => q.housing), CAST_SN); out.bedplate = fat(o.map((q) => q.bedplate), CAST_SN);
+    out.main_shaft = fat(samples.map((q) => shaftPoint(q[which], q.s.az)), SHAFT_SN);
+    let mbD = 0; o.forEach((q) => { const Fr = Math.hypot(q.mb[1], q.mb[2]), Fa = Math.abs(q.mb[0]), P = Fa <= 0.3 * Fr ? Fr + 2.3 * Fa : 0.67 * Fr + 3.4 * Fa; mbD += rpm / 60 * dt / (Math.pow(48 / Math.max(P, 1e-3), 10 / 3) * 1e6); });
+    out.main_bearing = mbD * DESIGN_LIFE / dur;
+    const tq = (m) => o.reduce((a, q) => a + rpm * Math.pow(Math.abs(q.fl[3]) * 1e6, m), 0) / o.length / RNAD.design_rate[String(m)];
+    out.gears = Math.max(tq(8.7), tq(6.6)); out.gear_bearings = tq(10 / 3);
+    const beta = RNAD.bolts_beta, sd5 = 0.919 * 50e6 * Math.pow(0.4, 1 / 3);
+    let bmax = 0;
+    for (let k = 0; k < 3; k++) {
+      const sig = o.map((q) => { const Z = 4 * (q.x[6 * k + 3] * Math.cos(beta) + q.x[6 * k + 4] * Math.sin(beta)) * 1e6 / (144 * 4.25) + q.x[6 * k + 2] * 1e6 / 144; return Math.max(738e3 + 0.1 * Z, Z) / 1121e-6; });
+      const d = rainflowJS(sig).reduce((a, [r, c]) => a + c / (r >= sd5 ? 2e6 * Math.pow(0.919 * 50e6 / r, 3) : 5e6 * Math.pow(sd5 / Math.max(r, 1), 5)), 0);
+      bmax = Math.max(bmax, d);
+    }
+    out.bolts = bmax * DESIGN_LIFE / dur;
+    return out;
+  }
+  const RNA_COMPS = [["hub", "Hub casting", 1], ["main_shaft", "Main shaft", 1], ["main_bearing", "Main bearing", 0], ["housing", "Gearbox housing, torque arms", 1], ["gears", "Gearbox gears", 0], ["gear_bearings", "Gearbox bearings", 0], ["bedplate", "Bedplate casting", 1], ["bolts", "Blade-root bolts", 0]];
+
+  function rnaView(host, ti) {
+    stopLive();
+    let stopped = false, raf = 0, lastDraw = 0, lastAge = 0, last3d = 0, win = 120;
+    const cache = new Map();
+    host.innerHTML = `<div class="live-h"><span class="live-dot"></span><b data-mode>LIVE</b><span class="mono muted" data-clock></span>` +
+      `<span class="seg win">${[30, 120].map((w) => `<button type="button" data-w="${w}" class="${w === win ? "on" : ""}">${w < 60 ? w + " s" : w / 60 + " min"}</button>`).join("")}</span>` +
+      `<button class="btn" type="button" data-pause>${LIVE.paused() ? "Resume" : "Pause"}</button></div>` +
+      `<p class="muted rna-load" data-loading>Loading the rotor-nacelle FE models (8 MB)…</p>`;
+    const q = (s) => host.querySelector(s);
+    q("[data-w]") && host.querySelectorAll("[data-w]").forEach((b) => b.addEventListener("click", () => { win = +b.dataset.w; host.querySelectorAll("[data-w]").forEach((x) => x.classList.toggle("on", x === b)); draw(true); }));
+    q("[data-pause]").addEventListener("click", (e) => { LIVE.pause(!LIVE.paused()); e.target.textContent = LIVE.paused() ? "Resume" : "Pause"; draw(true); });
+    let V = null;
+    loadRNA().then(() => { if (!stopped) mount(); }).catch((e) => { const l = q("[data-loading]"); if (l) l.textContent = "Could not load rna_chain.json (" + e.message + "). The drivetrain view needs that file next to this page."; });
+    function mount() {
+      q("[data-loading]").remove();
+      host.insertAdjacentHTML("beforeend",
+        `<div class="rna-bar"><span class="muted rna-lb">Sensors</span><span class="seg" data-set>${RNA_SETS.map(([k], i) => `<button type="button" data-s="${i}" class="${i === rnaSet ? "on" : ""}">${k}</button>`).join("")}</span><span class="muted" data-setname></span>` +
+        `<label class="rna-ex"><input type="checkbox" data-ex ${rnaExplode ? "checked" : ""}> exploded</label></div>` +
+        `<div class="rna-3d"><div data-gl></div><div class="rna-cb"><span>150 MPa</span><i></i><span>0</span></div><div class="rna-leg">FE parts coloured by the <b>estimated</b> von Mises stress · rotor turning live</div></div>` +
+        `<div class="panel"><div class="panel-h"><h3>Load chain now</h3><span class="muted" style="font-size:0.78rem">estimate ± 1σ from the chosen sensors</span></div><div class="panel-b"><div class="rna-chain" data-chain></div></div></div>` +
+        `<h3 class="live-sub">Virtual sensors</h3><p class="cap" style="margin:0 0 6px">Accent: the twin's estimate from the chosen sensors. Grey: reference, the measured channel where that sensor is in the set; elsewhere the demo's synthetic truth, which a real turbine would not have.</p><div class="chs" data-ch></div>` +
+        `<div class="panel"><div class="panel-h"><h3>Life used now</h3><span class="muted" style="font-size:0.78rem">design hours per hour, over the window</span></div><div class="panel-b"><div class="rna-age" data-age></div><p class="cap">Bar: from the estimate. Tick: from the reference loads. A two-minute window is noisy; the twin accumulates the same calculation over the whole history.</p></div></div>` +
+        `<div class="panel"><div class="panel-h"><h3>What each sensor set can see</h3></div><div class="panel-b" data-study></div></div>`);
+      host.querySelectorAll("[data-s]").forEach((b) => b.addEventListener("click", () => { rnaSet = +b.dataset.s; host.querySelectorAll("[data-s]").forEach((x) => x.classList.toggle("on", x === b)); cache.clear(); study(); draw(true); }));
+      q("[data-ex]").addEventListener("change", (e) => { rnaExplode = e.target.checked; });
+      V = scene3d(q("[data-gl]"));
+      study(); draw(true);
+    }
+    const CH = [
+      ["Blade A flapwise root moment", "MN·m", (o) => o.x[3], 2, "SG-BR-A blade-root gauge"],
+      ["Shaft-flange tilt moment", "MN·m", (o) => o.fl[5], 9],
+      ["Main-bearing radial load", "MN", (o) => Math.hypot(o.mb[1], o.mb[2]), 9],
+      ["Torque-arm force, left", "MN", (o) => o.aL[1], 3, "SG-TA gearbox torque-arm gauge (via stress)"],
+      ["Hub hot-spot stress (critical plane)", "MPa", (o) => o.hub, 9],
+      ["Shaft stress at a point on the turning shaft", "MPa", null, 9],
+      ["Bedplate hot-spot stress", "MPa", (o) => o.bedplate, 9],
+      ["Tower-top tilt moment", "MN·m", (o) => o.yaw[5], 1, "SG-TT tower-top gauges"],
+    ];
+    function samples(M, tn) {
+      const n = Math.round(win / 0.25), k1 = Math.floor(tn / 0.25), out = [];
+      for (let k = k1 - n + 1; k <= k1; k++) {
+        let s = cache.get(k);
+        if (!s) { const r = rnaSample(M, k * 0.25, rnaSet); s = { s: r.s, r, T: rnaOut(r.mp, r.xT), E: rnaOut(r.mp, r.xE) }; cache.set(k, s); }
+        out.push(s);
+      }
+      if (cache.size > 2000) { const keep = new Set(out.map((_, i) => k1 - n + 1 + i)); [...cache.keys()].forEach((k) => { if (!keep.has(k)) cache.delete(k); }); }
+      return out;
+    }
+    function postSd(r, row) {                     // sqrt(h (P - K H P) h') for an output row h
+      const Pm = RNAD.prior[r.s && LIVE.model(ti).op ? "op" : "storm"], n = 21, m = r.m;
+      let a = 0; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) a += row[i] * Pm[i][j] * row[j];
+      let b = 0; for (let k = 0; k < m; k++) { let u = 0, w = 0; for (let i = 0; i < n; i++) { u += row[i] * r.PH[i * m + k]; w += r.KT[k * n + i] * row[i]; } b += u * w; }
+      return Math.sqrt(Math.max(0, a - b));
+    }
+    function draw(force) {
+      if (!RNAD || !V) return;
+      const M = LIVE.model(ti), tn = LIVE.now(), S = samples(M, tn), cur = S[S.length - 1];
+      q("[data-mode]").textContent = SEA === "whatif" ? "WHAT-IF" : "LIVE";
+      q("[data-clock]").textContent = new Date(tn * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + (LIVE.paused() ? " · paused" : "") + ` · ${M.op ? "operating" : "idling"} · ${fmt(M.rpm, 1)} rpm`;
+      q("[data-setname]").textContent = RNA_SETS[rnaSet][1];
+      // chain table
+      const E = cur.E, r = cur.r, mp = r.mp, f3 = (v, d = 2) => v.map((x) => (x >= 0 ? " " : "") + x.toFixed(d)).join(" ");
+      const pm = (row, d = 1) => `<span class="sd">±${postSd(r, row).toFixed(d)}</span>`;
+      q("[data-chain]").innerHTML = `<span class="h">Link</span><span class="h r">Force MN (x y z)</span><span class="h r">Moment MN·m</span>` +
+        [0, 1, 2].map((k) => `<span>Blade ${"ABC"[k]}</span><span class="r mono">${f3([E.x[6 * k], E.x[6 * k + 1], E.x[6 * k + 2]])}</span><span class="r mono">${f3([E.x[6 * k + 3], E.x[6 * k + 4], E.x[6 * k + 5]], 1)}</span>`).join("") +
+        `<span>Shaft flange</span><span class="r mono">${f3(E.fl.slice(0, 3))}</span><span class="r mono">${f3(E.fl.slice(3), 1)} ${pm(mp.fl[5])}</span>` +
+        `<span>Main bearing</span><span class="r mono">${f3(E.mb.slice(0, 3))} ${pm(mp.mb[1], 2)}</span><span class="r mono">${f3(E.mb.slice(3), 1)}</span>` +
+        `<span>Arms L / R, Fy</span><span class="r mono">${E.aL[1].toFixed(2)} / ${E.aR[1].toFixed(2)} ${pm(mp.aL[1], 2)}</span><span></span>` +
+        `<span>Tower top</span><span class="r mono">${f3(E.yaw.slice(0, 3))}</span><span class="r mono">${f3(E.yaw.slice(3), 1)} ${pm(mp.yaw[5])}</span>`;
+      // channels
+      const chHost = q("[data-ch]");
+      if (force || !chHost.children.length) chHost.innerHTML = CH.map(([nm, u, , minSet, tag]) => `<div class="ch"><div class="ch-h"><span class="nm">${nm}</span><span class="tag${rnaSet >= minSet ? " meas" : ""}">${rnaSet >= minSet ? "measured · " + tag : "virtual sensor"}</span></div><div class="ch-v mono" data-v></div><canvas></canvas><div class="ch-k"><i class="k1"></i>reference <i class="k2"></i>estimate</div></div>`).join("");
+      const cards = chHost.querySelectorAll(".ch"), cv0 = cards[0] && cards[0].querySelector("canvas");
+      const px = Math.max(80, Math.min(S.length, cv0 ? cv0.clientWidth - 52 : 300)), stride = Math.max(1, Math.floor(S.length / px)), sub = S.filter((_, i) => i % stride === 0);
+      CH.forEach(([nm, u, f], k) => {
+        const get = f ? ((q2, w) => f(q2[w])) : ((q2, w) => shaftPoint(q2[w], q2.s.az));
+        const ref = sub.map((q2) => get(q2, "T")), est = sub.map((q2) => get(q2, "E"));
+        strip(cards[k].querySelector("canvas"), [ref, est], 1, {});
+        const mu = ref.reduce((a, b) => a + b, 0) / ref.length; let e = 0, vv = 0; ref.forEach((v, i) => { e += (v - est[i]) ** 2; vv += (v - mu) ** 2; });
+        const fit = 100 * Math.max(0, 1 - e / Math.max(vv, 1e-12)), now = est[est.length - 1], dg = Math.abs(now) >= 100 ? 0 : Math.abs(now) >= 10 ? 1 : 2;
+        cards[k].querySelector("[data-v]").innerHTML = `<b>${fmt(now, dg)}</b> ${u} <span class="muted">· reference ${fmt(ref[ref.length - 1], dg)} · twin fit <b style="color:var(${fit > 90 ? "--ok" : fit > 50 ? "--warn" : "--crit"})">${fmt(fit, 0)}%</b></span>`;
+      });
+      // ageing, once a second
+      if (force || tn - lastAge > 1) {
+        lastAge = tn;
+        const aE = rnaAgeing(S, M, "E"), aT = rnaAgeing(S, M, "T");
+        const pos = (a) => Math.max(0, Math.min(1, (Math.log10(Math.max(a, 1e-6)) + 4) / 5));
+        q("[data-age]").innerHTML = RNA_COMPS.map(([k, nm, fe]) => { const a = aE[k], b = aT[k];
+          return `<div class="ar"><span>${fe ? "◆ " : ""}${nm}</span><span class="tr"><span class="fl${a > 1 ? " over" : ""}" style="width:${pos(a) * 100}%"></span><span class="one" style="left:${pos(1) * 100}%"></span><span class="ref" style="left:${pos(b) * 100}%"></span></span><span class="mono r">${a < 0.001 ? "<0.001" : a < 0.1 ? a.toFixed(3) : a.toFixed(2)}</span></div>`; }).join("") +
+          `<div class="ar ax"><span class="cap">◆ stress from the FE chain</span><span class="tr0">${[[0.001, "0.001"], [0.01, "0.01"], [0.1, "0.1"], [1, "1"], [10, "10"]].map(([v, t]) => `<span style="left:${pos(v) * 100}%">${t}</span>`).join("")}</span><span></span></div>`;
+      }
+      V.update(cur, M);
+    }
+    function study() {
+      const st = RNAD.study, keys = ["S0", "S1", "S2", "S3"], rec = st.records.op, rs = st.records.storm;
+      const sigs = Object.keys(rec.S0.r2);
+      const cell = (v) => `<td class="r mono" style="color:var(${v > 0.95 ? "--ok" : v > 0.6 ? "--warn" : "--crit"})">${v < 0 ? "0" : v.toFixed(2)}</td>`;
+      const dmg = (row) => { const v = Object.values(row.damage); const lo = Math.min(...v), hi = Math.max(...v); return `${lo.toFixed(2)}–${hi.toFixed(2)}`; };
+      q("[data-study]").innerHTML = `<p class="cap" style="margin-top:0">From <span class="mono">examples/rna_virtual_sensing.py</span>: each set's channels simulated with noise from a known truth, the chain inputs estimated, then every load, stress and damage compared with the truth. R² of each history (operating record), and the spread of estimated ÷ true damage over all components (operating · storm).</p>` +
+        `<div class="tbl-wrap"><table class="list rna-st"><thead><tr><th>Quantity</th>${keys.map((k, i) => `<th class="r${i === rnaSet ? " on" : ""}">${k}</th>`).join("")}</tr></thead><tbody>` +
+        sigs.map((s) => `<tr><td>${s}</td>${keys.map((k) => cell(rec[k].r2[s])).join("")}</tr>`).join("") +
+        `<tr><td><b>Damage, est ÷ true</b> (op · storm)</td>${keys.map((k) => `<td class="r mono" style="font-size:0.7rem">${dmg(rec[k])}<br>${dmg(rs[k])}</td>`).join("")}</tr></tbody></table></div>` +
+        `<ul class="rna-notes"><li><b>S0</b>, standard SCADA and a nacelle accelerometer, gets torque-driven parts (gears, gearbox bearings) and gravity-driven ones (blade-root bolts) right, but not the bending that loads the hub, shaft, bedplate and main bearing.</li>` +
+        `<li><b>S1</b> adds tower-top gauges: the fixed-frame chain (shaft flange, main bearing, torque arms, bedplate, tower top) becomes observable (R² ≈ 0.98), but individual blades do not.</li>` +
+        `<li><b>S2</b> adds blade-root gauges: everything follows, hub included. In storms the in-plane forces at the blade root are still unmeasured, so the hub damage is underestimated; a second gauge station along the blade (shear) closes that gap.</li>` +
+        `<li><b>S3</b> adds local gauges on the drivetrain. Here the truth comes from the same model, so they change little; on a real turbine they are what checks the FE models and catches model error.</li></ul>`;
+    }
+    // 3D: the FE chain in the drawer
+    function scene3d(el2) {
+      const r3 = new THREE.WebGLRenderer({ antialias: true }); r3.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); el2.append(r3.domElement);
+      const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(34, 1.3, 0.1, 300), ctl = new THREE.OrbitControls(cam, r3.domElement);
+      cam.position.set(10, 8, 17); ctl.target.set(-2.4, 2.2, 0); ctl.enableDamping = true;
+      sc.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.85)); const sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(8, 14, 10); sc.add(sun);
+      const Gb = new THREE.Group(), Gd = new THREE.Group(), Gp = new THREE.Group(), Gr = new THREE.Group(); sc.add(Gb, Gd); Gd.add(Gp); Gp.add(Gr); Gp.position.set(...RNAD.geo.hub);
+      const meshes = {};
+      for (const k of ["hub", "dt", "bed"]) {
+        const p = RNAD.P[k], geo = new THREE.BufferGeometry(); p.col = new Float32Array(p.nv * 3);
+        geo.setAttribute("position", new THREE.BufferAttribute(p.base, 3)); p.colAttr = new THREE.BufferAttribute(p.col, 3); geo.setAttribute("color", p.colAttr);
+        geo.setIndex(new THREE.BufferAttribute(p.tris, 1)); geo.computeVertexNormals();
+        meshes[k] = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.15, side: THREE.DoubleSide }));
+        ({ hub: Gr, dt: Gd, bed: Gb })[k].add(meshes[k]);
+      }
+      const ghost = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.2, transparent: true, opacity: 0.35, depthWrite: false });
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.45, 2.6, 3, 40, 1, true), ghost); tower.position.set(-0.2, -1.5, 0); Gb.add(tower);
+      for (let k = 0; k < 3; k++) { const a = k * 2 * Math.PI / 3, d = new THREE.Vector3(0, Math.cos(a), Math.sin(a)); const b = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.1, 6, 32, 1, true), ghost); b.position.copy(d.clone().multiplyScalar(RNAD.turbine.r_root + 3.2)); b.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d); Gr.add(b); }
+      const gen = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.6, 1.8), ghost); gen.position.set(3.65, 2.2, 0); Gb.add(gen);
+      const STOPS = [[0.05, 0.03, 0.25], [0.29, 0.07, 0.47], [0.55, 0.15, 0.48], [0.80, 0.27, 0.36], [0.96, 0.49, 0.21], [0.99, 0.75, 0.25], [0.98, 0.99, 0.64]];
+      const cmap = (u, out, o) => { u = Math.max(0, Math.min(1, u)) * 6; const i = Math.min(5, Math.floor(u)), f = u - i; for (let k = 0; k < 3; k++) out[o + k] = STOPS[i][k] + (STOPS[i + 1][k] - STOPS[i][k]) * f; };
+      el2.parentElement.querySelector(".rna-cb i").style.background = `linear-gradient(to top, ${STOPS.map((s) => `rgb(${s.map((x) => Math.round(255 * x)).join(",")})`).join(",")})`;
+      let ex = 0, alive = true, lastPaint = 0;
+      const sig = { hub: null, dt: null, bed: null };
+      function paint(cur) {
+        const L = { hub: cur.E.x, dt: cur.E.Ldt, bed: cur.E.Lbed };
+        for (const k of ["hub", "dt", "bed"]) {
+          const p = RNAD.P[k], l = L[k], s6 = sig[k] || (sig[k] = new Float32Array(p.nv * 6)); s6.fill(0);
+          for (let c = 0; c < p.nc; c++) { const f = l[c]; if (!f) continue; const o = c * p.nv * 6; for (let i = 0; i < p.nv * 6; i++) s6[i] += f * p.S[o + i]; }
+          for (let v = 0; v < p.nv; v++) { const o = 6 * v, a = s6[o], b = s6[o + 1], c2 = s6[o + 2], xy = s6[o + 3], yz = s6[o + 4], zx = s6[o + 5];
+            cmap(Math.sqrt(0.5 * ((a - b) ** 2 + (b - c2) ** 2 + (c2 - a) ** 2) + 3 * (xy * xy + yz * yz + zx * zx)) / 150e6, p.col, 3 * v); }
+          p.colAttr.needsUpdate = true;
+        }
+      }
+      let lastCur = null;
+      function loop(ts) {
+        if (!alive) return; requestAnimationFrame(loop);
+        if (!el2.isConnected || !el2.offsetParent) return;
+        const w = el2.clientWidth, h = el2.clientHeight; if (r3.domElement.width !== Math.round(w * r3.getPixelRatio())) { r3.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+        const tgt = rnaExplode ? 1 : 0; ex += (tgt - ex) * 0.12; Gd.position.y = 2.8 * ex; Gp.position.x = RNAD.geo.hub[0] - 2.4 * ex;
+        if (lastCur && ts - lastPaint > 120) { lastPaint = ts; paint(lastCur); }
+        if (lastCur) Gr.rotation.x = LIVE.state(LIVE.model(ti), LIVE.now()).az;
+        sc.background = new THREE.Color(css("--sky")); ghost.color = new THREE.Color(css("--muted"));
+        ctl.update(); r3.render(sc, cam);
+      }
+      requestAnimationFrame(loop);
+      return { update: (cur) => { lastCur = cur; }, stop: () => { alive = false; r3.dispose(); } };
+    }
+    function tick(ts) {
+      if (stopped) return;
+      raf = requestAnimationFrame(tick);
+      if (document.hidden || !host.offsetParent || !host.isConnected) return;
+      if (ts - lastDraw < 250) return;
+      lastDraw = ts; draw(false);
+    }
+    raf = requestAnimationFrame(tick);
+    return (LV = { stop: () => { stopped = true; cancelAnimationFrame(raf); if (V) V.stop(); } });
+  }
+
   // ---------- explorer, navigation and drawer ----------
   let current = -1;
   let NAV = { type: "none" };
   const PARTOF = { flange_bolts: "flange", door_frame: "door", mudline_weld: "weld", foundation: "soil", platform: "platform" };
   const PARTS = [
-    { id: "rna", name: "Rotor and nacelle", ic: "✣", kids: ["blade_A", "blade_B", "blade_C"] },
+    { id: "rna", name: "Rotor and nacelle", ic: "✣", kids: ["drivetrain", "blade_A", "blade_B", "blade_C"] },
     { id: "tower", name: "Tower", ic: "▕", kids: ["door"] },
     { id: "flange", name: "Tower-base flange", ic: "═" },
     { id: "platform", name: "Platform and boat landing", ic: "▭" },
     { id: "splash", name: "Monopile", ic: "▮", kids: ["weld"] },
     { id: "soil", name: "Foundation and soil", ic: "▦" },
   ];
-  const PARTNAME = { door: "Door frame", weld: "Mudline weld", blade_A: "Blade A", blade_B: "Blade B", blade_C: "Blade C" };
+  const PARTNAME = { door: "Door frame", weld: "Mudline weld", blade_A: "Blade A", blade_B: "Blade B", blade_C: "Blade C", drivetrain: "Drivetrain load chain (FE)" };
   PARTS.forEach((p) => { PARTNAME[p.id] = p.name; });
   const PARENT = {}; PARTS.forEach((p) => (p.kids || []).forEach((k) => { PARENT[k] = p.id; }));
-  const KIDIC = { door: "▯", weld: "◌", blade_A: "╱", blade_B: "╱", blade_C: "╱" };
+  const KIDIC = { door: "▯", weld: "◌", blade_A: "╱", blade_B: "╱", blade_C: "╱", drivetrain: "⚙" };
   const expanded = new Set(["root", "f0"]);
 
   function partStatus(t, part) {          // "red" | "amber" | "green" | "rbi" | "alarm" | null
@@ -2210,14 +2571,16 @@ details.sec > * + * { margin-top: 8px; }
     });
   }
 
-  const PANES = ["portfolio", "farm", "live", "overview", "fatigue", "frequency", "event", "whatif", "component"];
-  const TTABS = [["live", "Live"], ["overview", "Overview"], ["fatigue", "Fatigue"], ["frequency", "Frequencies"], ["event", "Storm event"], ["whatif", "What-if"]];
+  const PANES = ["portfolio", "farm", "live", "drivetrain", "overview", "fatigue", "frequency", "event", "whatif", "component"];
+  const TTABS = [["live", "Live"], ["drivetrain", "Drivetrain"], ["overview", "Overview"], ["fatigue", "Fatigue"], ["frequency", "Frequencies"], ["event", "Storm event"], ["whatif", "What-if"]];
   function showPane(name) { PANES.forEach((n) => { document.getElementById("pane-" + n).hidden = n !== name; }); }
   function showTab(name) {
     NAV.tab = name;
     document.querySelectorAll("#dr-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
     showPane(name);
-    if (name === "live") liveView(document.getElementById("pane-live"), NAV.t, "turbine"); else stopLive();
+    if (name === "live") liveView(document.getElementById("pane-live"), NAV.t, "turbine");
+    else if (name === "drivetrain") rnaView(document.getElementById("pane-drivetrain"), NAV.t);
+    else stopLive();
     if (name === "whatif") drawWhatif();
   }
   function drawDrawer() {
@@ -2245,8 +2608,13 @@ details.sec > * + * { margin-top: 8px; }
       const t = T[NAV.t];
       ey.textContent = `${F.name} · ${t.spec.name}${PARENT[NAV.part] ? " · " + PARTNAME[PARENT[NAV.part]] : ""}`;
       ti.innerHTML = PARTNAME[NAV.part] + pill(partStatus(t, NAV.part));
-      inspector(t, NAV.part); showPane("component");
-      liveView(document.getElementById("comp-live"), NAV.t, NAV.part);
+      if (NAV.part === "drivetrain") {
+        document.getElementById("insp").innerHTML = `<p class="cap">Hub, main shaft with gearbox housing, and bedplate as three unit-load FE models chained by their reactions, fed by the twin's blade-root loads and the chosen sensors. Same view as the turbine's Drivetrain tab.</p>`;
+        showPane("component"); rnaView(document.getElementById("comp-live"), NAV.t);
+      } else {
+        inspector(t, NAV.part); showPane("component");
+        liveView(document.getElementById("comp-live"), NAV.t, NAV.part);
+      }
       const kids = (PARTS.find((p) => p.id === NAV.part) || {}).kids;
       if (kids) {
         const row = el("div", { class: "chips2", style: "margin-top:4px" });

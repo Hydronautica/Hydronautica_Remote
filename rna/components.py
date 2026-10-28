@@ -182,10 +182,12 @@ def blade_root_bolts(rec, tb=None, n=144, D_bc=4.25, d=42, As=1121e-6, F_V=738e3
     m = [("Bolts", f"{n} × M{d}, preload {F_V / 1e3:.0f} kN"), ("Mean bolt stress", f"{sig.mean() / 1e6:.0f} MPa"),
          ("Largest stress range", f"{rg.max() / 1e6:.1f} MPa"), ("Cycles in record", f"{ct.sum():.0f}"),
          ("Joint gap open", f"{100 * gap:.1f} % of the time")]
-    return _result("bolts", "Blade-root bolts", "Joint diagram per bolt position → rainflow → S-N",
+    r = _result("bolts", "Blade-root bolts", "Joint diagram per bolt position → rainflow → S-N",
                    "VDI 2230, Schmidt–Neuper, EC3 detail 50", dmg, rec, m,
                    f"The blade's own weight swings the edgewise moment once per revolution, so every bolt sees about one stress cycle per turn. Preload keeps only ~{100 * phi:.0f} % of that in the bolt; if preload is lost, the bolt range jumps about tenfold. Worst bolt: blade {'ABC'[k]}, {np.degrees(beta):.0f}° round the circle.",
                    ("Bolt stress, worst position", "MPa", sig / 1e6))
+    r["beta"] = float(beta)
+    return r
 
 
 def yaw_bearing(rec, tb=None, D=4.4, Ca=60e6, C0a=160e6):
@@ -246,6 +248,7 @@ def unit_load_hotspot(U, L, sn, dirs=25, key="bedplate", name="Bedplate casting"
                   "The FE fields from the nine unit cases are combined with this record's loads; the worst point and plane govern. Castings like this are normally sized by stiffness and extreme loads, so fatigue ageing is low.",
                   ("Normal stress, critical plane at the hot spot", "MPa", series / 1e6))
     res["point"] = int(p)
+    res["normal"] = N[d].tolist()
     return res
 
 

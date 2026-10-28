@@ -12,3 +12,4 @@ demo/stormtwin/demo_data*.json
 demo/stormtwin/*.log
 demo/rna/bedplate.json
 demo/rna/fe_chain.npz
+demo/stormtwin/rna_chain.json

@@ -1,0 +1,356 @@
+{
+ "sets": {
+  "S0": "SCADA + nacelle accelerometer",
+  "S1": "S0 + tower-top strain gauges",
+  "S2": "S1 + blade-root strain gauges",
+  "S3": "S2 + two local gauges on the drivetrain"
+ },
+ "records": {
+  "op": {
+   "S0": {
+    "sensors": [
+     "SCADA torque",
+     "nacelle accelerometer x y z"
+    ],
+    "r2": {
+     "Blade A flapwise root moment": 0.10865120956511953,
+     "Hub tilt moment (shaft flange)": -0.001721881559469507,
+     "Hub yaw moment (shaft flange)": -0.00034090720857116175,
+     "Main-bearing radial load": -0.0005576145594390347,
+     "Torque-arm force, left": 0.057416516141530205,
+     "Tower-top tilt moment": 0.0034150996695501146,
+     "Hub casting hot-spot stress": 0.8049451988078984,
+     "Gearbox housing and torque arms hot-spot stress": 0.0758905437067251,
+     "Bedplate casting hot-spot stress": 0.02310289773802976
+    },
+    "damage": {
+     "hub": 0.011271855682947664,
+     "main_shaft": 0.030644850968007502,
+     "main_bearing": 0.9036319317546838,
+     "housing": 1.3672366530178234e-06,
+     "gears": 1.0016928144597952,
+     "gear_bearings": 1.000396596270083,
+     "bedplate": 1.5334237650460057e-07,
+     "pitch_bearings": 0.9610998177923858,
+     "bolts": 0.9970270130354323,
+     "yaw_bearing": 1.0506329926540021
+    },
+    "names": {
+     "hub": "Hub casting",
+     "main_shaft": "Main shaft",
+     "main_bearing": "Main bearing",
+     "housing": "Gearbox housing and torque arms",
+     "gears": "Gearbox gears",
+     "gear_bearings": "Gearbox bearings",
+     "bedplate": "Bedplate casting",
+     "pitch_bearings": "Pitch bearings",
+     "bolts": "Blade-root bolts",
+     "yaw_bearing": "Yaw bearing",
+     "equipment": "Cabinets, cooling, converter",
+     "generator": "Generator bearings"
+    }
+   },
+   "S1": {
+    "sensors": [
+     "SCADA torque",
+     "nacelle accelerometer x y z",
+     "tower-top gauges Mx My Mz"
+    ],
+    "r2": {
+     "Blade A flapwise root moment": 0.39381270726764395,
+     "Hub tilt moment (shaft flange)": 0.9798663795773058,
+     "Hub yaw moment (shaft flange)": 0.9839428886577475,
+     "Main-bearing radial load": 0.9796715476689757,
+     "Torque-arm force, left": 0.9774865173820411,
+     "Tower-top tilt moment": 0.9893826735668602,
+     "Hub casting hot-spot stress": 0.9903561515718722,
+     "Gearbox housing and torque arms hot-spot stress": 0.9770809033742955,
+     "Bedplate casting hot-spot stress": 0.9825287193937908
+    },
+    "damage": {
+     "hub": 1.0769317208353713,
+     "main_shaft": 0.9952012241484511,
+     "main_bearing": 0.9904155410574708,
+     "housing": 1.4890226626744119,
+     "gears": 1.0030355859804505,
+     "gear_bearings": 1.0008603920877714,
+     "bedplate": 0.890409925875517,
+     "pitch_bearings": 0.9758429469137089,
+     "bolts": 1.001307881401727,
+     "yaw_bearing": 0.9926793134312296
+    },
+    "names": {
+     "hub": "Hub casting",
+     "main_shaft": "Main shaft",
+     "main_bearing": "Main bearing",
+     "housing": "Gearbox housing and torque arms",
+     "gears": "Gearbox gears",
+     "gear_bearings": "Gearbox bearings",
+     "bedplate": "Bedplate casting",
+     "pitch_bearings": "Pitch bearings",
+     "bolts": "Blade-root bolts",
+     "yaw_bearing": "Yaw bearing",
+     "equipment": "Cabinets, cooling, converter",
+     "generator": "Generator bearings"
+    }
+   },
+   "S2": {
+    "sensors": [
+     "SCADA torque",
+     "nacelle accelerometer x y z",
+     "tower-top gauges Mx My Mz",
+     "blade-root flap and edge moments \u00d73"
+    ],
+    "r2": {
+     "Blade A flapwise root moment": 0.9952776944327543,
+     "Hub tilt moment (shaft flange)": 0.9932045039310488,
+     "Hub yaw moment (shaft flange)": 0.9905968744480914,
+     "Main-bearing radial load": 0.9930561520859905,
+     "Torque-arm force, left": 0.9874706142322485,
+     "Tower-top tilt moment": 0.9935879519265972,
+     "Hub casting hot-spot stress": 0.9983568900826378,
+     "Gearbox housing and torque arms hot-spot stress": 0.9862808044689163,
+     "Bedplate casting hot-spot stress": 0.9894810959071005
+    },
+    "damage": {
+     "hub": 1.0140526068953948,
+     "main_shaft": 1.0175317028740976,
+     "main_bearing": 0.9989480837122772,
+     "housing": 0.8102177059789821,
+     "gears": 1.0035171806384617,
+     "gear_bearings": 1.0011465973647609,
+     "bedplate": 1.1420795717670789,
+     "pitch_bearings": 0.9992097992697891,
+     "bolts": 1.0006401954429491,
+     "yaw_bearing": 1.0005859941805577
+    },
+    "names": {
+     "hub": "Hub casting",
+     "main_shaft": "Main shaft",
+     "main_bearing": "Main bearing",
+     "housing": "Gearbox housing and torque arms",
+     "gears": "Gearbox gears",
+     "gear_bearings": "Gearbox bearings",
+     "bedplate": "Bedplate casting",
+     "pitch_bearings": "Pitch bearings",
+     "bolts": "Blade-root bolts",
+     "yaw_bearing": "Yaw bearing",
+     "equipment": "Cabinets, cooling, converter",
+     "generator": "Generator bearings"
+    }
+   },
+   "S3": {
+    "sensors": [
+     "SCADA torque",
+     "nacelle accelerometer x y z",
+     "tower-top gauges Mx My Mz",
+     "blade-root flap and edge moments \u00d73",
+     "strain gauge on the drivetrain",
+     "strain gauge on the bedplate"
+    ],
+    "r2": {
+     "Blade A flapwise root moment": 0.9953000700632119,
+     "Hub tilt moment (shaft flange)": 0.9945168698330338,
+     "Hub yaw moment (shaft flange)": 0.9905816221790106,
+     "Main-bearing radial load": 0.9943372967625462,
+     "Torque-arm force, left": 0.987924583343105,
+     "Tower-top tilt moment": 0.9947894144747106,
+     "Hub casting hot-spot stress": 0.9984623987096926,
+     "Gearbox housing and torque arms hot-spot stress": 0.9869431259193229,
+     "Bedplate casting hot-spot stress": 0.9897864878554721
+    },
+    "damage": {
+     "hub": 0.9711937958670182,
+     "main_shaft": 1.0177259866381168,
+     "main_bearing": 1.000255555633356,
+     "housing": 0.9937764325045078,
+     "gears": 1.002578309882987,
+     "gear_bearings": 1.0006573699011454,
+     "bedplate": 0.8436507046068441,
+     "pitch_bearings": 1.0004868532650255,
+     "bolts": 1.0002759400637273,
+     "yaw_bearing": 1.001109603106043
+    },
+    "names": {
+     "hub": "Hub casting",
+     "main_shaft": "Main shaft",
+     "main_bearing": "Main bearing",
+     "housing": "Gearbox housing and torque arms",
+     "gears": "Gearbox gears",
+     "gear_bearings": "Gearbox bearings",
+     "bedplate": "Bedplate casting",
+     "pitch_bearings": "Pitch bearings",
+     "bolts": "Blade-root bolts",
+     "yaw_bearing": "Yaw bearing",
+     "equipment": "Cabinets, cooling, converter",
+     "generator": "Generator bearings"
+    }
+   }
+  },
+  "storm": {
+   "S0": {
+    "sensors": [
+     "SCADA torque",
+     "nacelle accelerometer x y z"
+    ],
+    "r2": {
+     "Blade A flapwise root moment": -0.0012838400968557817,
+     "Hub tilt moment (shaft flange)": -2.902857888287258e-06,
+     "Hub yaw moment (shaft flange)": -4.367272442173942e-05,
+     "Main-bearing radial load": -0.006411345716052619,
+     "Torque-arm force, left": 0.3279943616780593,
+     "Tower-top tilt moment": 0.017865005685722246,
+     "Hub casting hot-spot stress": 0.15153976726114649,
+     "Gearbox housing and torque arms hot-spot stress": 0.3540452511230424,
+     "Bedplate casting hot-spot stress": -0.15095285406687964
+    },
+    "damage": {
+     "hub": 0.0010871087735549654,
+     "main_shaft": 0.024521412031695673,
+     "main_bearing": 0.8913141362427691,
+     "housing": 1.813465230207458e-05,
+     "bedplate": 9.816681396200247e-07,
+     "bolts": 0.13733308935967586
+    },
+    "names": {
+     "hub": "Hub casting",
+     "main_shaft": "Main shaft",
+     "main_bearing": "Main bearing",
+     "housing": "Gearbox housing and torque arms",
+     "gears": "Gearbox gears",
+     "gear_bearings": "Gearbox bearings",
+     "bedplate": "Bedplate casting",
+     "pitch_bearings": "Pitch bearings",
+     "bolts": "Blade-root bolts",
+     "yaw_bearing": "Yaw bearing",
+     "equipment": "Cabinets, cooling, converter",
+     "generator": "Generator bearings"
+    }
+   },
+   "S1": {
+    "sensors": [
+     "SCADA torque",
+     "nacelle accelerometer x y z",
+     "tower-top gauges Mx My Mz"
+    ],
+    "r2": {
+     "Blade A flapwise root moment": 0.12503506041888934,
+     "Hub tilt moment (shaft flange)": 0.8841992660299632,
+     "Hub yaw moment (shaft flange)": 0.819162537309884,
+     "Main-bearing radial load": 0.8988197273406918,
+     "Torque-arm force, left": 0.9317894057281284,
+     "Tower-top tilt moment": 0.9775558331883987,
+     "Hub casting hot-spot stress": 0.8231014480869291,
+     "Gearbox housing and torque arms hot-spot stress": 0.9385402212139929,
+     "Bedplate casting hot-spot stress": 0.9179214682267512
+    },
+    "damage": {
+     "hub": 0.7499204279783354,
+     "main_shaft": 0.7642545825412155,
+     "main_bearing": 0.9281183609766004,
+     "housing": 0.35652753487735556,
+     "bedplate": 1.1446098979235138,
+     "bolts": 0.2703728362433096
+    },
+    "names": {
+     "hub": "Hub casting",
+     "main_shaft": "Main shaft",
+     "main_bearing": "Main bearing",
+     "housing": "Gearbox housing and torque arms",
+     "gears": "Gearbox gears",
+     "gear_bearings": "Gearbox bearings",
+     "bedplate": "Bedplate casting",
+     "pitch_bearings": "Pitch bearings",
+     "bolts": "Blade-root bolts",
+     "yaw_bearing": "Yaw bearing",
+     "equipment": "Cabinets, cooling, converter",
+     "generator": "Generator bearings"
+    }
+   },
+   "S2": {
+    "sensors": [
+     "SCADA torque",
+     "nacelle accelerometer x y z",
+     "tower-top gauges Mx My Mz",
+     "blade-root flap and edge moments \u00d73"
+    ],
+    "r2": {
+     "Blade A flapwise root moment": 0.9980204732566633,
+     "Hub tilt moment (shaft flange)": 0.9846701754687153,
+     "Hub yaw moment (shaft flange)": 0.9820292708221431,
+     "Main-bearing radial load": 0.9848924238433298,
+     "Torque-arm force, left": 0.9900085503014447,
+     "Tower-top tilt moment": 0.9864893964128939,
+     "Hub casting hot-spot stress": 0.9856633184688833,
+     "Gearbox housing and torque arms hot-spot stress": 0.9905826148859879,
+     "Bedplate casting hot-spot stress": 0.9773176131553052
+    },
+    "damage": {
+     "hub": 0.556988422749564,
+     "main_shaft": 1.0376476042152556,
+     "main_bearing": 0.9986205983259098,
+     "housing": 1.2159869242674253,
+     "bedplate": 1.0044429727276092,
+     "bolts": 1.1109883921483874
+    },
+    "names": {
+     "hub": "Hub casting",
+     "main_shaft": "Main shaft",
+     "main_bearing": "Main bearing",
+     "housing": "Gearbox housing and torque arms",
+     "gears": "Gearbox gears",
+     "gear_bearings": "Gearbox bearings",
+     "bedplate": "Bedplate casting",
+     "pitch_bearings": "Pitch bearings",
+     "bolts": "Blade-root bolts",
+     "yaw_bearing": "Yaw bearing",
+     "equipment": "Cabinets, cooling, converter",
+     "generator": "Generator bearings"
+    }
+   },
+   "S3": {
+    "sensors": [
+     "SCADA torque",
+     "nacelle accelerometer x y z",
+     "tower-top gauges Mx My Mz",
+     "blade-root flap and edge moments \u00d73",
+     "strain gauge on the drivetrain",
+     "strain gauge on the bedplate"
+    ],
+    "r2": {
+     "Blade A flapwise root moment": 0.9980899228670821,
+     "Hub tilt moment (shaft flange)": 0.9883768226563378,
+     "Hub yaw moment (shaft flange)": 0.9820051280311282,
+     "Main-bearing radial load": 0.9887794082806717,
+     "Torque-arm force, left": 0.9925182949962864,
+     "Tower-top tilt moment": 0.9898653360810423,
+     "Hub casting hot-spot stress": 0.9863343480108373,
+     "Gearbox housing and torque arms hot-spot stress": 0.9929983208829264,
+     "Bedplate casting hot-spot stress": 0.9774054654230694
+    },
+    "damage": {
+     "hub": 0.5831130615132155,
+     "main_shaft": 0.9992327871569204,
+     "main_bearing": 1.0002538781602652,
+     "housing": 0.961749871478678,
+     "bedplate": 0.8725140061442442,
+     "bolts": 1.0743242966572037
+    },
+    "names": {
+     "hub": "Hub casting",
+     "main_shaft": "Main shaft",
+     "main_bearing": "Main bearing",
+     "housing": "Gearbox housing and torque arms",
+     "gears": "Gearbox gears",
+     "gear_bearings": "Gearbox bearings",
+     "bedplate": "Bedplate casting",
+     "pitch_bearings": "Pitch bearings",
+     "bolts": "Blade-root bolts",
+     "yaw_bearing": "Yaw bearing",
+     "equipment": "Cabinets, cooling, converter",
+     "generator": "Generator bearings"
+    }
+   }
+  }
+ }
+}

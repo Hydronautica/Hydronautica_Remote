@@ -115,8 +115,8 @@ def shaft_rotating(fe, L_dt, rec, n_points=12):
             rg, _, ct, ends = rainflow(series[p])
             dc = ct / SHAFT_SN.cycles(rg)
             if best is None or dc.sum() > best[0]:
-                best = (dc.sum(), xi, p, series[p], rg, ct, ends, dc, ring)
-    _, xi, p, sig, rg, ct, ends, dc, ring = best
+                best = (dc.sum(), xi, p, series[p], rg, ct, ends, dc, ring, th[ring], phi0[p])
+    _, xi, p, sig, rg, ct, ends, dc, ring, ang, ph = best
     dmg = place(sig.size, ends, dc)
     x = float(fe["drivetrain_origin"][0] + xi * float(fe["h"]))
     m = [("Critical section", f"x = {x:.1f} m"), ("Axial stress range (max)", f"{rg.max() / 1e6:.0f} MPa"),
@@ -126,6 +126,7 @@ def shaft_rotating(fe, L_dt, rec, n_points=12):
                 "The FE gives the bending stress field in space; a point on the turning shaft passes through tension and compression once per revolution. Its worst section is found from the FE rather than assumed.",
                 ("Axial stress at a material point on the critical section", "MPa", sig / 1e6))
     r["part"], r["vertex"] = "drivetrain", int(ring[0])
+    r["ring"], r["ring_angles"], r["phi0"] = ring.tolist(), ang.tolist(), float(ph)
     return r
 
 

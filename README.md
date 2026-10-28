@@ -419,3 +419,14 @@ the result against rigid-body statics (agreement within 1 %). `rna.chain.assess_
 
 `demo/rna/build.py` packs all of this into the 3D page. All sizes and ratings are
 representative, not data for a real turbine.
+
+**Virtual sensing.** `rna.virtual` treats every sensor as a linear row of the chain, y = H(ψ) x + noise, in the 21 chain inputs (18 blade-root loads plus 3 accelerations). It estimates x at every time step from a prior (global model and SCADA) and the measurements. `examples/rna_virtual_sensing.py` tests four sensor sets against a known truth:
+
+| Set | Sensors | What it recovers |
+|---|---|---|
+| S0 | SCADA, nacelle accelerometer | Only the parts driven by torque or gravity |
+| S1 | S0 plus tower-top strain | The whole fixed-frame chain (R² ≈ 0.98) |
+| S2 | S1 plus blade-root strain | Everything, hub included |
+| S3 | S2 plus local drivetrain gauges | Little more here; on a real turbine they check the FE models |
+
+StormTwin's turbine **Drivetrain** tab runs the same estimator live. To build its data, run `demo/stormtwin/build_rna.py`, which writes `rna_chain.json`, published next to the page.

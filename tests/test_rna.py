@@ -90,3 +90,23 @@ def test_chain_closes_if_built():
         rec = synthetic(kind, tb)
         c = closure(rec, run(rec, fe))
         assert c["hub"] < 0.02 and c["tower"] < 0.02
+
+
+def test_virtual_sensing_observability_if_built():
+    import os
+    import pytest
+    from rna.chain import load, run, turbine_for
+    from rna.virtual import as_record, estimate, prior_cov, r2
+    path = os.path.join(os.path.dirname(__file__), "..", "demo", "rna", "fe_chain.npz")
+    if not os.path.exists(path):
+        pytest.skip("run examples/rna_fe_chain.py first")
+    fe = load(path)
+    tb = turbine_for(fe)
+    rec = synthetic("op", tb, duration=200.0)
+    P = prior_cov(tb, "op", seeds=range(101, 105))
+    tilt = run(rec, fe)["flange"][5]
+    fit = []
+    for which in (0, 1):
+        _, x_hat, _, _ = estimate(rec, fe, P, which, tb)
+        fit.append(r2(tilt, run(as_record(rec, x_hat, fe), fe)["flange"][5]))
+    assert fit[0] < 0.3 < 0.9 < fit[1]       # SCADA alone cannot see hub bending; tower-top gauges can
