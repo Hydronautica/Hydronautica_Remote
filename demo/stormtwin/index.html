@@ -225,7 +225,34 @@ button.tab { font: inherit; }
 .node .meta { flex: none; font-family: var(--font-data); font-size: 0.72rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
 .node .sd { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px var(--surface); }
 .node.farm-n .nm { font-weight: 600; }
-.ex-f { border-top: 1px solid var(--line); padding: 6px; }
+.gear { font-size: 1rem; line-height: 1; padding: 4px 8px; }
+.settings { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.4); display: grid; place-items: center; padding: 16px; }
+.set-card { width: min(920px, 100%); height: min(680px, 100%); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+.set-h { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.set-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr); }
+.set-nav { display: flex; flex-direction: column; gap: 2px; padding: 10px 8px; background: var(--surface); border-right: 1px solid var(--line); }
+.set-nav button { font: inherit; font-size: 0.9rem; text-align: left; padding: 6px 10px; border: 0; border-radius: 5px; background: none; color: var(--ink); cursor: pointer; }
+.set-nav button:hover { background: var(--accent-soft); }
+.set-nav button.on { background: var(--accent); color: var(--surface); }
+.set-main { overflow-y: auto; padding: 16px 20px 28px; }
+.set-sec { display: flex; flex-direction: column; gap: 12px; }
+.set-sec h3 { margin-top: 10px; }
+#rules-table td:first-child { font-family: var(--font-body); white-space: normal; font-size: 0.88rem; }
+#rules-table td:nth-child(n+2) { font-family: var(--font-data); font-size: 0.82rem; }
+.set-sec .chain { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.set-sec .chain .step { border-bottom: 1px solid var(--line); }
+.set-sec .meas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.set-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.set-row b { display: block; font-weight: 600; font-size: 0.92rem; }
+.set-row span { font-size: 0.8rem; color: var(--muted); }
+.set-row select { font: inherit; font-size: 0.86rem; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
+.set-row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+@media (max-width: 700px) {
+  .set-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .set-nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .set-nav button { white-space: nowrap; }
+  .set-sec .chain, .set-sec .meas { grid-template-columns: minmax(0, 1fr); }
+}
 
 .stage { grid-area: stage; position: relative; min-width: 0; min-height: 0; }
 .viewport { position: absolute; inset: 0; overflow: hidden; background: var(--sky); }
@@ -308,14 +335,12 @@ details.sec > * + * { margin-top: 8px; }
     <div class="brand"><b>StormTwin</b></div>
     <nav class="crumbs" id="crumbs" aria-label="Location"></nav>
     <span class="badge">Demo · synthetic data</span>
+    <button class="btn icon gear" type="button" id="set-open" aria-label="Settings" title="Settings">⚙</button>
   </header>
 
   <aside class="explorer" id="explorer" aria-label="Explorer">
     <div class="ex-h">Explorer</div>
     <ul class="tree" id="tree" role="tree" aria-label="Farms, turbines and components"></ul>
-    <div class="ex-f">
-      <button class="node about-node" type="button" id="about-node"><span class="tw"></span><span class="ic">ⓘ</span><span class="nm">About StormTwin</span></button>
-    </div>
   </aside>
 
   <main class="stage">
@@ -381,7 +406,7 @@ details.sec > * + * { margin-top: 8px; }
       <div class="pane" id="pane-event" hidden></div>
       <div class="pane" id="pane-whatif" hidden>
         <section id="whatif" class="pane">
-          <p class="muted">How sea state, wind and direction drive damage at <b id="wi-name"></b>. Anchored to this turbine's base runs and scaled physically: dynamic amplification of the first mode for T<sub>p</sub>, rotor damping and thrust for wind, and each hot spot's position on the circumference for direction. Set the 3D sea to <i>What-if</i> to see these conditions.</p>
+          <p class="hint">Damage at <b id="wi-name"></b> under the conditions below. Set the 3D sea to <i>What-if</i> to see them.</p>
           <div class="panel"><div class="panel-b ctl" style="padding-top:14px">
             <label for="wi-hs"><span>Significant wave height H<sub>s</sub></span><span class="v" id="wi-hs-v"></span><input type="range" id="wi-hs" min="0.5" max="12" step="0.1" value="4"></label>
             <label for="wi-tp"><span>Peak period T<sub>p</sub></span><span class="v" id="wi-tp-v"></span><input type="range" id="wi-tp" min="4" max="16" step="0.1" value="7.2"></label>
@@ -401,10 +426,37 @@ details.sec > * + * { margin-top: 8px; }
       <!-- component -->
       <div class="pane" id="pane-component" hidden><div class="insp" id="insp"></div></div>
 
-      <!-- about -->
-      <div class="pane" id="pane-about" hidden>
-        <p class="muted">Every turbine is screened over the full storm record. Turbines that are flagged, or that carry a known condition such as scour or low preload, get a deep-dive on their largest wave group.</p>
-        <div class="chain">
+    </div>
+  </aside>
+
+  <div class="settings" id="settings" role="dialog" aria-modal="true" aria-labelledby="set-title" hidden>
+    <div class="set-card">
+      <div class="set-h"><h2 id="set-title">Settings</h2><button class="btn icon" type="button" id="set-close" aria-label="Close settings">✕</button></div>
+      <div class="set-body">
+        <nav class="set-nav" aria-label="Settings sections">
+          <button type="button" data-set="general" class="on">General</button>
+          <button type="button" data-set="rules">Assessment rules</button>
+          <button type="button" data-set="method">Methodology</button>
+          <button type="button" data-set="standards">Standards</button>
+          <button type="button" data-set="about">About</button>
+        </nav>
+        <div class="set-main">
+          <section class="set-sec" id="set-general">
+            <div class="set-row"><div><b>Theme</b><span>Follows the system unless set here.</span></div>
+              <select id="set-theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+            <div class="set-row"><div><b>Colour turbines by</b><span>Default for the 3D view.</span></div>
+              <select id="set-color"><option value="verdict">Verdict</option><option value="life">Life used</option><option value="alarms">Frequency alarms</option></select></div>
+            <div class="set-row"><div><b>Turbine labels</b><span>Names above each turbine in the 3D view.</span></div><input type="checkbox" id="set-labels" checked></div>
+            <div class="set-row"><div><b>Animate sea and rotors</b><span>Turn off on slower machines.</span></div><input type="checkbox" id="set-anim" checked></div>
+            <div class="set-row"><div><b>Units</b><span>SI throughout (m, s, MN, MN·m, Hz).</span></div><span class="mono muted">SI</span></div>
+          </section>
+          <section class="set-sec" id="set-rules" hidden>
+            <p class="muted">Rules that turn results into verdicts. Agreed with the operator and certifier before use; read-only in this demo.</p>
+            <div class="tbl-wrap"><table class="std" id="rules-table"></table></div>
+          </section>
+          <section class="set-sec" id="set-method" hidden>
+            <p class="muted">Every turbine is screened over the full storm record. Turbines that are flagged, or that carry a known condition such as scour or low preload, get a deep-dive on their largest wave group.</p>
+            <div class="chain">
           <div class="step"><span class="n">1</span><h3>Sea state</h3><p>Buoy, radar or hindcast data at each position, evolved with the nonlinear Schrödinger equation.</p><span class="tag">NLS · Dysthe</span></div>
           <div class="step"><span class="n">2</span><h3>Extreme groups</h3><p>Rogue-wave detection, then a second-order reconstruction of the largest group with crest kinematics.</p><span class="tag">2nd-order · breaking check</span></div>
           <div class="step"><span class="n">3</span><h3>Loads</h3><p>Morison loading along the pile, plus a slamming impulse when the crest is breaking.</p><span class="tag">Morison · Wienke–Oumeraci</span></div>
@@ -412,12 +464,13 @@ details.sec > * + * { margin-top: 8px; }
           <div class="step"><span class="n">5</span><h3>Hot spots</h3><p>Section forces drive local finite-element models of flange bolts, door frames and welds.</p><span class="tag">Local FE · S-N</span></div>
           <div class="step"><span class="n">6</span><h3>Verdict</h3><p>Pre-agreed rules turn utilisation and fatigue into a red, amber or green call with actions.</p><span class="tag">Inspection scope</span></div>
         </div>
-        <details class="sec"><summary>Global to local: the tower-base flange</summary>
+        
+            <h3>Global to local: the tower-base flange</h3>
           <p class="muted">The global model gives the bending moment at the flange. The local flange model turns it into the force in each bolt. Below a threshold the joint stays closed and the bolt barely feels the load. Once the gap opens the bolt picks up load fast, through prying, and that is where storm fatigue and preload loss happen. Lost preload moves the curve and makes every later storm worse.</p>
           <div class="chart" id="boltcurve"></div>
           <p class="cap">Bolt force against tension per bolt segment. Demo model: Schmidt–Neuper-type trilinear law standing in for the local FE flange segment with contact.</p>
-        </details>
-        <details class="sec"><summary>How much to trust each wave model</summary>
+        
+            <h3>How much to trust each wave model</h3>
           <p class="muted">The same wave height gives different crest kinematics depending on the wave theory. StormTwin reports that spread and flags results outside a model's valid range. From our sweep towards breaking (T = 10 s, d = 100 m):</p>
           <div class="tbl-wrap"><table class="std" style="margin-top:10px">
             <thead><tr><th>Wave height</th><th>What we found</th></tr></thead>
@@ -427,8 +480,8 @@ details.sec > * + * { margin-top: 8px; }
               <tr><td>0.9 H<sub>b</sub> and up</td><td>Every focused-wave model predicts the crest breaks (particle speed above wave speed). Use a slamming load model, not finer kinematics.</td></tr>
             </tbody>
           </table></div>
-        </details>
-        <details class="sec"><summary>What else the twin watches</summary>
+        
+            <h3>Monitoring inputs</h3>
           <div class="meas">
             <div><b>Natural frequencies</b>Tower and blade modes from accelerometers (operational modal analysis). Foundation stiffness, scour, flange and blade damage show up as shifts once temperature and operation are normalised out.</div>
             <div><b>Tilt and rotation</b>Inclinometers at the interface: permanent tilt after storms against the serviceability limit.</div>
@@ -437,8 +490,9 @@ details.sec > * + * { margin-top: 8px; }
             <div><b>Damping and mode shapes</b>Damping estimates check the aerodynamic and soil damping in the model; mode-shape changes help locate damage.</div>
             <div><b>Corrosion, scour, marine growth</b>Cathodic-protection potentials, scour sonar and ROV growth surveys update wall thickness, embedment and added mass.</div>
           </div>
-        </details>
-        <details class="sec"><summary>What it reports against</summary>
+        
+          </section>
+          <section class="set-sec" id="set-standards" hidden>
           <div class="tbl-wrap"><table class="std">
             <thead><tr><th>Document</th><th>What it asks for</th><th>What StormTwin supplies</th></tr></thead>
             <tbody>
@@ -450,21 +504,15 @@ details.sec > * + * { margin-top: 8px; }
               <tr><td>US self-inspection (30 CFR 585.824, now BSEE Part 285)</td><td>Annual self-inspection plan and report.</td><td>A documented, risk-based reason for each year's inspection scope.</td></tr>
             </tbody>
           </table></div>
-        </details>
-        <details class="sec"><summary>Ways to start</summary>
-          <div class="offers">
-            <div class="offer"><span class="who">Operators · 6–10 weeks</span><h3>Storm hindcast pilot</h3><ul><li>Pick a past storm and the inspections that followed</li><li>We run StormTwin on the data from the time, without seeing the findings</li><li>Compare our calls with what the crews found</li></ul></div>
-            <div class="offer"><span class="who">Operators · insurers · per event</span><h3>Post-storm assessment</h3><ul><li>Report within 48 hours of the storm peak</li><li>Red, amber, green per turbine with inspection scope</li><li>Evidence pack for insurers and certifiers</li></ul></div>
-            <div class="offer"><span class="who">Asset owners · per turbine per year</span><h3>Fleet twin</h3><ul><li>Continuous fatigue and foundation tracking</li><li>Inspection intervals updated from measured loads</li><li>Life-extension evidence built up year by year</li></ul></div>
-          </div>
-        </details>
-        <details class="sec"><summary>About this demonstration</summary>
+        </section>
+          <section class="set-sec" id="set-about" hidden>
           <p class="cap">The farms, storms, turbines and condition data are synthetic. The turbines are 15 MW- and 10 MW-class monopile designs sized loosely after public reference turbines; they are not real assets. Waves come from NLS simulations of a random sea; loads, global response and hot-spot results come from demo-grade models (Morison loading, a nonlinear beam on API p-y springs, Schmidt–Neuper-type bolt law, stress concentration factors, DNV-RP-C203 and EN 1993-1-9 S-N curves) standing in for the production global and local finite-element models.</p>
           <p class="cap" id="assumptions"></p>
-        </details>
+        </section>
+        </div>
       </div>
     </div>
-  </aside>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -1300,7 +1348,7 @@ details.sec > * + * { margin-top: 8px; }
     const yellow = new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.6 });
     const grey = new THREE.MeshStandardMaterial({ color: 0x8b98a3, roughness: 0.7 });
     const hiMat = new THREE.MeshStandardMaterial({ color: 0x0a6a8a, emissive: 0x0a6a8a, emissiveIntensity: 0.55, roughness: 0.5 });
-    let lit = [];
+    let lit = [], showLabels = true;
     function label(text) {
       const c = document.createElement("canvas"); c.width = 128; c.height = 48;
       const g = c.getContext("2d"); g.font = "600 30px IBM Plex Mono, monospace"; g.textAlign = "center"; g.textBaseline = "middle";
@@ -1333,7 +1381,7 @@ details.sec > * + * { margin-top: 8px; }
       ring.rotation.x = Math.PI / 2; ring.position.y = 0.6; g.add(ring);
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, zh + R + 6, 8, 1, true), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0, depthWrite: false }));
       beam.position.y = (zh + R + 6) / 2; g.add(beam);
-      const lab = label(t.spec.name); lab.position.y = zh + R + 3; lab.scale.set(7, 2.6, 1); g.add(lab);
+      const lab = label(t.spec.name); lab.position.y = zh + R + 3; lab.scale.set(7, 2.6, 1); lab.visible = showLabels; g.add(lab);
       g.position.set((t.spec.x * 1000 / U) - center.x, 0, (t.spec.y * 1000 / U) - center.z);
       g.scale.setScalar(TS);
       g.traverse((o) => { o.userData.idx = i; });
@@ -1527,6 +1575,8 @@ details.sec > * + * { margin-top: 8px; }
       setFarm, theme, sea: () => { if (seaMode === "whatif") sea(); }, reset: () => { highlight(-1); resetView(true); },
       select: (i) => { sel = i; recolour(); const b = document.getElementById("vp-rogue"); b.hidden = i < 0; if (i >= 0) b.textContent = `Replay largest wave at ${T[i].spec.name}`; },
       focus: (i, part) => { highlight(i, part); flyTo(i, part); },
+      labels: (v) => { showLabels = v; turbines.forEach((o) => { o.lab.visible = v; }); },
+      play: (v) => { if (v !== playing) toggle(); },
     };
   }
 
@@ -1611,14 +1661,12 @@ details.sec > * + * { margin-top: 8px; }
     });
     const rootNav = { type: "portfolio" };
     host.append(treeNode("root", { name: "Portfolio", ic: "◫", meta: ALL.length + " farms", nav: rootNav, on: isOn(rootNav), kids: farms }));
-    document.getElementById("about-node").classList.toggle("on", NAV.type === "about");
     const on = host.querySelector(".node.on"); if (on && on.scrollIntoViewIfNeeded) on.scrollIntoViewIfNeeded(false);
   }
 
   function drawCrumbs() {
     const c = document.getElementById("crumbs"); c.innerHTML = "";
     const items = [["Portfolio", { type: "portfolio" }]];
-    if (NAV.type === "about") items.push(["About", { type: "about" }]);
     if (["farm", "turbine", "component"].includes(NAV.type)) items.push([D.meta.farm.name, { type: "farm", farm: FI }]);
     if (["turbine", "component"].includes(NAV.type)) items.push([T[NAV.t].spec.name, { type: "turbine", farm: FI, t: NAV.t }]);
     if (NAV.type === "component") {
@@ -1631,7 +1679,7 @@ details.sec > * + * { margin-top: 8px; }
     });
   }
 
-  const PANES = ["portfolio", "farm", "overview", "fatigue", "frequency", "event", "whatif", "component", "about"];
+  const PANES = ["portfolio", "farm", "overview", "fatigue", "frequency", "event", "whatif", "component"];
   const TTABS = [["overview", "Overview"], ["fatigue", "Fatigue"], ["frequency", "Frequencies"], ["event", "Storm event"], ["whatif", "What-if"]];
   function showPane(name) { PANES.forEach((n) => { document.getElementById("pane-" + n).hidden = n !== name; }); }
   function showTab(name) {
@@ -1670,9 +1718,6 @@ details.sec > * + * { margin-top: 8px; }
         kids.forEach((k) => { const b = el("button", { class: "chip" + (partStatus(t, k) === "alarm" ? " al" : ""), type: "button" }, PARTNAME[k] + " →"); b.addEventListener("click", () => go({ type: "component", farm: FI, t: NAV.t, part: k })); row.append(b); });
         document.getElementById("insp").prepend(row);
       }
-    } else if (NAV.type === "about") {
-      ey.textContent = "How it works"; ti.textContent = "One chain from the sea surface to a bolt";
-      boltCurve(); assumptions(); showPane("about");
     }
     document.getElementById("dr-body").scrollTop = 0;
   }
@@ -1728,13 +1773,47 @@ details.sec > * + * { margin-top: 8px; }
   function setWIsilent(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); readWI(); }
 
   document.getElementById("dr-close").addEventListener("click", () => { drawerOpen = false; drawDrawer(); });
-  document.getElementById("about-node").addEventListener("click", () => go({ type: "about" }));
+  // ---------- settings ----------
+  const setEl = document.getElementById("settings");
+  function rulesTable() {
+    const m = D.meta;
+    document.getElementById("rules-table").innerHTML = `<thead><tr><th>Check</th><th>Inspect / review</th><th>Act now</th></tr></thead><tbody>` +
+      [["Hot-spot ULS utilisation", "0.70", "0.90"],
+       ["Fatigue used by one storm (inspectable details)", m.fatigue_days_inspect + " design-life days", "–"],
+       ["Fatigue used by one storm (not inspectable, e.g. mudline weld)", m.fatigue_days_rbi + " days: update RBI plan", "–"],
+       ["Flange gap opening", "any opening", "fully open, or opening with preload below 90%"],
+       ["Mudline rotation", "0.25°", "0.50°"],
+       ["First-frequency drop at storm peak", "3%", "–"],
+       ["Crest clearance to platform", "below 1.5 m, or slamming", "–"],
+       ["Natural-frequency alarm", "5 estimates in a row beyond ±4σ", "–"],
+       ["Design fatigue factors", Object.entries(m.dff).map(([k, v]) => HOTNAME[k] + " " + v).join(", "), ""]]
+        .map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("") + `</tbody>`;
+  }
+  function openSettings(sec) {
+    setEl.hidden = false; rulesTable(); boltCurve(); assumptions();
+    if (sec) setSec(sec);
+    document.getElementById("set-close").focus();
+  }
+  function setSec(name) {
+    document.querySelectorAll(".set-nav button").forEach((b) => b.classList.toggle("on", b.dataset.set === name));
+    document.querySelectorAll(".set-sec").forEach((x) => { x.hidden = x.id !== "set-" + name; });
+  }
+  document.querySelectorAll(".set-nav button").forEach((b) => b.addEventListener("click", () => setSec(b.dataset.set)));
+  document.getElementById("set-open").addEventListener("click", () => openSettings());
+  document.getElementById("set-close").addEventListener("click", () => { setEl.hidden = true; });
+  setEl.addEventListener("click", (e) => { if (e.target === setEl) setEl.hidden = true; });
+  document.getElementById("set-theme").addEventListener("change", (e) => {
+    if (e.target.value === "system") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", e.target.value);
+  });
+  document.getElementById("set-color").addEventListener("change", (e) => { const v = document.getElementById("vp-color"); v.value = e.target.value; v.dispatchEvent(new Event("change")); });
+  document.getElementById("set-labels").addEventListener("change", (e) => { if (S3) S3.labels(e.target.checked); });
+  document.getElementById("set-anim").addEventListener("change", (e) => { if (S3) S3.play(e.target.checked); });
   document.getElementById("tree-toggle").addEventListener("click", () => {
     const app = document.getElementById("app"); app.classList.toggle("tree-open");
     document.getElementById("tree-toggle").setAttribute("aria-expanded", app.classList.contains("tree-open") ? "true" : "false");
   });
   document.getElementById("app").addEventListener("click", (e) => { if (e.target.id === "app") e.target.classList.remove("tree-open"); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { document.getElementById("app").classList.remove("tree-open"); if (drawerOpen) { drawerOpen = false; drawDrawer(); } } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !setEl.hidden) { setEl.hidden = true; return; } if (e.key === "Escape") { document.getElementById("app").classList.remove("tree-open"); if (drawerOpen) { drawerOpen = false; drawDrawer(); } } });
   const info = document.getElementById("vp-info"), cap = document.getElementById("vp-cap");
   info.addEventListener("click", () => { cap.hidden = !cap.hidden; });
 
