@@ -127,3 +127,33 @@ def test_latent_force_bands_are_calibrated_if_built():
     r = lf.smooth(rec, fe, 1, n_samples=5)
     cover = np.mean(np.abs(r["x_true"] - r["Xmean"]) < 1.96 * r["Xsd"], 0)
     assert 0.85 < np.median(cover) < 1.0          # 95 % bands hold the truth about 95 % of the time
+
+
+def test_whole_turbine_foundation_estimate_if_built():
+    import copy
+    import os
+    import sys
+    import pytest
+    from rna.chain import load, turbine_for
+    from rna.lfm import aero_prior
+    from rna.virtual import r2
+    root = os.path.join(os.path.dirname(__file__), "..")
+    path = os.path.join(root, "demo", "rna", "fe_chain.npz")
+    if not os.path.exists(path):
+        pytest.skip("run examples/rna_fe_chain.py first")
+    sys.path.insert(0, os.path.join(root, "demo", "stormtwin"))
+    import structure as st
+    from twin.whole import Beam, WholeLFM, simulate
+    fe = load(path)
+    tb = turbine_for(fe)
+    tbs = st.Turbine(m_rna=3 * tb.blade_mass + tb.hub_mass + tb.nacelle_mass, mean_thrust=0.0)
+    models = {p: st.Model(copy.deepcopy(tbs)) for p in ("fa", "ss")}
+    rec = simulate("op", tb, models, 2.6, 8.0)
+    em = {p: st.Model(copy.deepcopy(tbs)) for p in ("fa", "ss")}
+    lf = WholeLFM(tb, "op", aero_prior(tb, "op", seeds=range(201, 205)), em, 2.6, 8.0)
+    r = lf.smooth(rec, fe, 1, n_samples=20)              # tower-base gauges only
+    row = Beam(em["fa"]).moment_row(-tbs.depth - 6)      # 6 m below the seabed: no sensor there
+    truth = rec["U_fa"] @ row
+    lo, hi = np.percentile(lf.displacement("fa", r["Z"]) @ row, [2.5, 97.5], 0)
+    assert r2(truth, lf.displacement("fa", r["ms"]) @ row) > 0.85
+    assert np.mean((truth >= lo) & (truth <= hi)) > 0.85

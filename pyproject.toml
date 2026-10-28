@@ -13,7 +13,7 @@ dependencies = ["numpy>=1.22", "matplotlib>=3.5"]
 test = ["pytest"]
 
 [tool.setuptools]
-packages = ["nls", "scour", "rna"]
+packages = ["nls", "scour", "rna", "twin"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

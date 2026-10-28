@@ -109,7 +109,8 @@ def synthetic(kind="op", tb=None, dt=0.25, duration=600.0, seed=None, tower=None
         Ma = np.cross(r_f * er, Ff) + np.cross(r_e * er, f_in) + m_pitch[:, None] * er
         aero.append((er, et, Fa, Ma))
     if tower is not None:
-        A = tower(dict(t=t, dt=dt, psi=psi, rpm=rpm, aero_F=sum(x[2] for x in aero), kind=kind, rng=rng))
+        aero_M = sum(x[3] + np.cross(tb.r_root * x[0], x[2]) for x in aero)      # about the hub centre
+        A = tower(dict(t=t, dt=dt, psi=psi, rpm=rpm, aero_F=sum(x[2] for x in aero), aero_M=aero_M, kind=kind, rng=rng))
     F_root = np.zeros((3, n, 3)); M_root = np.zeros((3, n, 3))
     blade6 = np.zeros((3, 6, n)); aero6 = np.zeros((3, 6, n))
     proj = lambda F, M, er, et: [np.sum(F * xh, 1), np.sum(F * et, 1), np.sum(F * er, 1), -np.sum(M * et, 1), np.sum(M * xh, 1), np.sum(M * er, 1)]
