@@ -1,0 +1,365 @@
+<title>URI Flume Breather</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500;75..100,700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a lab notebook page. Full flume at true scale on top, a 1:1 detail window that follows the
+   breather below it, then the gauge record at x = 5 m and the breaking verdict. */
+:root {
+  --bg: #eef2f1;            /* tank-room grey with a teal bias */
+  --panel: #f8faf9;
+  --ink: #12201f;
+  --muted: #5a6b69;
+  --rule: #c9d4d2;
+  --water: #3d8c97;         /* flume water */
+  --water-deep: #1f5a63;
+  --crest: #c26a1b;         /* surface line and gauge trace */
+  --warn: #b23b2e;          /* breaking */
+  --ok: #2f7d4f;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1314; --panel: #121c1d; --ink: #dce7e5; --muted: #8fa3a0; --rule: #263534;
+    --water: #23707b; --water-deep: #0f3a40; --crest: #f0a04b; --warn: #ff7a66; --ok: #5cc98a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1314; --panel: #121c1d; --ink: #dce7e5; --muted: #8fa3a0; --rule: #263534;
+  --water: #23707b; --water-deep: #0f3a40; --crest: #f0a04b; --warn: #ff7a66; --ok: #5cc98a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: grid; gap: 4px; }
+h1 { font-family: var(--font-display); font-stretch: 80%; font-weight: 700; font-size: 2.2rem; line-height: 1.05; margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 70ch; margin: 0; }
+.label { font-family: var(--font-display); font-stretch: 80%; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78rem; color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--panel); }
+.seg button { font: 500 0.82rem var(--font-body); padding: 6px 10px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--water-deep); color: #fff; }
+.ctl { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+.ctl select, .ctl input[type=range] { font: inherit; accent-color: var(--water); }
+.ctl select { background: var(--panel); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; }
+.btn { font: 600 0.85rem var(--font-body); padding: 6px 14px; border-radius: 6px; border: 1px solid var(--water-deep); background: var(--water-deep); color: #fff; cursor: pointer; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--crest); outline-offset: 2px; }
+.stage { display: grid; gap: 6px; }
+.stage-h { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; align-items: baseline; }
+.scale { font-family: var(--font-data); font-size: 0.75rem; color: var(--muted); }
+canvas { width: 100%; display: block; background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; }
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.readouts div { background: var(--panel); padding: 8px 12px; display: grid; gap: 2px; }
+.readouts .v { font-family: var(--font-data); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.verdict { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--rule); border-left: 5px solid var(--ok); background: var(--panel); border-radius: 4px; }
+.verdict.warn { border-left-color: var(--warn); }
+.verdict.edge { border-left-color: var(--crest); }
+.verdict b { font-family: var(--font-display); font-stretch: 85%; font-size: 1.1rem; }
+.verdict p { margin: 2px 0 0; max-width: 75ch; color: var(--muted); }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; font-size: 0.86rem; color: var(--muted); }
+.notes p { margin: 0; max-width: 60ch; }
+.notes b { color: var(--ink); font-weight: 600; }
+@media (max-width: 560px) { h1 { font-size: 1.7rem; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="label">Wave–current flume · 10 m long · 1 m deep · active absorption at x = 10 m</span>
+    <h1>Peregrine breather focusing at x = 5 m</h1>
+    <p class="lede">The paddle sends an almost uniform wave train with a weak modulation. The water's own nonlinearity sharpens it into one wave about three times the background height at 5 m, which then fades again. Pick a run case from the lab plan and watch it at true scale.</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="Run settings">
+    <div class="ctl"><span class="label">Run case</span>
+      <div class="seg" id="cases"></div>
+    </div>
+    <button class="btn" id="play" type="button">Pause</button>
+    <label class="ctl" for="speed"><span class="label">Speed</span>
+      <select id="speed"><option value="0.25">¼×</option><option value="0.5">½×</option><option value="1" selected>Real time</option><option value="2">2×</option></select>
+    </label>
+    <label class="ctl" for="exag"><span class="label">Full-flume surface</span>
+      <select id="exag"><option value="1" selected>True scale</option><option value="5">×5</option><option value="20">×20</option></select>
+    </label>
+    <label class="ctl" for="scrub"><span class="label">Time</span>
+      <input type="range" id="scrub" min="0" max="1000" value="0" style="width:160px">
+      <span class="scale" id="tlabel">0.0 s</span>
+    </label>
+  </div>
+
+  <section class="stage" aria-label="Full flume">
+    <div class="stage-h"><span class="label">Full flume, side elevation</span><span class="scale" id="fullscale">1 m = — px, true aspect</span></div>
+    <canvas id="full" height="140" aria-label="Side view of the whole flume with the wave surface"></canvas>
+  </section>
+
+  <section class="stage" aria-label="Detail window">
+    <div class="stage-h"><span class="label">Detail window, 1:1 aspect, following the breather</span><span class="scale" id="detscale"></span></div>
+    <canvas id="detail" height="260" aria-label="Close-up of the surface and water particle orbits around the breather"></canvas>
+  </section>
+
+  <div class="readouts" aria-live="off">
+    <div><span class="label">Carrier</span><span class="v" id="r-car">–</span></div>
+    <div><span class="label">Background a₀</span><span class="v" id="r-a0">–</span></div>
+    <div><span class="label">Breather position</span><span class="v" id="r-pos">–</span></div>
+    <div><span class="label">Highest crest now</span><span class="v" id="r-crest">–</span></div>
+    <div><span class="label">Crest steepness kη</span><span class="v" id="r-kh">–</span></div>
+    <div><span class="label">Peak in this run</span><span class="v" id="r-peak">–</span></div>
+  </div>
+
+  <section class="stage" aria-label="Gauge record">
+    <div class="stage-h"><span class="label">Wave gauge at x = 5 m</span><span class="scale">surface elevation, mm</span></div>
+    <canvas id="gauge" height="150" aria-label="Surface elevation record at the 5 m gauge"></canvas>
+  </section>
+
+  <div class="verdict" id="verdict"><div><b id="v-title">–</b><p id="v-text"></p></div></div>
+
+  <div class="notes">
+    <p><b>What is drawn.</b> The exact Peregrine solution of the flume form of the nonlinear Schrödinger equation, with the second-order bound harmonic added, so crests are sharper than troughs. The wave train switches on at the paddle and its front travels down the flume at the group velocity. The far end absorbs, so nothing reflects.</p>
+    <p><b>What is not drawn.</b> Higher-order effects shift the real focus by a few tenths of a metre and make the group lopsided. The model also does not capture breaking itself. Expect to fine-tune the focus distance in the lab. All runs here are in still water, with the current off.</p>
+    <p><b>Reading steepness.</b> kη is the carrier wavenumber times the crest height. The theoretical limit for a steady wave is about 0.44. Focusing groups usually start to break at lower values, around 0.3 to 0.4, often as spilling whitecaps at the crest.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  const G = 9.81, H = 1.0, L = 10.0, XF = 5.0;
+  const CASES = [
+    { id: "A", T0: 0.40, eps: 0.12, note: "plan case A" },
+    { id: "B", T0: 0.50, eps: 0.11, note: "plan case B" },
+    { id: "C", T0: 0.60, eps: 0.12, note: "plan case C" },
+    { id: "A gentle", T0: 0.40, eps: 0.09, note: "non-breaking option" },
+    { id: "B gentle", T0: 0.50, eps: 0.08, note: "non-breaking option" },
+  ];
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  function kOf(w) { let k = w * w / G; for (let i = 0; i < 60; i++) k = w * w / (G * Math.tanh(k * H)); return k; }
+  function makeCase(c) {
+    const w0 = 2 * Math.PI / c.T0, k0 = kOf(w0), a0 = c.eps / k0;
+    const cg = 0.5 * w0 / k0 * (1 + 2 * k0 * H / Math.sinh(Math.min(2 * k0 * H, 700)));
+    const hw = 2 * Math.SQRT2 / (c.eps * w0);
+    const lead = 8 * hw + 5 * c.T0, tf = lead + XF / cg, tEnd = lead + 8 / cg + 4 * hw;
+    const ph = Math.PI - (k0 * XF - w0 * tf);
+    return Object.assign({}, c, { w0, k0, a0, cg, hw, lead, tf, tEnd, ph, ramp: 5 * c.T0 });
+  }
+  let C = makeCase(CASES[1]);
+  // complex envelope A = a0 conj(psi), psi = Peregrine; returns [re, im]
+  function envelope(x, t) {
+    const Tn = C.eps * C.eps * C.k0 * (x - XF);
+    const Xn = C.eps * C.w0 * (t - C.tf - (x - XF) / C.cg) / Math.SQRT2;
+    const den = 1 + 4 * Xn * Xn + 4 * Tn * Tn;
+    const fr = 1 - 4 / den, fi = -8 * Tn / den;                // 1 - 4(1 + 2iT)/den
+    const c = Math.cos(Tn), s = Math.sin(Tn);
+    const pr = fr * c - fi * s, pi = fr * s + fi * c;           // times e^{iT}
+    let r = (t - x / C.cg) / C.ramp; r = r <= 0 ? 0 : r >= 1 ? 1 : r * r * (3 - 2 * r);   // train front from the paddle
+    return [C.a0 * pr * r, -C.a0 * pi * r];                    // conjugate
+  }
+  // surface elevation with the deep-water bound second harmonic
+  function eta(x, t) {
+    const [ar, ai] = envelope(x, t);
+    const th = C.k0 * x - C.w0 * t + C.ph, c = Math.cos(th), s = Math.sin(th);
+    const e1 = ar * c - ai * s;
+    const c2 = Math.cos(2 * th), s2 = Math.sin(2 * th);
+    const sr = ar * ar - ai * ai, si = 2 * ar * ai;
+    return e1 + 0.5 * C.k0 * (sr * c2 - si * s2);
+  }
+  // linear particle displacement (deep water), z <= 0
+  function particle(x, z, t) {
+    const [ar, ai] = envelope(x, t);
+    const th = C.k0 * x - C.w0 * t + C.ph, c = Math.cos(th), s = Math.sin(th), ez = Math.exp(C.k0 * z);
+    return [(-ar * s - ai * c) * ez, (ar * c - ai * s) * ez];   // xi = Re(iA e^{i th}), zeta = Re(A e^{i th})
+  }
+  const breatherX = (t) => XF + C.cg * (t - C.tf);
+
+  // --- canvases ------------------------------------------------------------------------
+  const full = document.getElementById("full"), det = document.getElementById("detail"), gau = document.getElementById("gauge");
+  const dpr = () => Math.min(window.devicePixelRatio || 1, 2);
+  function fit(cv, aspect) {
+    const w = cv.clientWidth, h = Math.round(w / aspect);
+    cv.style.height = h + "px";
+    const r = dpr(); cv.width = Math.round(w * r); cv.height = Math.round(h * r);
+    const g = cv.getContext("2d"); g.setTransform(r, 0, 0, r, 0, 0); return { g, w, h };
+  }
+  let F, D, Gg, theme = {};
+  const FULL_TOP = 0.16, DET_TOP = 0.07, DET_BOT = 0.17;
+  let DET_W = 1.2;
+  function layout() {
+    DET_W = full.clientWidth < 600 ? 0.6 : 1.2;
+    F = fit(full, L / (H + FULL_TOP + 0.12));
+    D = fit(det, DET_W / (DET_TOP + DET_BOT));
+    Gg = fit(gau, window.innerWidth < 560 ? 2.4 : 6);
+    theme = { water: css("--water"), deep: css("--water-deep"), ink: css("--ink"), muted: css("--muted"), rule: css("--rule"), crest: css("--crest"), warn: css("--warn"), panel: css("--panel"), ok: css("--ok") };
+    document.getElementById("fullscale").textContent = `1 m = ${(F.w / L).toFixed(0)} px both ways (true aspect)`;
+    document.getElementById("detscale").textContent = `1 m = ${(D.w / DET_W).toFixed(0)} px both ways · window ${DET_W} m wide, ${DET_TOP * 1000} mm above to ${DET_BOT * 1000} mm below still water`;
+    runMax = new Float32Array(Math.ceil(F.w) + 1).fill(0);
+    gaugeTrace = null;
+  }
+  let runMax, gaugeTrace;
+  function drawFull(t, exag) {
+    const { g, w, h } = F, s = w / L, y0 = FULL_TOP * s + 6;                   // still water line
+    g.clearRect(0, 0, w, h);
+    // water body
+    g.beginPath(); g.moveTo(0, h - 0.12 * s + 6);
+    for (let px = 0; px <= w; px += 1) { const x = px / s; g.lineTo(px, y0 - exag * eta(x, t) * s); }
+    g.lineTo(w, y0 + H * s); g.lineTo(0, y0 + H * s); g.closePath();
+    const grad = g.createLinearGradient(0, y0, 0, y0 + H * s); grad.addColorStop(0, theme.water); grad.addColorStop(1, theme.deep);
+    g.fillStyle = grad; g.globalAlpha = 0.9; g.fill(); g.globalAlpha = 1;
+    // floor and walls
+    g.fillStyle = theme.ink; g.fillRect(0, y0 + H * s, w, 2);
+    // paddle (bottom-hinged flap) at x = 0, absorber at x = 10
+    const pe = eta(0.001, t);
+    g.strokeStyle = theme.ink; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(3, y0 + H * s); g.lineTo(3 + exag * pe * s * 0.6, y0 - 0.1 * s); g.stroke();
+    g.fillStyle = theme.muted; g.fillRect(w - 6, y0 - 0.1 * s, 5, H * s + 0.1 * s);
+    // running maximum of the crest along the flume (dotted)
+    for (let px = 0; px < runMax.length; px++) runMax[px] = Math.max(runMax[px], eta(px / s, t));
+    g.setLineDash([2, 3]); g.strokeStyle = theme.crest; g.lineWidth = 1.2; g.beginPath();
+    for (let px = 0; px < runMax.length; px++) { const y = y0 - exag * runMax[px] * s; px ? g.lineTo(px, y) : g.moveTo(px, y); }
+    g.stroke(); g.setLineDash([]);
+    // surface line
+    g.strokeStyle = theme.crest; g.lineWidth = 1.4; g.beginPath();
+    for (let px = 0; px <= w; px++) { const y = y0 - exag * eta(px / s, t) * s; px ? g.lineTo(px, y) : g.moveTo(px, y); }
+    g.stroke();
+    // ticks, focus, detail window
+    g.fillStyle = theme.muted; g.font = "10px " + css("--font-data"); g.textAlign = "center";
+    for (let m = 0; m <= 10; m++) { g.fillRect(m * s - 0.5, y0 + H * s + 2, 1, 5); g.fillText(m + (m === 10 ? " m" : ""), Math.min(w - 12, Math.max(6, m * s)), y0 + H * s + 16); }
+    g.strokeStyle = theme.warn; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(XF * s, y0 - 0.12 * s); g.lineTo(XF * s, y0 + H * s); g.stroke(); g.setLineDash([]);
+    g.fillStyle = theme.warn; g.textAlign = "left"; g.fillText("focus 5 m", XF * s + 4, y0 - 0.06 * s);
+    const cx = Math.min(L - DET_W / 2, Math.max(DET_W / 2, breatherX(t)));
+    g.strokeStyle = theme.ink; g.globalAlpha = 0.5; g.strokeRect((cx - DET_W / 2) * s, y0 - DET_TOP * s, DET_W * s, (DET_TOP + DET_BOT) * s); g.globalAlpha = 1;
+    g.fillStyle = theme.muted; g.textAlign = "left"; g.fillText("paddle", 8, 10); g.textAlign = "right"; g.fillText("absorber", w - 10, 10);
+    return cx;
+  }
+  function drawDetail(t, cx) {
+    const { g, w, h } = D, s = w / DET_W, y0 = DET_TOP * s, x0 = cx - DET_W / 2;
+    g.clearRect(0, 0, w, h);
+    g.beginPath(); g.moveTo(0, h);
+    for (let px = 0; px <= w; px++) g.lineTo(px, y0 - eta(x0 + px / s, t) * s);
+    g.lineTo(w, h); g.closePath();
+    const grad = g.createLinearGradient(0, 0, 0, h); grad.addColorStop(0, theme.water); grad.addColorStop(1, theme.deep);
+    g.fillStyle = grad; g.globalAlpha = 0.85; g.fill(); g.globalAlpha = 1;
+    // particles: a grid that orbits, showing how fast the motion decays with depth
+    g.fillStyle = theme.panel; g.globalAlpha = 0.85;
+    const dx = Math.max(0.02, (2 * Math.PI / C.k0) / 8);
+    for (let z = -0.012; z > -DET_BOT + 0.005; z -= 0.02) {
+      for (let x = Math.floor(x0 / dx) * dx; x < x0 + DET_W; x += dx) {
+        const [xi, ze] = particle(x, z, t);
+        g.beginPath(); g.arc((x + xi - x0) * s, y0 - (z + ze) * s, 1.8, 0, 2 * Math.PI); g.fill();
+      }
+    }
+    g.globalAlpha = 1;
+    // still water level and surface line
+    g.strokeStyle = theme.muted; g.setLineDash([4, 4]); g.lineWidth = 1; g.beginPath(); g.moveTo(0, y0); g.lineTo(w, y0); g.stroke(); g.setLineDash([]);
+    g.strokeStyle = theme.crest; g.lineWidth = 2; g.beginPath();
+    let best = -1, bx = 0;
+    for (let px = 0; px <= w; px++) { const e = eta(x0 + px / s, t); if (e > best) { best = e; bx = px; } const y = y0 - e * s; px ? g.lineTo(px, y) : g.moveTo(px, y); }
+    g.stroke();
+    // 3 a0 reference and focus line
+    g.strokeStyle = theme.warn; g.setLineDash([2, 4]); g.beginPath(); g.moveTo(0, y0 - 3 * C.a0 * s); g.lineTo(w, y0 - 3 * C.a0 * s); g.stroke(); g.setLineDash([]);
+    g.font = "11px " + css("--font-data"); g.fillStyle = theme.warn; g.textAlign = "left"; g.fillText("3a₀ = " + (3e3 * C.a0).toFixed(1) + " mm", 6, y0 - 3 * C.a0 * s - 4);
+    if (XF > x0 && XF < x0 + DET_W) { const fx = (XF - x0) * s; g.strokeStyle = theme.warn; g.beginPath(); g.moveTo(fx, 0); g.lineTo(fx, h); g.stroke(); }
+    // scale bar: 10 cm
+    g.fillStyle = theme.ink; g.fillRect(w - 12 - 0.1 * s, h - 14, 0.1 * s, 2); g.textAlign = "right"; g.fillStyle = theme.ink; g.fillText("10 cm", w - 12, h - 18);
+    g.textAlign = "left"; g.fillStyle = theme.ink; g.fillText((x0).toFixed(2) + " m", 6, h - 8);
+    return best;
+  }
+  function drawGauge(t) {
+    const { g, w, h } = Gg, left = 36, pw = Math.max(10, Math.floor(w - left)), sub = 6;
+    if (!gaugeTrace) {                                     // min and max per pixel, so no crest is missed
+      gaugeTrace = { lo: new Float32Array(pw), hi: new Float32Array(pw) };
+      for (let i = 0; i < pw; i++) {
+        let lo = 1, hi = -1;
+        for (let k = 0; k < sub; k++) { const v = eta(XF, ((i + k / sub) / pw) * C.tEnd); if (v < lo) lo = v; if (v > hi) hi = v; }
+        gaugeTrace.lo[i] = lo; gaugeTrace.hi[i] = hi;
+      }
+    }
+    g.clearRect(0, 0, w, h);
+    let amp = 0; for (let i = 0; i < pw; i++) amp = Math.max(amp, -gaugeTrace.lo[i], gaugeTrace.hi[i]);
+    amp *= 1.12;
+    const Y = (v) => h / 2 - 6 - v / amp * (h / 2 - 14), X = (tt) => left + tt / C.tEnd * pw;
+    g.strokeStyle = theme.rule; g.lineWidth = 1; g.font = "10px " + css("--font-data"); g.fillStyle = theme.muted;
+    const stepmm = amp * 1e3 > 30 ? 10 : 5;
+    for (let v = -Math.floor(amp * 1e3 / stepmm) * stepmm; v <= amp * 1e3; v += stepmm) { g.beginPath(); g.moveTo(left, Y(v / 1e3)); g.lineTo(w, Y(v / 1e3)); g.stroke(); g.textAlign = "right"; g.fillText(v, left - 4, Y(v / 1e3) + 3); }
+    g.textAlign = "center";
+    const tstep = pw < 400 ? 10 : 5;
+    for (let tt = 0; tt <= C.tEnd; tt += tstep) g.fillText(tt, X(tt), h - 2);
+    g.strokeStyle = theme.crest; g.lineWidth = 1.2; g.beginPath();
+    for (let i = 0; i < pw; i++) { g.moveTo(left + i + 0.5, Y(gaugeTrace.lo[i])); g.lineTo(left + i + 0.5, Y(gaugeTrace.hi[i]) - 0.5); }
+    g.stroke();
+    g.strokeStyle = theme.warn; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(X(C.tf), 4); g.lineTo(X(C.tf), h - 14); g.stroke(); g.setLineDash([]);
+    g.strokeStyle = theme.ink; g.lineWidth = 2; g.beginPath(); g.moveTo(X(t), 2); g.lineTo(X(t), h - 14); g.stroke();
+    g.fillStyle = theme.muted; g.textAlign = "right"; g.fillText("time, s", w - 2, h - 14);
+  }
+
+  // --- state, controls ----------------------------------------------------------------
+  let t = 0, playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches, speed = 1, exag = 1, last = performance.now(), peak = 0;
+  const casesEl = document.getElementById("cases");
+  CASES.forEach((c, i) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = c.id; b.title = `T₀ ${c.T0} s, ε = k₀a₀ ${c.eps} (${c.note})`;
+    b.setAttribute("aria-pressed", i === 1 ? "true" : "false");
+    b.addEventListener("click", () => { C = makeCase(c); [...casesEl.children].forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false")); t = 0; peak = 0; layout(); setVerdict(); render(); });
+    casesEl.append(b);
+  });
+  const playBtn = document.getElementById("play");
+  const syncPlay = () => { playBtn.textContent = playing ? "Pause" : "Play"; };
+  playBtn.addEventListener("click", () => { playing = !playing; last = performance.now(); syncPlay(); });
+  document.getElementById("speed").addEventListener("change", (e) => { speed = +e.target.value; });
+  document.getElementById("exag").addEventListener("change", (e) => { exag = +e.target.value; render(); });
+  const scrub = document.getElementById("scrub"), tl = document.getElementById("tlabel");
+  scrub.addEventListener("input", () => { t = scrub.value / 1000 * C.tEnd; if (t < 1) runMax.fill(0); render(); });
+
+  // highest crest steepness the run reaches (scan along the flume near the breather)
+  function runPeak() {
+    let best = 0;
+    for (let tt = C.tf - 2 * C.T0; tt <= C.tf + 2 * C.T0; tt += C.T0 / 40)
+      for (let x = XF - 0.6; x <= XF + 0.6; x += 0.002) best = Math.max(best, eta(x, tt));
+    return best;
+  }
+  function setVerdict() {
+    const crest = runPeak(), kh = C.k0 * crest;
+    peak = crest;
+    document.getElementById("r-car").textContent = `${C.T0.toFixed(2)} s · λ ${(2 * Math.PI / C.k0).toFixed(2)} m`;
+    document.getElementById("r-a0").textContent = `${(1e3 * C.a0).toFixed(1)} mm · ε ${C.eps}`;
+    document.getElementById("r-peak").textContent = `${(1e3 * crest).toFixed(1)} mm · kη ${kh.toFixed(2)}`;
+    const v = document.getElementById("verdict");
+    v.classList.toggle("warn", kh >= 0.38); v.classList.toggle("edge", kh >= 0.3 && kh < 0.38);
+    document.getElementById("v-title").textContent = kh >= 0.38 ? "Expect breaking at the focus" : kh >= 0.3 ? "On the edge of breaking" : "Should stay unbroken";
+    document.getElementById("v-text").textContent = kh >= 0.38
+      ? `The central crest reaches ${(1e3 * crest).toFixed(1)} mm with steepness kη ≈ ${kh.toFixed(2)}, in the range where focusing groups break. Expect a spilling whitecap on the crest at about 5 m rather than a plunging breaker. Use the gentle case for a clean breather.`
+      : kh >= 0.3
+      ? `The central crest reaches ${(1e3 * crest).toFixed(1)} mm with kη ≈ ${kh.toFixed(2)}. That is at the low end of the breaking range, so expect a clean breather or slight spilling at the crest.`
+      : `The central crest reaches ${(1e3 * crest).toFixed(1)} mm with kη ≈ ${kh.toFixed(2)}, below the usual onset of breaking. This should give a clean Peregrine breather.`;
+  }
+  function render() {
+    const cx = drawFull(t, exag);
+    const crest = drawDetail(t, cx);
+    drawGauge(t);
+    scrub.value = Math.round(t / C.tEnd * 1000);
+    tl.textContent = t.toFixed(1) + " s";
+    const bx = breatherX(t);
+    document.getElementById("r-pos").textContent = bx < 0 ? "not yet launched" : bx > L ? "absorbed" : `x = ${bx.toFixed(2)} m`;
+    document.getElementById("r-crest").textContent = `${(1e3 * crest).toFixed(1)} mm`;
+    document.getElementById("r-kh").textContent = (C.k0 * crest).toFixed(2);
+  }
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (!playing) return;
+    t += dt * speed;
+    if (t > C.tEnd) { t = 0; runMax.fill(0); }
+    render();
+  }
+  layout(); setVerdict(); syncPlay();
+  t = playing ? 0 : C.tf;                 // reduced motion: open on the focus frame
+  render();
+  requestAnimationFrame(frame);
+  new ResizeObserver(() => { layout(); render(); }).observe(document.querySelector(".wrap"));
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  if (mq.addEventListener) mq.addEventListener("change", () => { layout(); render(); });
+  new MutationObserver(() => { layout(); render(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>
