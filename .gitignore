@@ -10,3 +10,4 @@ demo/stormtwin/farm.log
 demo/stormtwin/history.log
 demo/stormtwin/demo_data*.json
 demo/stormtwin/*.log
+demo/rna/bedplate.json
