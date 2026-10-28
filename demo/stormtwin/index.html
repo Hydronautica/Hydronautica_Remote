@@ -464,6 +464,43 @@ details.sec > * + * { margin-top: 8px; }
 .bl-vt { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .bl-3d { height: 470px; border-radius: 8px; overflow: hidden; background: linear-gradient(var(--sky, #cfe3ef), color-mix(in srgb, var(--sky, #cfe3ef) 60%, var(--bg))); cursor: grab; }
 .bl-3d canvas { display: block; }
+.bl-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: -4px 0 4px; flex-wrap: wrap; }
+.bl-tabs button { font: inherit; font-size: 0.88rem; padding: 7px 14px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); cursor: pointer; }
+.bl-tabs button.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.bl-pane { display: flex; flex-direction: column; gap: 14px; }
+.bl-pane[hidden] { display: none; }
+.bl-an { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.bl-in-p { position: sticky; top: 0; }
+.bl-hd2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bl-hd2 h3 { margin: 4px 0; font-size: 1rem; }
+.bl-sub { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 10px 0 2px; }
+.bl-go { background: var(--accent); color: var(--surface); border-color: var(--accent); margin-top: 10px; font-weight: 600; }
+.bl-go:hover { color: var(--surface); filter: brightness(1.1); }
+.bl-go:disabled { opacity: 0.6; }
+.bl-run { margin-top: 8px; }
+.bl-prog { height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
+.bl-prog i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+.bl-log { margin: 6px 0 0; padding-left: 18px; font-size: 0.74rem; color: var(--muted); }
+.bl-log li::marker { color: var(--ok); }
+.bl-res { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.bl-3dp { height: 380px; border-radius: 8px; overflow: hidden; background: linear-gradient(var(--sky, #cfe3ef), color-mix(in srgb, var(--sky, #cfe3ef) 55%, var(--bg))); cursor: grab; }
+.bl-cbar { display: flex; align-items: center; gap: 8px; font: 0.7rem var(--font-data); color: var(--muted); margin-top: 4px; }
+.bl-cbar i { flex: 1; height: 9px; border-radius: 3px; }
+.bl-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.bl-split { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 12px; }
+.bl-fb { grid-template-columns: 7.5rem minmax(0, 1fr); }
+.bl-locs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-size: 0.8rem; }
+.bl-locs label { display: flex; gap: 6px; align-items: center; }
+.bl-count { font-size: 0.72rem; color: var(--muted); margin: 8px 0 0; }
+.bl-heat { width: 100%; max-width: 460px; height: auto; display: block; }
+.bl-q { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; font-size: 0.74rem; color: var(--muted); margin-bottom: 6px; }
+.bl-q label { display: flex; flex-direction: column; gap: 2px; }
+.bl-lut { max-height: 360px; overflow: auto; }
+.bl-lut th select { font: inherit; font-size: 0.72rem; margin-top: 2px; }
+.bl-stale { color: var(--warn); }
+.bl-pyc { margin-top: 6px; }
+.live-now .muted { display: block; }
+@media (max-width: 1000px) { .bl-an, .bl-split { grid-template-columns: minmax(0, 1fr); } .bl-in-p { position: static; } }
 .bl-st { width: 100%; border-collapse: collapse; font-size: 0.76rem; margin: 2px 0 6px; }
 .bl-st th { text-align: left; font-weight: 500; color: var(--muted); font-size: 0.7rem; padding: 2px 4px; }
 .bl-st td { padding: 2px 4px; }
@@ -612,7 +649,11 @@ details.sec > * + * { margin-top: 8px; }
           <div class="bl-list" id="bl-list"></div>
           <div class="bl-acts"><button class="btn" type="button" id="bl-new">New from this</button><button class="btn" type="button" id="bl-del">Delete</button><button class="btn" type="button" id="bl-export">Export</button><label class="btn" style="text-align:center">Import<input type="file" id="bl-import" accept=".json,application/json" hidden></label></div>
         </nav>
-        <div class="bl-main"><div class="bl-cols"><div id="bl-form"></div><div class="bl-out" id="bl-out"></div></div><div class="panel" id="bl-farm"></div></div>
+        <div class="bl-main">
+          <div class="bl-tabs" role="tablist" aria-label="Builder sections"><button type="button" role="tab" data-btab="design" class="on" aria-selected="true">Design</button><button type="button" role="tab" data-btab="pile" aria-selected="false">Soil–pile 3D</button><button type="button" role="tab" data-btab="uls" aria-selected="false">ULS</button><button type="button" role="tab" data-btab="fat" aria-selected="false">Fatigue</button></div>
+          <div class="bl-pane" id="bl-pane-design"><div class="bl-cols"><div id="bl-form"></div><div class="bl-out" id="bl-out"></div></div><div class="panel" id="bl-farm"></div></div>
+          <div class="bl-pane" id="bl-pane-pile" hidden></div><div class="bl-pane" id="bl-pane-uls" hidden></div><div class="bl-pane" id="bl-pane-fat" hidden></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1840,7 +1881,7 @@ details.sec > * + * { margin-top: 8px; }
     function frame(now) {
       requestAnimationFrame(frame);
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
-      if (!visible) return;
+      if (!visible || !bldEl.hidden) return;          // hidden, or covered by the builder
       if (playing) {
         uni.uTime.value += dt;
         turbines.forEach((o) => { o.rotor.rotation.z -= (o.rpm || 0.3) / 60 * 2 * Math.PI * dt; });
@@ -1950,9 +1991,14 @@ details.sec > * + * { margin-top: 8px; }
       const pu = 0.9 * Math.min((C1 * z + C2 * D) * g * z, C3 * D * g * z);
       return [L.k * 1e6 * z, pu];
     }
+    // foundation models: "soil" (API p-y from the layers), "py_lin" / "py_nl" (p-y entered by depth),
+    // "macro" (2×2 stiffness at the mudline, pile not modelled) and "fixed" (clamped at the mudline)
+    const fdnMode = (ty) => (ty.fdn && ty.fdn.mode) || "soil";
+    const tableAt = (rows, zb) => { if (!rows.length) return { k: 0, pu: 0 }; if (zb <= rows[0].z) return rows[0]; for (let i = 1; i < rows.length; i++) if (zb <= rows[i].z) { const a = (zb - rows[i - 1].z) / ((rows[i].z - rows[i - 1].z) || 1); return { k: rows[i - 1].k + a * (rows[i].k - rows[i - 1].k), pu: rows[i - 1].pu + a * (rows[i].pu - rows[i - 1].pu) }; } return rows[rows.length - 1]; };
     function build(ty, depth, scour) {
-      const mud = -depth, toe = mud - ty.embedment, zi = ty.z_interface, gm = geom(ty);
-      const z = [].concat(lin(toe, mud, 22), lin(mud, -12, 17), lin(-12, 20, 33), lin(20, ty.z_hub, 26), [ty.z_hub]);
+      const mud = -depth, toe = mud - ty.embedment, zi = ty.z_interface, gm = geom(ty), fm = fdnMode(ty), based = fm === "macro" || fm === "fixed";
+      const z = based ? [].concat(lin(mud - scour, 20, 46), lin(20, ty.z_hub, 26), [ty.z_hub])
+                      : [].concat(lin(toe, mud, 22), lin(mud, -12, 17), lin(-12, 20, 33), lin(20, ty.z_hub, 26), [ty.z_hub]);
       const n = z.length, nd = 2 * n, K = new Float64Array(nd * nd), M = new Float64Array(nd * nd), EI = [];
       for (let e = 0; e < n - 1; e++) {
         const L = z[e + 1] - z[e], zm = 0.5 * (z[e] + z[e + 1]), D = gm.D(zm), t = gm.t(zm, mud), [A, I] = sec(D, t), ei = E_ST * I;
@@ -1969,9 +2015,14 @@ details.sec > * + * { margin-top: 8px; }
       M[2 * ip * nd + 2 * ip] += ty.tp_mass;
       const trib = z.map((v, i) => i === 0 ? 0.5 * (z[1] - z[0]) : i === n - 1 ? 0.5 * (z[n - 1] - z[n - 2]) : 0.5 * (z[i + 1] - z[i - 1]));
       const zs = mud - scour, soil = [], k0 = [], pu = [];
-      z.forEach((v, i) => { if (zs - v > 0) { const [k, p] = soilAt(ty, zs - v, ty.D_pile); soil.push(i); k0.push(k * trib[i]); pu.push(p * trib[i]); } });
+      const tab = fm === "py_lin" || fm === "py_nl" ? (ty.fdn.py || []).slice().sort((a, b) => a.z - b.z) : null;
+      if (!based) z.forEach((v, i) => { if (zs - v > 0) {
+        let k, p; if (tab) { const r = tableAt(tab, zs - v); k = r.k * 1e6; p = fm === "py_lin" ? 1e12 : r.pu * 1e3; } else [k, p] = soilAt(ty, zs - v, ty.D_pile);
+        soil.push(i); k0.push(k * trib[i]); pu.push(p * trib[i]); } });
       const wet = []; z.forEach((v, i) => { if (v > mud && v < 0) wet.push(i); });
-      return { z, n, nd, K, M, EI, soil, k0, pu, trib, wet, tp: ip, mud, gm, mr };
+      const mc = ty.fdn && ty.fdn.macro, kb = fm === "macro" && mc ? [mc.KHH * 1e9, mc.KHM * 1e9, mc.KMM * 1e9] : null;
+      const act = fm === "fixed" ? Array.from({ length: nd - 2 }, (_, i) => i + 2) : null;
+      return { z, n, nd, K, M, EI, soil, k0, pu, trib, wet, tp: ip, mud, gm, mr, kb, act, base: based, fm };
     }
     const rnaMass = (ty) => ty.nacelle_mass + ty.hub_mass + 3 * ty.blade_mass;
     // symmetric eigen-decomposition (Householder tridiagonalisation + implicit QL), eigenvalues ascending
@@ -2043,15 +2094,20 @@ details.sec > * + * { margin-top: 8px; }
     }
     // modes, moment rows and static responses at soil factor kappa
     function modal(B, kappa, nm) {
-      const nd = B.nd, Kt = Float64Array.from(B.K);
-      B.soil.forEach((i, s) => { Kt[2 * i * nd + 2 * i] += kappa * B.k0[s]; });
-      if (!B.C0) {                      // L⁻¹ K L⁻ᵀ and the soil's part of it, once per model (M = L Lᵀ)
-        const Lm = chol(B.M, nd), X = new Float64Array(nd * nd), C0 = new Float64Array(nd * nd), Cs = new Float64Array(nd * nd);
+      const NF = B.nd, act = B.act || Array.from({ length: NF }, (_, i) => i), nd = act.length, pick = (A) => { const o = new Float64Array(nd * nd); for (let i = 0; i < nd; i++) for (let j = 0; j < nd; j++) o[i * nd + j] = A[act[i] * NF + act[j]]; return o; };
+      const pos = new Map(act.map((d, i) => [d, i]));
+      const springs = [];                              // [dof a, dof b, value] in the reduced numbering, scaled by kappa
+      B.soil.forEach((i, s) => springs.push([pos.get(2 * i), pos.get(2 * i), B.k0[s]]));
+      if (B.kb) { springs.push([0, 0, B.kb[0]], [0, 1, B.kb[1]], [1, 0, B.kb[1]], [1, 1, B.kb[2]]); }
+      const Kr = pick(B.K), Kt = Float64Array.from(Kr);
+      springs.forEach(([a, b, v]) => { Kt[a * nd + b] += kappa * v; });
+      if (!B.C0) {                      // L⁻¹ K L⁻ᵀ and the foundation's part of it, once per model (M = L Lᵀ)
+        const Lm = chol(pick(B.M), nd), X = new Float64Array(nd * nd), C0 = new Float64Array(nd * nd), Cs = new Float64Array(nd * nd);
         const fwd = (b) => { const y = Float64Array.from(b); for (let i = 0; i < nd; i++) { let s = y[i]; const r = i * nd; for (let k = 0; k < i; k++) s -= Lm[r + k] * y[k]; y[i] = s / Lm[r + i]; } return y; };
-        for (let j = 0; j < nd; j++) { const col = new Float64Array(nd); for (let i = 0; i < nd; i++) col[i] = B.K[i * nd + j]; const y = fwd(col); for (let i = 0; i < nd; i++) X[i * nd + j] = y[i]; }   // X = L⁻¹ K
+        for (let j = 0; j < nd; j++) { const col = new Float64Array(nd); for (let i = 0; i < nd; i++) col[i] = Kr[i * nd + j]; const y = fwd(col); for (let i = 0; i < nd; i++) X[i * nd + j] = y[i]; }   // X = L⁻¹ K
         for (let i = 0; i < nd; i++) { const row = X.subarray(i * nd, i * nd + nd); const y = fwd(row); for (let j = 0; j < nd; j++) C0[i * nd + j] = y[j]; }   // (L⁻¹ Xᵀ)ᵀ = X L⁻ᵀ
-        B.soil.forEach((i, s) => { const e = new Float64Array(nd); e[2 * i] = 1; const g = fwd(e), k = B.k0[s];
-          for (let a = 2 * i; a < nd; a++) { const ga = k * g[a]; if (!ga) continue; for (let b = 2 * i; b < nd; b++) Cs[a * nd + b] += ga * g[b]; } });
+        const G = new Map(), g = (a) => { if (!G.has(a)) { const e = new Float64Array(nd); e[a] = 1; G.set(a, fwd(e)); } return G.get(a); };
+        springs.forEach(([a, b, v]) => { const ga = g(a), gb = g(b), lo = Math.min(a, b); for (let i = lo; i < nd; i++) { const x = v * ga[i]; if (!x) continue; for (let j = lo; j < nd; j++) Cs[i * nd + j] += x * gb[j]; } });
         B.Lm = Lm; B.C0 = C0; B.Cs = Cs;
       }
       const Lm = B.Lm, C = new Float64Array(nd * nd);
@@ -2060,8 +2116,9 @@ details.sec > * + * { margin-top: 8px; }
       const eg = eigSym(C, nd), w = [], phiL = new Float64Array(B.n * nm), Phi = [];
       for (let j = 0; j < nm; j++) {
         const y = new Float64Array(nd); for (let k = 0; k < nd; k++) y[k] = eg.vec(j, k);
-        const ph = new Float64Array(nd); for (let i = nd - 1; i >= 0; i--) { let s = y[i]; for (let k = i + 1; k < nd; k++) s -= Lm[k * nd + i] * ph[k]; ph[i] = s / Lm[i * nd + i]; }   // L⁻ᵀ y
-        const sg = Math.sign(ph[nd - 2]) || 1; for (let k = 0; k < nd; k++) ph[k] *= sg;
+        const pr = new Float64Array(nd); for (let i = nd - 1; i >= 0; i--) { let s = y[i]; for (let k = i + 1; k < nd; k++) s -= Lm[k * nd + i] * pr[k]; pr[i] = s / Lm[i * nd + i]; }   // L⁻ᵀ y
+        const ph = new Float64Array(NF); act.forEach((d, i) => { ph[d] = pr[i]; });
+        const sg = Math.sign(ph[NF - 2]) || 1; for (let k = 0; k < NF; k++) ph[k] *= sg;
         w.push(Math.sqrt(Math.max(eg.w2[j], 0))); Phi.push(ph);
         for (let i = 0; i < B.n; i++) phiL[i * nm + j] = ph[2 * i];
       }
@@ -2070,15 +2127,16 @@ details.sec > * + * { margin-top: 8px; }
         return [e, [(-6 + 12 * xi) / L ** 2 * ei, (-4 + 6 * xi) / L * ei, (6 - 12 * xi) / L ** 2 * ei, (-2 + 6 * xi) / L * ei]]; };
       const R = zc.map(rowOf), rows = new Float64Array(nzc * nm), stat = new Float64Array(nzc * 2);
       R.forEach(([e, r], jj) => { for (let j = 0; j < nm; j++) { let s = 0; for (let a = 0; a < 4; a++) s += r[a] * Phi[j][2 * e + a]; rows[jj * nm + j] = s; } });
-      const LK = chol(Kt, nd), top = nd - 2, Lt = z[B.n - 1] - z[B.n - 2];
-      const F1 = new Float64Array(nd), M1 = new Float64Array(nd); F1[top] = 1; M1[top] = 1 / Lt; M1[top - 2] = -1 / Lt;
-      const u1 = cholSolveVec(LK, F1, nd), u2 = cholSolveVec(LK, M1, nd);
+      const LK = chol(Kt, nd), top = NF - 2, Lt = z[B.n - 1] - z[B.n - 2];
+      const F1 = new Float64Array(NF), M1 = new Float64Array(NF); F1[top] = 1; M1[top] = 1 / Lt; M1[top - 2] = -1 / Lt;
+      const solve = (F) => { const r = cholSolveVec(LK, act.map((d) => F[d]), nd), u = new Float64Array(NF); act.forEach((d, i) => { u[d] = r[i]; }); return u; };
+      const u1 = solve(F1), u2 = solve(M1);
       R.forEach(([e, r], jj) => { let a1 = 0, a2 = 0; for (let a = 0; a < 4; a++) { a1 += r[a] * u1[2 * e + a]; a2 += r[a] * u2[2 * e + a]; } stat[jj * 2] = a1; stat[jj * 2 + 1] = a2; });
-      return { w, f1: w[0] / (2 * Math.PI), phiL, rows, stat, zc, Phi, R, LK };
+      return { w, f1: w[0] / (2 * Math.PI), phiL, rows, stat, zc, Phi, R, LK, solve };
     }
     // static response to a nodal load vector F (lateral forces at even DOFs): displacements and moments at element centres
     function statics(B, mod, F) {
-      const u = cholSolveVec(mod.LK, F, B.nd);
+      const u = mod.solve(F);
       return { u, M: mod.R.map(([e, r]) => r[0] * u[2 * e] + r[1] * u[2 * e + 1] + r[2] * u[2 * e + 2] + r[3] * u[2 * e + 3]) };
     }
     function weightAbove(ty, B, zt) {
@@ -2089,7 +2147,8 @@ details.sec > * + * { margin-top: 8px; }
     function hotSpots(ty, B, depth) {
       const As = BOLT_AS[ty.bolt_d] || 3.46e-3, out = {};
       const spots = { tower_base: [ty.z_interface + 2, 1.15, "air", "Tower base weld"], door: [ty.z_interface + 6, 2.4, "air", "Door frame"],
-        flange: [ty.z_interface, 0, "bolt", "Tower-base flange bolts"], mudline: [-depth + 1, 1.25, "sea", "Monopile weld at the mudline"], pile: [-depth - 6, 1.0, "sea", "Pile below the seabed (−6 m)"] };
+        flange: [ty.z_interface, 0, "bolt", "Tower-base flange bolts"], mudline: [-depth + 1, 1.25, "sea", "Monopile weld at the mudline"],
+        pile: B.base ? [B.z[0] + 0.5, 1.0, "sea", "Foundation base (pile not modelled)"] : [-depth - 6, 1.0, "sea", "Pile below the seabed (−6 m)"] };
       for (const [k, [z, scf, curve, nm]] of Object.entries(spots)) {
         const D = B.gm.D(z), t = B.gm.t(z, B.mud), [A, , W] = sec(D, t);
         out[k] = { z_rel_mud: z < 0 ? z + depth : null, z, scf, curve, name: nm, W, A, t, N: weightAbove(ty, B, z), n_bolts: ty.n_bolts,
@@ -2097,7 +2156,7 @@ details.sec > * + * { margin-top: 8px; }
       }
       return out;
     }
-    return { build, modal, statics, hotSpots, weightAbove, rnaMass, sec, soilAt, geom, BOLT_AS };
+    return { build, modal, statics, hotSpots, weightAbove, rnaMass, sec, soilAt, geom, fdnMode, tableAt, BOLT_AS };
   })();
   // ---------- turbine types: a library of monopile turbines and which one each turbine uses ----------
   // The as-built types reproduce the farm's design model exactly; the storm, history and fatigue tabs
@@ -2130,6 +2189,7 @@ details.sec > * + * { margin-top: 8px; }
     // geometry stations (and the summary fields other views read), also for types saved before stations existed
     function norm(ty) {
       const zi = ty.z_interface, zt = ty.z_hub - 5;
+      if (!ty.fdn) ty.fdn = { mode: "soil", py: [], macro: null };
       if (!Array.isArray(ty.mp) || !ty.mp.length) ty.mp = [{ z: zi, D: ty.D_pile, t: ty.t_mp || ty.t_pile }];
       if (!Array.isArray(ty.tw) || ty.tw.length < 2) ty.tw = [{ z: zi, D: ty.D_tower_base || ty.D_pile, t: ty.t_tower_base }, { z: zt, D: ty.D_tower_top, t: ty.t_tower_top }];
       ty.mp.sort((a, b) => b.z - a.z); ty.mp[0].z = zi; ty.mp = ty.mp.filter((st, i) => i === 0 || (st.z < zi - 0.4 && st.z > -150));
@@ -3000,6 +3060,7 @@ details.sec > * + * { margin-top: 8px; }
   }
   function kappaFromF1(S, f) {
     const f1 = S.E.f1, lg = S.grid.map(Math.log);
+    if (Math.abs(f1[f1.length - 1] - f1[0]) < 1e-6 * f1[0]) return 1;
     let i = 0; while (i < S.ng - 2 && f > f1[i + 1]) i++;
     const a = (f - f1[i]) / (f1[i + 1] - f1[i]);
     return Math.exp(lg[i] + a * (lg[i + 1] - lg[i]));
@@ -3264,7 +3325,7 @@ details.sec > * + * { margin-top: 8px; }
       return [100 * e / Math.max(sT, 1e-9), 100 * c / Math.max(n, 1)];
     }
     let ch = null;
-    const STN = [["tower_base", "Tower base weld"], ["flange", "Tower-base flange bolt"], ["mudline", "Monopile weld at the mudline"], ["pile", "Pile, 6 m below the seabed"]];
+    const STN = [["tower_base", "Tower base weld"], ["flange", "Tower-base flange bolt"], ["mudline", "Monopile weld at the mudline"], ["pile", (S.hot.pile.z_rel_mud ?? 0) < -1 ? "Pile, 6 m below the seabed" : "Foundation base"]];
     function spotStress(sp, a, mf, ms) {      // MPa at azimuth a from fore-aft and side-side moments (MN m)
       const mp = (mf * Math.cos(a) + ms * Math.sin(a)) * 1e6;
       if (sp.curve === "bolt") { const Z = 4 * mp / (sp.n_bolts * sp.Dbc) - sp.N / sp.n_bolts; return Math.max(sp.FV + 0.15 * Z, Z) / sp.As / 1e6; }
@@ -3292,7 +3353,7 @@ details.sec > * + * { margin-top: 8px; }
     }
     function buildCharts() {
       const has = (lab) => filt[whSoil].tags.some((x) => x.startsWith(lab));
-      ch = [["Tower-base moment", 0, has("tower-base") ? "measured · tower-base gauges" : "virtual"], ["Mudline moment", 1, "virtual · below the waterline"], ["Pile moment 6 m below the seabed", 2, "virtual · in the soil"]];
+      ch = [["Tower-base moment", 0, has("tower-base") ? "measured · tower-base gauges" : "virtual"], ["Mudline moment", 1, "virtual · below the waterline"], [(S.hot.pile.z_rel_mud ?? 0) < -1 ? "Pile moment 6 m below the seabed" : "Moment at the foundation base", 2, "virtual · in the soil"]];
       q("[data-st]").innerHTML = STN.map(([k, nm]) => `<div class="ch"><div class="ch-h"><span class="nm">${nm}</span><span class="tag">virtual · hot-spot stress</span></div><div class="ch-v mono" data-v></div><canvas></canvas><div class="ch-k"><i style="background:var(--warn)"></i>estimate, 95 % bands <i style="background:var(--crit)"></i>true value</div></div>`).join("");
       q("[data-ch]").innerHTML = ch.map(([nm, , tag]) => `<div class="ch"><div class="ch-h"><span class="nm">${nm}, ${whPlane === "fa" ? "fore-aft" : "side-side"}</span><span class="tag${tag.startsWith("measured") ? " meas" : ""}">${tag}</span></div><div class="ch-v mono" data-v></div><canvas></canvas><div class="ch-k"><i class="k2"></i>estimate and 95 % band <i style="background:var(--crit)"></i>true value</div></div>`).join("");
     }
@@ -3692,6 +3753,7 @@ details.sec > * + * { margin-top: 8px; }
     function loop(ts) {
       raf = requestAnimationFrame(loop);
       if (!host || !host.isConnected || bldEl.hidden) { cancelAnimationFrame(raf); raf = 0; return; }
+      if (!host.offsetParent) return;
       if (T3) T3.rotor.rotation.z -= 0.016 * (TT.get(bSel) ? TT.get(bSel).rated_rpm : 7) / 60 * 2 * Math.PI;
       deform(ts / 1000); ctl.update(); R.render(scene, cam);
     }
@@ -3702,6 +3764,430 @@ details.sec > * + * { margin-top: 8px; }
     }
     return { set, mount, view, setMode: (k) => { mode = k; }, mode: () => mode, ok: () => init() };
   })();
+  // ---------- analysis tabs: foundation models, 3D soil-pile, ULS and fatigue ----------
+  // Every heavy calculation goes through SOLVERS. These are placeholders that run in the page and
+  // return results shaped like the real solvers' output; replace each with a call to the real code
+  // (for example a request to the Python backend) and keep the same inputs and outputs.
+  const PLACEHOLDER = `<span class="pill amber" title="Results come from an in-page stand-in, not the production solver">placeholder solver</span>`;
+  const FDN_MODES = [["soil", "API p-y from the soil layers"], ["py_lin", "Linear p-y, entered by depth"], ["py_nl", "Nonlinear p-y, entered by depth"], ["macro", "Macro-element at the mudline"], ["fixed", "Fixed at the mudline"]];
+  const decay = (k, z, d) => (k * d > 20 ? Math.exp(k * Math.min(z, 0)) : Math.cosh(k * (z + d)) / Math.sinh(k * d));   // wave kinematics depth factor, safe at large kd
+  const pyDepths = (L) => [0, 1, 2, 4, 6, 9, 12, 16, 20, 25, 30, 36, 42, 50, 60, 70].filter((z) => z < L).concat([L]);
+  function pyFromSoil(ty, f = () => [1, 1]) {        // k (MN/m²) and p_u (kN/m) by depth from the layers, optionally scaled
+    return pyDepths(ty.embedment).map((z) => { const [k, pu] = TFE.soilAt(ty, z, ty.D_pile), [fk, fp] = f(z); return { z, k: +(k / 1e6 * fk).toPrecision(4), pu: +(pu / 1e3 * fp).toPrecision(4) }; });
+  }
+  // mudline stiffness of the embedded pile: unit force and moment at the mudline node, flexibility inverted
+  function macroFromModel(ty, depth) {
+    const t2 = JSON.parse(JSON.stringify(ty)); t2.fdn = Object.assign({}, ty.fdn, { mode: ty.fdn && /py_/.test(ty.fdn.mode) ? ty.fdn.mode : "soil" });
+    const B = TFE.build(t2, depth, 0), m = TFE.modal(B, 1, 1), im = B.z.reduce((b, v, i) => (Math.abs(v + depth) < Math.abs(B.z[b] + depth) ? i : b), 0);
+    const F = new Float64Array(B.nd); F[2 * im] = 1; const a = TFE.statics(B, m, F).u; const G = new Float64Array(B.nd); G[2 * im + 1] = 1; const b = TFE.statics(B, m, G).u;
+    const f = [a[2 * im], b[2 * im], a[2 * im + 1], b[2 * im + 1]], det = f[0] * f[3] - f[1] * f[2];
+    const Hu = B.pu.reduce((s2, v) => s2 + Math.min(v, 1e9), 0) * 0.5 / 1e6;
+    return { KHH: +(f[3] / det / 1e9).toPrecision(4), KHM: +(-f[1] / det / 1e9).toPrecision(4), KMM: +(f[0] / det / 1e9).toPrecision(4), Hult: +Hu.toPrecision(3), Mult: +(Hu * ty.embedment * 0.4).toPrecision(3) };
+  }
+  function fdnClean(ty) {
+    const f = ty.fdn = Object.assign({ mode: "soil", py: [], macro: null }, ty.fdn || {});
+    if (!FDN_MODES.some(([k]) => k === f.mode)) f.mode = "soil";
+    f.py = (Array.isArray(f.py) ? f.py : []).slice(0, 30).map((r) => ({ z: Math.max(0, +r.z || 0), k: Math.max(0, +r.k || 0), pu: Math.max(0, +r.pu || 0) })).sort((a, b) => a.z - b.z);
+    if (/py_/.test(f.mode) && f.py.length < 2) f.py = pyFromSoil(ty);
+    if (f.macro) { const m = f.macro; ["KHH", "KMM", "Hult", "Mult"].forEach((k) => { m[k] = Math.max(1e-3, +m[k] || 1); }); m.KHM = +m.KHM || 0;
+      if (m.KHM * m.KHM >= 0.98 * m.KHH * m.KMM) m.KHM = -0.95 * Math.sqrt(m.KHH * m.KMM); }
+  }
+  function fdnHTML(ty, ro) {
+    const f = ty.fdn, dis = ro ? " disabled" : "";
+    const pyT = () => `<table class="bl-st"><thead><tr><th>depth below seabed, m</th><th>k, MN/m²</th>${f.mode === "py_nl" ? "<th>p<sub>u</sub>, kN/m</th>" : ""}<th></th></tr></thead><tbody>` +
+      f.py.map((r, i) => `<tr data-pyi="${i}"><td><input type="number" step="0.5" data-pf="z" value="${r.z}"${dis}></td><td><input type="number" step="1" data-pf="k" value="${r.k}"${dis}></td>${f.mode === "py_nl" ? `<td><input type="number" step="10" data-pf="pu" value="${r.pu}"${dis}></td>` : ""}<td>${ro || f.py.length <= 2 ? "" : `<button class="btn icon" type="button" data-pydel aria-label="Remove row">✕</button>`}</td></tr>`).join("") + `</tbody></table>` +
+      (ro ? "" : `<div class="bl-row"><button class="btn" type="button" data-pyadd>Add depth</button><button class="btn" type="button" data-fill>Fill from the soil layers</button></div>`) +
+      (f.mode === "py_nl" ? `<div class="bl-pyc" data-pyc></div><p class="cap">p = p<sub>u</sub> tanh(k·y / p<sub>u</sub>) at each depth (curves drawn at the table depths). The modal model uses the initial stiffness; the ULS run uses the full curves.</p>` : `<p class="cap">Winkler springs k per metre of pile, linear between depths. No capacity limit.</p>`);
+    const mc = f.macro || {}, mi = (k, lab, u) => `<label class="bl-f"><span>${lab}</span><span class="bl-in"><input type="number" data-mk="${k}" value="${mc[k] ?? ""}"${dis}><i>${u}</i></span></label>`;
+    const body = f.mode === "soil" ? `<p class="cap">p-y springs from the soil layers below (API sand, Matlock clay), scaled at each site by the factor from frequency tracking.</p>` :
+      /py_/.test(f.mode) ? pyT() :
+      f.mode === "macro" ? mi("KHH", "K<sub>HH</sub>, horizontal", "GN/m") + mi("KHM", "K<sub>HM</sub>, coupling", "GN") + mi("KMM", "K<sub>MM</sub>, rocking", "GN·m/rad") + mi("Hult", "H<sub>ult</sub>, capacity", "MN") + mi("Mult", "M<sub>ult</sub>, capacity", "MN·m") +
+        (ro ? "" : `<div class="bl-row"><button class="btn" type="button" data-fill>Fill from the soil layers (condensed p-y)</button></div>`) + `<p class="cap">The pile below the mudline is replaced by a 2×2 stiffness at the mudline node (the capacities bound the ULS response). Below-seabed moments are not available with this model.</p>` :
+      `<p class="cap">Clamped at the (scoured) mudline: an upper bound on stiffness, useful for comparisons. Soil flexibility and pile stresses are not modelled.</p>`;
+    return `<fieldset class="bl-g"><legend>Foundation model</legend><label class="bl-f"><span>Model</span><span class="bl-in"><select data-fm${dis}>${FDN_MODES.map(([k, l]) => `<option value="${k}"${k === f.mode ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>${body}` +
+      `<p class="cap"><button class="btn" type="button" data-go3d>3D soil-pile analysis →</button> derives p-y, linear and macro-element coefficients from the soil layers.</p></fieldset>`;
+  }
+  function fdnWire(host, edit, ro) {
+    if (ro) { const g3 = host.querySelector("[data-go3d]"); if (g3) g3.addEventListener("click", () => bShowTab("pile")); return; }
+    const siteDepth = () => (T[bSite] || T[0]).spec.depth;
+    host.querySelector("[data-fm]").addEventListener("change", (e) => { edit((nt) => { nt.fdn.mode = e.target.value;
+      if (/py_/.test(nt.fdn.mode) && nt.fdn.py.length < 2) nt.fdn.py = pyFromSoil(nt);
+      if (nt.fdn.mode === "macro" && !nt.fdn.macro) nt.fdn.macro = macroFromModel(nt, siteDepth()); }); setTimeout(bForm, 0); });
+    host.querySelectorAll("[data-pf]").forEach((x) => x.addEventListener("change", () => edit((nt) => { nt.fdn.py[+x.closest("[data-pyi]").dataset.pyi][x.dataset.pf] = +x.value; })));
+    host.querySelectorAll("[data-pydel]").forEach((b) => b.addEventListener("click", () => { edit((nt) => { nt.fdn.py.splice(+b.closest("[data-pyi]").dataset.pyi, 1); }); setTimeout(bForm, 0); }));
+    const pa = host.querySelector("[data-pyadd]"); if (pa) pa.addEventListener("click", () => { edit((nt) => { const l = nt.fdn.py[nt.fdn.py.length - 1]; nt.fdn.py.push({ z: l.z + 5, k: l.k, pu: l.pu }); }); setTimeout(bForm, 0); });
+    const fl = host.querySelector("[data-fill]"); if (fl) fl.addEventListener("click", () => { edit((nt) => { if (nt.fdn.mode === "macro") { nt.fdn.mode = "soil"; const mc = macroFromModel(nt, siteDepth()); nt.fdn.mode = "macro"; nt.fdn.macro = mc; } else nt.fdn.py = pyFromSoil(nt); }); setTimeout(bForm, 0); });
+    host.querySelectorAll("[data-mk]").forEach((x) => x.addEventListener("change", () => edit((nt) => { nt.fdn.macro[x.dataset.mk] = +x.value; })));
+    host.querySelector("[data-go3d]").addEventListener("click", () => bShowTab("pile"));
+    const pc = host.querySelector("[data-pyc]");
+    if (pc) { const ty = TT.get(bSel), ys = Array.from({ length: 41 }, (_, i) => i * 0.0005 * ty.D_pile), cols = ["--accent", "--warn", "--crit", "--ok", "--sea", "--muted"];
+      const pick = ty.fdn.py.filter((_, i, a) => a.length <= 6 || i % Math.ceil(a.length / 6) === 0).slice(0, 6);
+      chart(pc, { series: pick.map((r, i) => ({ x: ys.map((y) => y * 1000), y: ys.map((y) => r.pu ? r.pu * Math.tanh(r.k * 1e3 * y / r.pu) : 0), color: cols[i], width: 1.6 })), xl: "lateral displacement y (mm)", yl: "p (kN/m)", w: 420, h: 180,
+        legend: pick.map((r, i) => ({ label: fmt(r.z, 0) + " m", color: cols[i] })), label: "Nonlinear p-y curves" }); }
+  }
+
+  // ----- small three.js viewport for analysis results (one per slot, disposed when replaced) -----
+  const V3S = {};
+  function V3(slot, host, fit) {
+    if (V3S[slot]) { V3S[slot].dispose(); delete V3S[slot]; }
+    if (!window.THREE || !THREE.OrbitControls) { host.innerHTML = `<p class="hint">3D needs WebGL.</p>`; return null; }
+    let R; try { R = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { host.innerHTML = `<p class="hint">3D needs WebGL.</p>`; return null; }
+    R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); host.append(R.domElement);
+    const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(32, 1, 0.5, 6000), ctl = new THREE.OrbitControls(cam, R.domElement);
+    ctl.enableDamping = true; scene.add(new THREE.HemisphereLight(0xffffff, 0x4a5560, 0.85)); const sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(-200, 300, 250); scene.add(sun);
+    const size = () => { const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return; R.setSize(w, h, false); R.domElement.style.width = w + "px"; R.domElement.style.height = h + "px"; cam.aspect = w / h; cam.updateProjectionMatrix(); };
+    const ro = new ResizeObserver(size); ro.observe(host); size();
+    let raf = 0, dead = false, tick = null;
+    const loop = (ts) => { if (dead) return; raf = requestAnimationFrame(loop); if (!host.isConnected || bldEl.hidden || !host.offsetParent) return; if (tick) tick(ts / 1000); ctl.update(); R.render(scene, cam); };
+    raf = requestAnimationFrame(loop);
+    const v = { scene, cam, ctl, onTick: (f) => { tick = f; }, dispose: () => { dead = true; cancelAnimationFrame(raf); ro.disconnect(); scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); R.dispose(); if (R.forceContextLoss) R.forceContextLoss(); R.domElement.remove(); } };
+    if (fit) { ctl.target.set(...fit.target); cam.position.set(...fit.pos); ctl.update(); }
+    V3S[slot] = v; return v;
+  }
+  const turbo = (t) => { t = Math.min(1, Math.max(0, t)); const r = 0.1357 + t * (4.5974 - t * (42.3277 - t * (130.5887 - t * (150.5666 - t * 58.1375)))), g = 0.0914 + t * (2.1856 + t * (4.8052 - t * (14.0195 - t * (4.2109 + t * 2.7747)))), b = 0.1067 + t * (12.5925 - t * (60.1097 - t * (109.0745 - t * (88.5066 - t * 26.8183)))); return [r, g, b].map((x) => Math.min(1, Math.max(0, x))); };
+  const cbv = (v) => (v !== 0 && Math.abs(v) < 0.01 ? v.toExponential(1) : fmt(v, Math.abs(v) < 10 ? 2 : 0));
+  const cbar = (lo, hi, unit) => `<div class="bl-cbar"><span>${cbv(lo)}</span><i style="background:linear-gradient(90deg,${[0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => "rgb(" + turbo(t).map((c) => Math.round(255 * c)).join(",") + ")").join(",")})"></i><span>${cbv(hi)} ${unit}</span></div>`;
+  const stageLog = async (host, steps, ms) => { for (let i = 0; i < steps.length; i++) { host.querySelector("[data-log]").insertAdjacentHTML("beforeend", `<li>${steps[i]}</li>`); host.querySelector("[data-bar]").style.width = (100 * (i + 1) / steps.length) + "%"; await new Promise((r) => setTimeout(r, ms)); } };
+  const runBox = () => `<div class="bl-run"><div class="bl-prog"><i data-bar></i></div><ol class="bl-log" data-log></ol></div>`;
+
+  // ----- embedded pile alone (toe to mudline) under a mudline force and moment, nonlinear p-y (Newton) -----
+  function pileCurve(ty, kFun, puFun, e, uMax, steps) {
+    const L = ty.embedment, n = 31, z = Array.from({ length: n }, (_, i) => L * (1 - i / (n - 1))), nd = 2 * n, gm = TFE.geom(ty);   // z: depth, node 0 at the toe
+    const K = new Float64Array(nd * nd);
+    for (let i = 0; i < n - 1; i++) { const h = z[i] - z[i + 1], [, I] = TFE.sec(ty.D_pile, ty.t_pile), ei = 210e9 * I, k = [12, 6 * h, -12, 6 * h, 6 * h, 4 * h * h, -6 * h, 2 * h * h, -12, -6 * h, 12, -6 * h, 6 * h, 2 * h * h, -6 * h, 4 * h * h].map((v) => v * ei / h ** 3);
+      for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) K[(2 * i + a) * nd + 2 * i + b] += k[a * 4 + b]; }
+    const trib = z.map((_, i) => (i === 0 || i === n - 1 ? 0.5 : 1) * L / (n - 1)), kk = z.map((d, i) => kFun(d) * trib[i]), pp = z.map((d, i) => puFun(d) * trib[i]);
+    const solve = (A, b) => { const Lc = new Float64Array(nd * nd); for (let i = 0; i < nd; i++) for (let j = 0; j <= i; j++) { let s2 = A[i * nd + j]; for (let k = 0; k < j; k++) s2 -= Lc[i * nd + k] * Lc[j * nd + k]; Lc[i * nd + j] = i === j ? Math.sqrt(Math.max(s2, 1e-9)) : s2 / Lc[j * nd + j]; }
+      const y = Float64Array.from(b); for (let i = 0; i < nd; i++) { let s2 = y[i]; for (let k = 0; k < i; k++) s2 -= Lc[i * nd + k] * y[k]; y[i] = s2 / Lc[i * nd + i]; } for (let i = nd - 1; i >= 0; i--) { let s2 = y[i]; for (let k = i + 1; k < nd; k++) s2 -= Lc[k * nd + i] * y[k]; y[i] = s2 / Lc[i * nd + i]; } return y; };
+    let u = new Float64Array(nd); const out = [{ H: 0, u: 0, rot: 0 }], top = 2 * (n - 1); let H = 0, prof = null;
+    // displacement control at the mudline by bisection on H per step (robust and simple)
+    const eq = (Hh) => { let x = Float64Array.from(u); for (let it = 0; it < 30; it++) { const r = new Float64Array(nd), A = Float64Array.from(K);
+        for (let i = 0; i < nd; i++) { let s2 = 0; for (let j = 0; j < nd; j++) s2 += K[i * nd + j] * x[j]; r[i] = s2; }
+        for (let i = 0; i < n; i++) { const y = x[2 * i], a = Math.max(-30, Math.min(30, kk[i] * y / pp[i])); r[2 * i] += pp[i] * Math.tanh(a); A[2 * i * nd + 2 * i] += Math.max(kk[i] / Math.cosh(a) ** 2, 0.02 * kk[i]) + 1e3; }   // tangent floored so a saturated profile stays solvable
+        r[top] -= Hh; r[top + 1] -= Hh * e; const dx = solve(A, r); let mx = 0, sc = 1; for (let i = 0; i < nd; i++) mx = Math.max(mx, Math.abs(dx[i])); if (mx > 0.2) sc = 0.2 / mx;
+        for (let i = 0; i < nd; i++) x[i] -= sc * dx[i]; if (!isFinite(mx)) return x.fill(1e3); if (mx < 1e-7) break; } return x; };
+    for (let s2 = 1; s2 <= steps; s2++) {
+      const target = uMax * s2 / steps; let lo = H, hi = Math.max(H * 2, 1e6); let xs = eq(hi); while (xs[top] < target && hi < 1e10) { lo = hi; hi *= 2; xs = eq(hi); }
+      for (let it = 0; it < 18; it++) { const mid = 0.5 * (lo + hi); xs = eq(mid); if (xs[top] < target) lo = mid; else hi = mid; }
+      H = 0.5 * (lo + hi); u = eq(H); out.push({ H: H / 1e6, u: u[top], rot: u[top + 1] * 180 / Math.PI }); prof = z.map((d, i) => [d, u[2 * i]]);
+    }
+    return { curve: out, prof };
+  }
+
+  const SOLVERS = {
+    // 3D FE soil-pile analysis -> p-y curves, linear and macro-element coefficients.  Placeholder: API p-y with
+    // typical small-strain and 3D-confinement factors, and a nonlinear beam-on-springs pushover in place of the FE run.
+    async pile3d(ty, o) {
+      const D = ty.D_pile, mf = { hs: [1.0, 1.0], mc: [0.78, 0.92], sani: [0.9, 0.96] }[o.model], noise = { coarse: 0.04, medium: 0.02, fine: 0.008 }[o.mesh];
+      const fk = (z) => [mf[0] * (1.3 + 0.55 * Math.exp(-z / D)) * (1 + noise * Math.sin(3.1 * z)), mf[1] * (1.05 + 0.25 * Math.exp(-z / (2 * D)))];
+      const py3 = pyFromSoil(ty, fk), api = pyFromSoil(ty);
+      const kFun = (rows) => (d) => TFE.tableAt(rows, d).k * 1e6, puFun = (rows) => (d) => Math.max(1, TFE.tableAt(rows, d).pu * 1e3);
+      const a = pileCurve(ty, kFun(api), puFun(api), o.ecc, o.umax, o.steps), b = pileCurve(ty, kFun(py3), puFun(py3), o.ecc, o.umax, o.steps);
+      const t3 = JSON.parse(JSON.stringify(ty)); t3.fdn = { mode: "py_nl", py: py3 }; const macro = macroFromModel(t3, (T[bSite] || T[0]).spec.depth);
+      macro.Hult = +(b.curve[b.curve.length - 1].H * 1.15).toPrecision(3); macro.Mult = +(macro.Hult * o.ecc).toPrecision(3);
+      return { py3, api, curveAPI: a.curve, curve3D: b.curve, prof: b.prof, macro, elements: { coarse: 18400, medium: 46200, fine: 121800 }[o.mesh] };
+    },
+    // ULS: focused (optionally breaking) wave on the beam model, shell submodel over a region at the peak.
+    // Placeholder: NewWave kinematics with Morison loads, Wienke-Oumeraci slam, modal time integration
+    // (linear soil at the operating point), shell stresses from beam forces plus a local slam patch.
+    async uls(ty, o) {
+      const t = T[bSite] || T[0], d = t.spec.depth + o.surge, B = TFE.build(ty, t.spec.depth, t.spec.scour || 0), md = TFE.modal(B, 1, 4), nm = 4, g = 9.81, rho = 1025;
+      const wp = 2 * Math.PI / o.Tp, NW = 60, ws = [], Sw = []; for (let i = 0; i < NW; i++) { const w = wp * (0.5 + 2.5 * (i + 0.5) / NW); ws.push(w); const sg = w < wp ? 0.07 : 0.09; Sw.push(w ** -5 * Math.exp(-1.25 * (wp / w) ** 4) * o.gamma ** Math.exp(-((w - wp) ** 2) / (2 * sg * sg * wp * wp))); }
+      const Hmax = Math.min(1.86 * o.Hs, 0.78 * d), crest = (o.breaking ? 0.68 : 0.6) * Hmax, sum = Sw.reduce((s2, v) => s2 + v, 0), amp = Sw.map((v) => crest * v / sum), kw = ws.map((w) => wnum(w, d));
+      const dt = 0.05, Tn = 120, t0 = 60, nT = Math.round(Tn / dt), wet = B.z.map((z, i) => i).filter((i) => B.z[i] > -t.spec.depth && B.z[i] < crest + 2);
+      const thW = (o.waveDir - o.windDir) * Math.PI / 180, cw = Math.cos(thW), sw = Math.sin(thW);
+      const c = g / wp * Math.tanh(wnum(wp, d) * d), slamT = 13 * B.gm.D(0) / (32 * c), lamEta = o.lambda * crest, Fslam = o.breaking ? o.Cs * rho * (B.gm.D(0) / 2) * c * c * lamEta : 0;
+      const Fwind = o.state === "op" ? TT.derived(ty).rated_thrust * 1.35 : TT.meta(ty).idle_thrust * (o.U / 35) ** 2;      // parked: feathered rotor and nacelle drag
+      const zeta = md.w.map((w, j) => (o.state === "op" && j === 0 ? 0.04 : 0.015 + 0.012 * j)), phiT = (j, i) => md.Phi[j][2 * i];
+      const q = { fa: new Float64Array(nm * 3), ss: new Float64Array(nm * 3) }, hist = { t: [], eta: [], shear: [], mmud: [], slam: [] }, env = new Float64Array(md.zc.length);
+      const iMud = md.zc.reduce((b2, z, i) => (Math.abs(z + t.spec.depth) < Math.abs(md.zc[b2] + t.spec.depth) ? i : b2), 0);
+      let peak = { m: 0, k: 0, fa: null, ss: null, tt: 0 };
+      const top = B.n - 1, ts = t0 - 0.15;
+      for (let k = 0; k < nT; k++) {
+        const tt = k * dt, tau = tt - t0; let eta = 0; for (let i = 0; i < NW; i++) eta += amp[i] * Math.cos(-ws[i] * tau);
+        const Fn = new Float64Array(B.n); let shear = 0;
+        wet.forEach((i) => { const zz = B.z[i]; if (zz > eta) return; const ze = Math.min(zz, 0); let u = 0, ax = 0; const D = B.gm.D(zz);
+          for (let j = 0; j < NW; j++) { const f = decay(kw[j], ze, d), ph = -ws[j] * tau; u += amp[j] * ws[j] * f * Math.cos(ph); ax += amp[j] * ws[j] * ws[j] * f * Math.sin(ph); }
+          const fz = (rho * 2.0 * Math.PI * D * D / 4 * ax + 0.5 * rho * 1.0 * D * Math.abs(u) * u) * B.trib[i]; Fn[i] += fz; shear += fz; });
+        let fs = 0; if (Fslam && tt >= ts && tt < ts + slamT) { fs = Fslam * (1 - (tt - ts) / slamT); const nodes = wet.filter((i) => B.z[i] <= crest && B.z[i] >= crest - lamEta); nodes.forEach((i) => { Fn[i] += fs / Math.max(1, nodes.length); }); shear += fs; }
+        const gust = 1 + 0.25 * Math.exp(-((tt - t0 + 4) ** 2) / 30);
+        for (const [pl, fac] of [["fa", cw], ["ss", sw]]) {
+          const x = q[pl];
+          for (let j = 0; j < nm; j++) { let f = 0; for (let i = 0; i < B.n; i++) if (Fn[i]) f += phiT(j, i) * Fn[i] * fac; if (pl === "fa") f += phiT(j, top) * Fwind * gust;
+            const w = md.w[j], z2 = zeta[j], qv = x[j], vv = x[nm + j], av = x[2 * nm + j];      // Newmark, average acceleration
+            const kEff = w * w + 2 * z2 * w * 2 / dt + 4 / dt / dt, rhs = f + (4 / dt / dt * qv + 4 / dt * vv + av) + 2 * z2 * w * (2 / dt * qv + vv);
+            const qn = rhs / kEff, an = 4 / dt / dt * (qn - qv) - 4 / dt * vv - av, vn = vv + dt / 2 * (av + an); x[j] = qn; x[nm + j] = vn; x[2 * nm + j] = an; }
+        }
+        const Mz = (pl, jj) => { let m = 0; for (let j = 0; j < nm; j++) m += md.rows[jj * nm + j] * q[pl][j]; return m + (pl === "fa" ? md.stat[jj * 2] * Fwind * gust : 0); };
+        let mmud = 0; for (let jj = 0; jj < md.zc.length; jj++) { const m = Math.hypot(Mz("fa", jj), Mz("ss", jj)); if (m > env[jj]) env[jj] = m; if (jj === iMud) mmud = m; }
+        if (mmud > peak.m) peak = { m: mmud, k, tt, fa: md.zc.map((_, jj) => Mz("fa", jj)), ss: md.zc.map((_, jj) => Mz("ss", jj)), eta };
+        if (k % 2 === 0) { hist.t.push(tt); hist.eta.push(eta); hist.shear.push((shear * Math.hypot(cw, sw) + Fwind * gust) / 1e6); hist.mmud.push(mmud / 1e6); hist.slam.push(fs / 1e6); }
+      }
+      // shell submodel over [z1, z2]: stresses at the peak instant (beam forces x load factor, plus the slam patch)
+      const z1 = Math.max(o.z1, B.z[0]), z2 = Math.min(o.z2, ty.z_hub - 10), nz = Math.max(8, Math.round((z2 - z1) / o.dz)), nth = o.nth, field = [], zs = [];
+      const Mat = (arr, z) => { const zc = md.zc; let i = 0; while (i < zc.length - 2 && zc[i + 1] < z) i++; const a = Math.min(1, Math.max(0, (z - zc[i]) / (zc[i + 1] - zc[i]))); return arr[i] * (1 - a) + arr[i + 1] * a; };
+      const pSlam = Fslam / Math.max(lamEta, 0.5) / B.gm.D(0), zSl = crest - lamEta / 2;
+      let smax = 0, sxmax = 0, crit = null;
+      for (let a = 0; a <= nz; a++) { const z = z1 + (z2 - z1) * a / nz, D = B.gm.D(z), tw = B.gm.t(z, B.mud), [A, , W] = TFE.sec(D, tw), N = TFE.weightAbove(ty, B, z), mf = Mat(peak.fa, z), ms = Mat(peak.ss, z); zs.push(z); const row = [];
+        for (let b = 0; b < nth; b++) { const th = 2 * Math.PI * b / nth, sx = o.gf * ((mf * Math.cos(th) + ms * Math.sin(th)) / W - N / A) / 1e6;
+          const loc = o.breaking ? 0.18 * pSlam * (D / 2 / tw) * Math.exp(-(((z - zSl) / (0.45 * D)) ** 2)) * Math.max(0, Math.cos(th - thW)) ** 3 / 1e6 : 0;
+          const vm = Math.sqrt(sx * sx + loc * loc - sx * loc); row.push(vm); if (vm > smax) { smax = vm; crit = { z, th, sx, loc }; } sxmax = Math.max(sxmax, Math.abs(sx)); }
+        field.push(row); }
+      const zc0 = crit ? crit.z : z1, Dc = B.gm.D(zc0), tc = B.gm.t(zc0, B.mud), alpha = 0.62 / (1 + 1.91 * 1.0 ** 1.44), scr = 0.605 * 210e3 * tc / (Dc / 2) * alpha;
+      const imud = B.z.reduce((b2, v, i) => (Math.abs(v + t.spec.depth) < Math.abs(B.z[b2] + t.spec.depth) ? i : b2), 0);
+      const Fpk = new Float64Array(B.nd); // pseudo-static mudline rotation from the peak moment profile: base shear and moment at the top
+      Fpk[B.nd - 2] = peak.m / Math.max(ty.z_hub + t.spec.depth, 1) * 0.5; const rot = Math.abs(TFE.statics(B, md, Fpk).u[2 * imud + 1]) * 180 / Math.PI * 2;
+      return { hist, env: Array.from(env), zc: md.zc, peak, field, zs, nth, smax, sxmax, crit, scr, fy: 355 / 1.1, rot, crest, Hmax, Fslam, slamT, c, elements: nz * nth, z1, z2, B, md, depth: t.spec.depth };
+    },
+    // Fatigue lookup: damage per hour for every bin combination at the chosen locations, from 6 seeds each.
+    // Placeholder: frequency-domain modal response to JONSWAP waves and Kaimal turbulence (aero damping and
+    // thrust slope from the power curve when operating, standing in for BEM), Rayleigh cycles on DNV S-N curves,
+    // seed scatter drawn per combination. The real version runs 6 time-domain simulations per combination.
+    async fatigue(ty, o, progress, cancelled) {
+      const t = T[bSite] || T[0], d = t.spec.depth, B = TFE.build(ty, d, t.spec.scour || 0), md = TFE.modal(B, 1, 3), nm = 3, rho = 1025;
+      const NWf = 70, om = Array.from({ length: NWf }, (_, i) => 2 * Math.PI * 0.02 * Math.pow(2.5 / 0.02, i / (NWf - 1))), dw = om.map((w, i) => (i ? w - om[i - 1] : om[1] - om[0]));
+      const Gw = om.map((w) => { const k = wnum(w, d); return md.Phi.slice(0, nm).map((ph) => B.wet.reduce((s2, i) => s2 + ph[2 * i] * rho * 2.0 * Math.PI * B.gm.D(B.z[i]) ** 2 / 4 * w * w * decay(k, B.z[i], d) * B.trib[i], 0) * 0.6); });   // 0.6: directional spreading and diffraction, left out of the linear Morison model
+      const Gt = md.Phi.slice(0, nm).map((ph) => ph[B.nd - 2]);
+      const hs = TFE.hotSpots(ty, B, d), locs = [];
+      const near = (z) => md.zc.reduce((b2, v, i) => (Math.abs(v - z) < Math.abs(md.zc[b2] - z) ? i : b2), 0);
+      o.locs.forEach((k) => { const h = hs[k]; locs.push({ key: k, name: h.name, j: near(h.z), z: h.z, W: h.W, scf: h.curve === "bolt" ? 4 / (h.n_bolts * h.Dbc) * 0.15 / h.As * h.W : h.scf * Math.max(1, Math.pow(h.t * 1e3 / 25, 0.2)), loga: h.curve === "air" ? 12.164 : h.curve === "sea" ? 11.764 : 11.398 }); });
+      locs.forEach((L) => { const nk = L.loga === 12.164 ? 1e7 : L.loga === 11.764 ? 1e6 : 2e6; L.a1 = Math.pow(10, L.loga); L.sq = Math.cbrt(L.a1 / nk); L.a2 = nk * L.sq ** 5; });
+      if (o.all) md.zc.forEach((z, j) => { if (j % 2) return; const D = B.gm.D(z), tw = B.gm.t(z, B.mud), [, , W] = TFE.sec(D, tw); const loga = z < 0 ? 11.764 : 12.164, nk = z < 0 ? 1e6 : 1e7, a1 = Math.pow(10, loga), sq = Math.cbrt(a1 / nk); locs.push({ key: "z" + j, name: "z " + fmt(z, 1) + " m", j, z, W, scf: 1.2, loga, a1, sq, a2: nk * sq ** 5, field: true }); });
+      // modal transfer to each location's moment, for two damping sets (operating fore-aft; other)
+      const H = (w, wn, z) => { const re = wn * wn - w * w, im = 2 * z * wn * w, dd = re * re + im * im; return [re / dd, -im / dd]; };
+      const Tm = (zset) => locs.map((L) => om.map((w, f) => { let rw = 0, iw = 0, rt = 0, it = 0; for (let j = 0; j < nm; j++) { const [a, b] = H(w, md.w[j], zset[j]), r = md.rows[L.j * nm + j]; rw += r * a * Gw[f][j]; iw += r * b * Gw[f][j]; rt += r * a * Gt[j]; it += r * b * Gt[j]; } return [rw * rw + iw * iw, rt * rt + it * it]; }));
+      const T_op = Tm([0.055, 0.02, 0.02]), T_ss = Tm([0.012, 0.012, 0.015]);
+      const der = TT.derived(ty), m = TT.meta(ty), ci = ty.cut_in, co = ty.cut_out, hubF = Math.pow(ty.z_hub / 10, 0.11);
+      const combos = []; o.bins.Hs.forEach((Hs) => o.bins.Tp.forEach((Tp) => o.bins.gamma.forEach((ga) => o.bins.U10.forEach((U10) => o.bins.wdir.forEach((wd) => o.bins.vdir.forEach((vd) => combos.push([Hs, Tp, ga, U10, wd, vd])))))));
+      const nL = locs.length, out = new Float32Array(combos.length * nL * 3), az = new Uint8Array(combos.length * nL), tq = 2.571, nS = 6;
+      for (let c = 0; c < combos.length; c++) {
+        if (cancelled()) return null;
+        const [Hs, Tp, ga, U10, wd, vd] = combos[c], wp = 2 * Math.PI / Tp, Uh = U10 * hubF, op = Uh >= ci && Uh <= co;
+        const Sw = om.map((w) => { const sg = w < wp ? 0.07 : 0.09; return w ** -5 * Math.exp(-1.25 * (wp / w) ** 4) * ga ** Math.exp(-((w - wp) ** 2) / (2 * sg * sg * wp * wp)); });
+        let m0 = 0; Sw.forEach((v, i) => { m0 += v * dw[i]; }); const sc = (Hs / 4) ** 2 / Math.max(m0, 1e-12); for (let i = 0; i < NWf; i++) Sw[i] *= sc;
+        const T0 = thrust(Uh, m), TI = 0.12 * (0.75 * Uh + 5.6) / Math.max(Uh, 1), su = TI * Uh, dTdU = op ? (Uh < der.rated_U ? 2 * T0 / Math.max(Uh, 1) : -0.6 * T0 / Uh) : 2 * T0 / Math.max(Uh, 1), Lk = 340;
+        const St = om.map((w) => { const f = w / (2 * Math.PI); return (dTdU * su) ** 2 * 4 * Lk / Math.max(Uh, 1) / Math.pow(1 + 6 * f * Lk / Math.max(Uh, 1), 5 / 3) / (2 * Math.PI) * (op ? 1 : 0.3); });
+        const rel = (vd - wd) * Math.PI / 180, cf = Math.cos(rel) ** 2, cs = Math.sin(rel) ** 2, Tfa = op ? T_op : T_ss;
+        for (let l = 0; l < nL; l++) {
+          let vfa = 0, vss = 0, m2fa = 0, m2ss = 0;
+          for (let f = 0; f < NWf; f++) { const a = Tfa[l][f][0] * Sw[f] * cf + Tfa[l][f][1] * St[f], b = T_ss[l][f][0] * Sw[f] * cs, w2 = om[f] * om[f]; vfa += a * dw[f]; vss += b * dw[f]; m2fa += a * w2 * dw[f]; m2ss += b * w2 * dw[f]; }
+          let vb = -1, m2b = 0, bi = 0;                // most-loaded of 8 azimuths
+          for (let k = 0; k < 8; k++) { const th = k * Math.PI / 4 - wd * Math.PI / 180, c2 = Math.cos(th) ** 2, s2 = Math.sin(th) ** 2, v = vfa * c2 + vss * s2; if (v > vb) { vb = v; m2b = m2fa * c2 + m2ss * s2; bi = k; } }
+          // Rayleigh stress ranges on the bilinear S-N curve, integrated numerically
+          const L0 = locs[l], sig = L0.scf * Math.sqrt(vb) / L0.W / 1e6, nu = Math.sqrt(m2b / Math.max(vb, 1e-30)) / (2 * Math.PI);
+          let best = 0; const smax = 9 * sig, ds = smax / 60;
+          for (let q2 = 0; q2 < 60; q2++) { const S = (q2 + 0.5) * ds, pdf = S / (4 * sig * sig) * Math.exp(-S * S / (8 * sig * sig)); best += pdf * ds / (S >= L0.sq ? L0.a1 / S ** 3 : L0.a2 / S ** 5); }
+          best *= nu * 3600;
+          // six seeds: lognormal scatter of the 1-hour damage, more when few cycles dominate
+          const rn = randn(1 + c * 7919 + l * 104729), sd = 0.22 + 0.25 / Math.sqrt(1 + 10 * Hs), xs = Array.from({ length: nS }, () => Math.log(Math.max(best, 1e-30)) + sd * rn() - sd * sd / 2);
+          const mu = xs.reduce((s2, v) => s2 + v, 0) / nS, sdev = Math.sqrt(xs.reduce((s2, v) => s2 + (v - mu) ** 2, 0) / (nS - 1)), half = tq * sdev * Math.sqrt(1 + 1 / nS);
+          const meanD = xs.reduce((s2, v) => s2 + Math.exp(v), 0) / nS;
+          out.set([meanD, Math.exp(mu - half), Math.exp(mu + half)], (c * nL + l) * 3); az[c * nL + l] = bi;
+        }
+        if (c % 200 === 199) { progress((c + 1) / combos.length); await new Promise((r) => setTimeout(r, 0)); }
+      }
+      progress(1);
+      return { combos, locs, out, az, nL, bins: o.bins, depth: d, site: t.spec.name };
+    },
+  };
+
+  // ----- tabs -----
+  let bTab = "design";
+  const RUNS = new Map();                 // `${type id}:${tab}` -> { key, input, result }
+  const runKey = () => TT.key(TT.get(bSel)) + "@" + bSite;
+  function bShowTab(name) {
+    bTab = name;
+    document.querySelectorAll("#builder [data-btab]").forEach((b) => { b.classList.toggle("on", b.dataset.btab === name); b.setAttribute("aria-selected", b.dataset.btab === name ? "true" : "false"); });
+    document.querySelectorAll("#builder .bl-pane").forEach((p) => { p.hidden = p.id !== "bl-pane-" + name; });
+    if (name === "pile") pileView(); else if (name === "uls") ulsView(); else if (name === "fat") fatView();
+  }
+  const stale = (r) => (r && r.key !== runKey() ? `<p class="hint bl-stale">The type or site has changed since this run. Run again to update.</p>` : "");
+  function editable(cb) {                   // apply a change to the selected type, duplicating a built-in first
+    let ty = TT.get(bSel);
+    if (ty.builtin) { const nt = bClean(JSON.parse(JSON.stringify(ty))); nt.id = uid(); nt.builtin = false; nt.asBuilt = 0; nt.name = ty.name.replace(/ \(as built\)$/, "") + " (copy)"; TT.upsert(nt); bSel = nt.id; ty = nt; }
+    const nt = bClean(JSON.parse(JSON.stringify(ty))); cb(nt); bClean(nt); TT.upsert(nt); bList(); bForm(); bResults(TT.get(bSel)); bFarm();
+  }
+  const numIn = (k, lab, v, u, step = "any") => `<label class="bl-f"><span>${lab}</span><span class="bl-in"><input type="number" data-o="${k}" value="${v}" step="${step}"><i>${u}</i></span></label>`;
+  const readO = (host) => { const o = {}; host.querySelectorAll("[data-o]").forEach((x) => { o[x.dataset.o] = x.type === "checkbox" ? x.checked : x.tagName === "SELECT" || x.type === "text" ? x.value : +x.value; }); return o; };
+
+  // ----- 3D soil-pile -----
+  function pileView() {
+    const host = document.getElementById("bl-pane-pile"), ty = TT.get(bSel), r = RUNS.get(bSel + ":pile"), o = (r && r.input) || { model: "hs", mesh: "medium", radius: 12, ecc: Math.round(0.75 * (ty.z_hub + (T[bSite] || T[0]).spec.depth)), umax: +(0.1 * ty.D_pile).toFixed(2), steps: 16 };
+    host.innerHTML = `<div class="bl-an"><div class="bl-g bl-in-p"><div class="bl-hd2"><h3>3D soil-pile analysis</h3>${PLACEHOLDER}</div>` +
+      `<p class="cap">Solid finite-element model of the pile in the layered soil (${ty.soil.length} layer${ty.soil.length > 1 ? "s" : ""}, from the Design tab), pushed laterally at the mudline. The p-y curves, small-strain stiffness and macro-element are extracted from it.</p>` +
+      `<label class="bl-f"><span>Soil model</span><span class="bl-in"><select data-o="model">${[["hs", "Hardening soil, small strain"], ["mc", "Mohr–Coulomb"], ["sani", "SANISAND (cyclic)"]].map(([k, l]) => `<option value="${k}"${o.model === k ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>` +
+      `<label class="bl-f"><span>Mesh</span><span class="bl-in"><select data-o="mesh">${[["coarse", "Coarse (18k elements)"], ["medium", "Medium (46k)"], ["fine", "Fine (122k)"]].map(([k, l]) => `<option value="${k}"${o.mesh === k ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>` +
+      numIn("radius", "Soil domain radius", o.radius, "× D", 1) + numIn("ecc", "Load eccentricity M/H", o.ecc, "m", 1) + numIn("umax", "Mudline displacement, final", o.umax, "m", 0.05) + numIn("steps", "Load steps", o.steps, "", 1) +
+      `<button class="btn bl-go" type="button" data-run>Run 3D analysis</button>${runBox()}</div><div class="bl-res" data-res>${r ? "" : `<p class="muted">Run the analysis to see the soil field, the derived p-y curves and the foundation coefficients.</p>`}</div></div>`;
+    host.querySelector("[data-run]").addEventListener("click", async (e) => {
+      const inp = readO(host); e.target.disabled = true; host.querySelector("[data-log]").innerHTML = "";
+      const stg = stageLog(host, [`Meshing the soil domain: ${{ coarse: "18,400", medium: "46,200", fine: "121,800" }[inp.mesh]} elements, radius ${inp.radius} D`, "Initial stresses (K₀ procedure), pile installed wished-in-place", `Lateral pushover: ${inp.steps} load steps to ${inp.umax} m at the mudline`, "Extracting soil reactions along the pile: p-y curves by depth", "Fitting the macro-element and the small-strain stiffness"], 380);
+      const res = await SOLVERS.pile3d(TT.get(bSel), inp); await stg;
+      RUNS.set(bSel + ":pile", { key: runKey(), input: inp, result: res }); e.target.disabled = false; pileResults(host);
+    });
+    if (r) pileResults(host);
+  }
+  function pileResults(host) {
+    const r = RUNS.get(bSel + ":pile"), res = r.result, ty = TT.get(bSel), box = host.querySelector("[data-res]");
+    const cols = ["--accent", "--warn", "--crit", "--ok"], pick = [1, 4, 9, 16].filter((z) => z < ty.embedment);
+    box.innerHTML = stale(r) + `<div class="bl-3dp" data-v></div>${cbar(0, res.prof[res.prof.length - 1][1] * 1000, "mm")}<p class="cap">Soil displacement at the final load step, quarter model cut away (displacement exaggerated). ${res.elements.toLocaleString()} elements.</p>` +
+      `<div class="grid2"><div data-hu></div><div data-py></div></div>` +
+      `<h4 class="bl-h">Derived coefficients</h4><div class="grid2"><div class="tbl-wrap"><table class="list bl-chk"><thead><tr><th>Depth</th><th class="r">k 3D, MN/m²</th><th class="r">k API</th><th class="r">p<sub>u</sub> 3D, kN/m</th></tr></thead><tbody>` +
+      res.py3.filter((_, i) => i % 2 === 0 || i === res.py3.length - 1).map((p) => { const a = TFE.tableAt(res.api, p.z); return `<tr><td class="mono">${fmt(p.z, 0)} m</td><td class="r mono">${fmt(p.k, 0)}</td><td class="r mono muted">${fmt(a.k, 0)}</td><td class="r mono">${fmt(p.pu, 0)}</td></tr>`; }).join("") + `</tbody></table></div>` +
+      `<div>${kv([["K<sub>HH</sub>", fmt(res.macro.KHH, 2) + " GN/m"], ["K<sub>HM</sub>", fmt(res.macro.KHM, 1) + " GN"], ["K<sub>MM</sub>", fmt(res.macro.KMM, 0) + " GN·m/rad"], ["H<sub>ult</sub>", fmt(res.macro.Hult, 1) + " MN"], ["M<sub>ult</sub>", fmt(res.macro.Mult, 0) + " MN·m"]])}` +
+      `<div class="bl-row" style="margin-top:10px"><button class="btn" type="button" data-use="py_nl">Use as nonlinear p-y</button><button class="btn" type="button" data-use="py_lin">Use as linear p-y</button><button class="btn" type="button" data-use="macro">Use as macro-element</button></div>` +
+      `<p class="cap">Applies to the selected type (a built-in is duplicated first) and returns to the Design tab.</p></div></div>`;
+    chart(box.querySelector("[data-hu]"), { series: [{ x: res.curve3D.map((p) => p.u * 1000), y: res.curve3D.map((p) => p.H), color: "--accent", width: 2 }, { x: res.curveAPI.map((p) => p.u * 1000), y: res.curveAPI.map((p) => p.H), color: "--muted", width: 1.5, dash: "5 4" }],
+      xl: "mudline displacement (mm)", yl: "lateral load H (MN)", w: 420, h: 220, legend: [{ label: "3D FE", color: "--accent" }, { label: "API p-y beam", color: "--muted", dash: "5 4" }], label: "Load-displacement" });
+    const ys = Array.from({ length: 41 }, (_, i) => i * 0.0005 * ty.D_pile);
+    const pyc = (rows, z) => { const a = TFE.tableAt(rows, z); return ys.map((y) => a.pu ? a.pu * Math.tanh(a.k * 1e3 * y / a.pu) : 0); };
+    chart(box.querySelector("[data-py]"), { series: pick.flatMap((z, i) => [{ x: ys.map((y) => y * 1000), y: pyc(res.py3, z), color: cols[i], width: 2 }, { x: ys.map((y) => y * 1000), y: pyc(res.api, z), color: cols[i], width: 1, dash: "4 3" }]),
+      xl: "y (mm)", yl: "p (kN/m)", w: 420, h: 220, legend: pick.map((z, i) => ({ label: z + " m", color: cols[i] })), label: "p-y curves, 3D (solid) and API (dashed)" });
+    box.querySelectorAll("[data-use]").forEach((b) => b.addEventListener("click", () => { editable((nt) => { nt.fdn.mode = b.dataset.use; if (b.dataset.use === "macro") nt.fdn.macro = Object.assign({}, res.macro); else nt.fdn.py = res.py3.map((p) => Object.assign({}, p)); }); bShowTab("design"); }));
+    // 3D field: quarter-cut soil cylinder around the pile, coloured by displacement
+    const D = ty.D_pile, L = ty.embedment, Rr = Math.min(r.input.radius, 14) * D / 2, umax = Math.max(...res.prof.map((p) => p[1])) || 1, ex = 0.12 * D / umax;
+    const dC = Math.max(Rr * 2.2, L * 1.7), v = V3("pile", box.querySelector("[data-v]"), { target: [0, -L * 0.5, 0], pos: [dC * 0.62, dC * 0.32, dC * 0.78] }); if (!v) return;
+    const up = (d) => { const pr = res.prof; let i = 0; while (i < pr.length - 1 && pr[i + 1][0] > d) i++; const a = pr[i], b = pr[Math.min(i + 1, pr.length - 1)], t2 = a[0] === b[0] ? 0 : (d - a[0]) / (b[0] - a[0]); return a[1] + t2 * (b[1] - a[1]); };
+    const nr = 14, nth = 36, nz = 30, pos = [], col = [], idx = [], push = (x, y, z, c) => { pos.push(x, y, z); col.push(...turbo(c)); return pos.length / 3 - 1; };
+    const ring = (rad, d, th) => { const u = up(d) * Math.max(0, Math.cos(th)) * Math.pow(D / 2 / rad, 0.8) * Math.exp(-(rad - D / 2) / (3 * D)); return [rad * Math.cos(th) + u * ex * Math.cos(0), -d, rad * Math.sin(th), u / umax]; };
+    const grid = (fn, na, nb) => { const base = pos.length / 3; for (let a = 0; a <= na; a++) for (let b = 0; b <= nb; b++) { const [x, y, z, c] = fn(a / na, b / nb); push(x, y, z, c); } for (let a = 0; a < na; a++) for (let b = 0; b < nb; b++) { const i0 = base + a * (nb + 1) + b; idx.push(i0, i0 + nb + 1, i0 + 1, i0 + 1, i0 + nb + 1, i0 + nb + 2); } };
+    const thA = Math.PI / 2, thB = 2 * Math.PI;         // three quarters of soil; the first quadrant is cut away
+    grid((a, b) => ring(Rr, a * L * 1.3, thA + b * (thB - thA)), nz, nth);                                // outer surface
+    grid((a, b) => ring(D / 2 + a * (Rr - D / 2), 0, thA + b * (thB - thA)), nr, nth);                   // ground surface
+    grid((a, b) => ring(D / 2 + b * (Rr - D / 2), a * L * 1.3, thA), nz, nr); grid((a, b) => ring(D / 2 + b * (Rr - D / 2), a * L * 1.3, thB - 1e-4), nz, nr);   // cut faces
+    const gsoil = new THREE.BufferGeometry(); gsoil.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); gsoil.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); gsoil.setIndex(idx); gsoil.computeVertexNormals();
+    v.scene.add(new THREE.Mesh(gsoil, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide, transparent: true, opacity: 0.92 })));
+    const pg = new THREE.CylinderGeometry(D / 2, D / 2, L + 6, 40, 30, true), pp = pg.attributes.position; for (let i = 0; i < pp.count; i++) { const y = pp.getY(i) - (L + 6) / 2 + 6; pp.setY(i, y); pp.setX(i, pp.getX(i) + up(Math.max(0, -y)) * ex); }
+    pg.computeVertexNormals(); v.scene.add(new THREE.Mesh(pg, new THREE.MeshStandardMaterial({ color: 0x8b98a3, metalness: 0.3, roughness: 0.5, side: THREE.DoubleSide })));
+    const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(-D * 2.5, 4, 0), D * 1.8, 0xd1495b, D * 0.6, D * 0.35); v.scene.add(arrow);
+  }
+
+  // ----- ULS -----
+  function ulsView() {
+    const host = document.getElementById("bl-pane-uls"), ty = TT.get(bSel), t = T[bSite] || T[0], r = RUNS.get(bSel + ":uls");
+    const o = (r && r.input) || { Hs: 10.5, Tp: 14, gamma: 2.2, U: 42, windDir: 260, waveDir: 285, surge: 1.5, breaking: true, Cs: +(2 * Math.PI).toFixed(3), lambda: 0.46, state: "idle", gf: 1.35, z1: -t.spec.depth - 5, z2: ty.z_interface + 10, dz: 0.5, nth: 96 };
+    host.innerHTML = `<div class="bl-an"><div class="bl-g bl-in-p"><div class="bl-hd2"><h3>Ultimate limit state</h3>${PLACEHOLDER}</div><p class="cap">Extreme storm on the beam model of the whole turbine (nonlinear soil, aero-hydro loads), with a shell submodel coupled to the beam over the region below for local stresses, slamming and buckling. Site: ${t.spec.name}, ${fmt(t.spec.depth, 1)} m.</p>` +
+      `<div class="bl-sub">Sea state</div>` + numIn("Hs", "H<sub>s</sub>", o.Hs, "m", 0.1) + numIn("Tp", "T<sub>p</sub>", o.Tp, "s", 0.1) + numIn("gamma", "JONSWAP γ", o.gamma, "", 0.1) + numIn("surge", "Surge and tide", o.surge, "m", 0.1) + numIn("waveDir", "Waves from", o.waveDir, "°", 5) +
+      `<label class="bl-f"><span>Breaking wave (slam)</span><span class="bl-in"><input type="checkbox" data-o="breaking"${o.breaking ? " checked" : ""}></span></label>` + numIn("Cs", "Slam coefficient C<sub>s</sub>", o.Cs, "", 0.1) + numIn("lambda", "Curling factor λ", o.lambda, "", 0.01) +
+      `<div class="bl-sub">Wind and turbine</div>` + numIn("U", "Wind at hub", o.U, "m/s", 0.5) + numIn("windDir", "Wind from", o.windDir, "°", 5) +
+      `<label class="bl-f"><span>Turbine state</span><span class="bl-in"><select data-o="state"><option value="idle"${o.state === "idle" ? " selected" : ""}>Parked, idling</option><option value="op"${o.state === "op" ? " selected" : ""}>Operating, extreme gust</option></select></span></label>` + numIn("gf", "Load factor γ<sub>f</sub>", o.gf, "", 0.05) +
+      `<div class="bl-sub">Shell submodel</div>` + numIn("z1", "From", o.z1, "m MSL", 0.5) + numIn("z2", "To", o.z2, "m MSL", 0.5) + numIn("dz", "Element height", o.dz, "m", 0.1) + numIn("nth", "Elements around", o.nth, "", 8) +
+      `<button class="btn bl-go" type="button" data-run>Run ULS simulation</button>${runBox()}</div><div class="bl-res" data-res>${r ? "" : `<p class="muted">Run the simulation to see the time histories, the moment envelope and the shell stresses.</p>`}</div></div>`;
+    host.querySelector("[data-run]").addEventListener("click", async (e) => {
+      const inp = readO(host); e.target.disabled = true; host.querySelector("[data-log]").innerHTML = "";
+      const stg = stageLog(host, ["Focused-wave kinematics (NewWave, stretched to the crest)", inp.breaking ? "Breaking-wave slam: Wienke–Oumeraci impulse on the curled crest" : "Non-breaking: Morison inertia and drag only", "Beam model: 120 s time domain, nonlinear p-y, aero-elastic rotor", `Shell submodel: ${Math.round((inp.z2 - inp.z1) / inp.dz) * inp.nth} elements, kinematically coupled to the beam at ${fmt(inp.z1, 1)} and ${fmt(inp.z2, 1)} m`, "Checks: yield, shell buckling (EN 1993-1-6), mudline rotation"], 420);
+      const res = await SOLVERS.uls(TT.get(bSel), inp); await stg;
+      RUNS.set(bSel + ":uls", { key: runKey(), input: inp, result: res }); e.target.disabled = false; ulsResults(host);
+    });
+    if (r) ulsResults(host);
+  }
+  function ulsResults(host) {
+    const r = RUNS.get(bSel + ":uls"), res = r.result, box = host.querySelector("[data-res]"), uy = res.smax / res.fy, ub = res.sxmax * 1.1 / res.scr;
+    const pill = (u) => `<span class="pill ${u < 0.8 ? "green" : u < 1 ? "amber" : "red"}">${fmt(u, 2)}</span>`;
+    box.innerHTML = stale(r) + `<div class="live-now">${[["Max wave", fmt(res.Hmax, 1) + " m", "crest " + fmt(res.crest, 1) + " m"], ["Peak slam force", fmt(res.Fslam / 1e6, 1) + " MN", res.Fslam ? "over " + fmt(res.slamT * 1000, 0) + " ms" : "no breaking"], ["Mudline moment", fmt(Math.max(...res.hist.mmud), 0) + " MN·m", "peak"],
+      ["Von Mises, max", fmt(res.smax, 0) + " MPa", "at " + fmt(res.crit.z, 1) + " m"], ["Yield utilisation", pill(uy), "f<sub>y</sub>/γ<sub>M</sub> " + fmt(res.fy, 0) + " MPa"], ["Buckling utilisation", pill(ub), "σ<sub>cr</sub> " + fmt(res.scr, 0) + " MPa"]].map(([k, v, s2]) => `<div><span class="k">${k}</span><span class="v mono">${v}</span><span class="muted" style="font-size:0.72rem">${s2}</span></div>`).join("")}</div>` +
+      `<div class="bl-split"><div><div class="bl-3dp" data-v></div>${cbar(0, res.smax, "MPa")}<p class="cap">Shell submodel at the peak: von Mises stress, deformation exaggerated. ${res.elements.toLocaleString()} shell elements between ${fmt(res.z1, 1)} and ${fmt(res.z2, 1)} m.</p></div><div data-env></div></div>` +
+      `<div data-h1></div><div class="grid2"><div data-h2></div><div data-h3></div></div>` +
+      `<div class="tbl-wrap"><table class="list bl-chk"><tbody>${[["Yield (von Mises, γ<sub>f</sub> " + r.input.gf + ")", fmt(res.smax, 0) + " MPa of " + fmt(res.fy, 0), uy], ["Shell buckling, axial (α " + fmt(0.62 / 2.91, 2) + ", quality class B)", fmt(res.sxmax, 0) + " MPa × 1.1 of " + fmt(res.scr, 0), ub], ["Mudline rotation", fmt(res.rot, 3) + "° of 0.25°", res.rot / 0.25]].map(([a, b, u]) => `<tr><td>${a}</td><td class="mono">${b}</td><td class="r">${pill(u)}</td></tr>`).join("")}</tbody></table></div>`;
+    const H = res.hist;
+    chart(box.querySelector("[data-h1]"), { series: [{ x: H.t, y: H.eta, color: "--sea", width: 1.6 }], xl: "time (s)", yl: "surface elevation (m)", h: 150, xd: [40, 80], label: "Wave at the structure", vlines: res.Fslam ? [{ x: 60 - 0.15, color: "--crit", label: "slam" }] : [] });
+    chart(box.querySelector("[data-h2]"), { series: [{ x: H.t, y: H.shear, color: "--warn", width: 1.4 }], xl: "time (s)", yl: "base shear (MN)", w: 420, h: 180, xd: [40, 90], label: "Base shear" });
+    chart(box.querySelector("[data-h3]"), { series: [{ x: H.t, y: H.mmud, color: "--accent", width: 1.4 }], xl: "time (s)", yl: "mudline moment (MN·m)", w: 420, h: 180, xd: [40, 90], label: "Mudline moment" });
+    chart(box.querySelector("[data-env]"), { series: [{ x: res.env.map((v) => v / 1e6), y: res.zc, color: "--accent", width: 2 }], xl: "moment envelope (MN·m)", yl: "elevation (m)", w: 320, h: 360, label: "Moment envelope", hlines: [{ y: 0, label: "MSL", color: "--sea" }, { y: -res.depth, label: "seabed", color: "--warn" }] });
+    // shell view
+    const ty = TT.get(bSel), nz = res.field.length - 1, nth = res.nth, pos = [], col = [], idx = [], B = res.B, md = res.md;
+    const uAt = (z) => { const zc = res.zc; let i = 0; while (i < zc.length - 2 && zc[i + 1] < z) i++; return 0; };
+    const v = V3("uls", box.querySelector("[data-v]"), { target: [0, (res.z1 + res.z2) / 2, 0], pos: [(res.z2 - res.z1) * 0.9, (res.z1 + res.z2) / 2 + 6, (res.z2 - res.z1) * 1.1] }); if (!v) return;
+    const thW = (r.input.waveDir - r.input.windDir) * Math.PI / 180, dent = (z, th) => (r.input.breaking ? 0.6 * Math.exp(-(((z - (res.crest - r.input.lambda * res.crest / 2)) / (0.45 * B.gm.D(0))) ** 2)) * Math.max(0, Math.cos(th - thW)) ** 3 : 0);
+    for (let a = 0; a <= nz; a++) { const z = res.zs[a], R2 = B.gm.D(z) / 2, sway = 0.6 * (z - res.z1) / (res.z2 - res.z1);
+      for (let b = 0; b <= nth; b++) { const th = 2 * Math.PI * b / nth, rr = R2 - dent(z, th); pos.push(rr * Math.cos(th) + sway, z, -rr * Math.sin(th)); col.push(...turbo(res.field[a][b % nth] / res.smax)); } }
+    for (let a = 0; a < nz; a++) for (let b = 0; b < nth; b++) { const i0 = a * (nth + 1) + b; idx.push(i0, i0 + 1, i0 + nth + 1, i0 + 1, i0 + nth + 2, i0 + nth + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+    v.scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, side: THREE.DoubleSide })));
+    const wire = new THREE.LineSegments(new THREE.WireframeGeometry(g), new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.06 })); v.scene.add(wire);
+    const sea = new THREE.Mesh(new THREE.RingGeometry(B.gm.D(0) * 0.55, B.gm.D(0) * 2.6, 64), new THREE.MeshBasicMaterial({ color: 0x2a6f97, transparent: true, opacity: 0.25, side: THREE.DoubleSide })); sea.rotation.x = -Math.PI / 2; sea.position.y = 0; v.scene.add(sea);
+    const W2 = B.gm.D(0) * 2.6; const bed = new THREE.Mesh(new THREE.RingGeometry(B.gm.D(-res.depth) * 0.55, W2, 64), new THREE.MeshBasicMaterial({ color: 0xb08a46, transparent: true, opacity: 0.35, side: THREE.DoubleSide })); bed.rotation.x = -Math.PI / 2; bed.position.y = -res.depth; v.scene.add(bed);
+  }
+
+  // ----- fatigue lookup -----
+  const FBINS = [["Hs", "H<sub>s</sub>", "m", "0.5, 1.5, 2.5, 3.5, 4.5, 5.5"], ["Tp", "T<sub>p</sub>", "s", "4, 6, 8, 10, 12"], ["gamma", "JONSWAP γ", "", "1.0, 3.3"], ["U10", "U<sub>10</sub>", "m/s", "2, 6, 10, 14, 18, 22, 26"], ["wdir", "Wind from", "°", "0, 90, 180, 270"], ["vdir", "Waves from", "°", "0, 90, 180, 270"]];
+  const FLOCS = [["tower_base", "Tower base weld"], ["door", "Door frame"], ["flange", "Flange bolts"], ["mudline", "Mudline weld"], ["pile", "Pile −6 m"]];
+  let fatJob = 0;
+  function fatView() {
+    const host = document.getElementById("bl-pane-fat"), ty = TT.get(bSel), r = RUNS.get(bSel + ":fat"), t = T[bSite] || T[0];
+    const o = (r && r.input) || { bins: Object.fromEntries(FBINS.map(([k, , , v]) => [k, v])), locs: ["tower_base", "door", "flange", "mudline", "pile"], all: true };
+    const parse = (s2) => s2.split(/[,\s]+/).map(Number).filter((x) => isFinite(x)).slice(0, 24);
+    host.innerHTML = `<div class="bl-an"><div class="bl-g bl-in-p"><div class="bl-hd2"><h3>Fatigue lookup table</h3>${PLACEHOLDER}</div><p class="cap">Six time-domain runs (wave and turbulence seeds) per combination of the bins below: turbulent wind with blade-element momentum aerodynamics inside cut-in to cut-out, idling otherwise. Damage per hour at each location, with a 95 % interval from the six seeds. Site: ${t.spec.name}.</p>` +
+      FBINS.map(([k, lab, u]) => `<label class="bl-f bl-fb"><span>${lab}${u ? ` <span class="muted">(${u})</span>` : ""}</span><input type="text" data-b="${k}" value="${o.bins[k]}"></label>`).join("") +
+      `<div class="bl-sub">Locations</div><div class="bl-locs">${FLOCS.map(([k, l]) => `<label><input type="checkbox" data-l="${k}"${o.locs.includes(k) ? " checked" : ""}> ${l}</label>`).join("")}<label><input type="checkbox" data-l="all"${o.all ? " checked" : ""}> All elevations, 8 azimuths</label></div>` +
+      `<p class="mono bl-count" data-count></p><div class="bl-row"><button class="btn bl-go" type="button" data-run>Run all combinations</button><button class="btn" type="button" data-stop hidden>Stop</button></div><div class="bl-run"><div class="bl-prog"><i data-bar></i></div><p class="muted" data-pmsg></p></div></div>` +
+      `<div class="bl-res" data-res>${r ? "" : `<p class="muted">Enter the bins and run. The table then gives the damage for any hour of environment, with its uncertainty.</p>`}</div></div>`;
+    const count = () => { const b = {}; FBINS.forEach(([k]) => { b[k] = parse(host.querySelector(`[data-b="${k}"]`).value); }); const n = FBINS.reduce((p, [k]) => p * Math.max(1, b[k].length), 1);
+      host.querySelector("[data-count]").textContent = `${n.toLocaleString()} combinations × 6 seeds = ${(6 * n).toLocaleString()} one-hour runs · about ${fmt(6 * n * 0.25 / 24, 0)} CPU-days with the full solver (15 min each)`; return b; };
+    host.querySelectorAll("[data-b]").forEach((x) => x.addEventListener("input", count)); count();
+    host.querySelector("[data-run]").addEventListener("click", async (e) => {
+      const bins = count(); if (FBINS.some(([k]) => !bins[k].length)) { host.querySelector("[data-pmsg]").textContent = "Every variable needs at least one value."; return; }
+      const locs = FLOCS.map(([k]) => k).filter((k) => host.querySelector(`[data-l="${k}"]`).checked), all = host.querySelector('[data-l="all"]').checked;
+      if (!locs.length && !all) { host.querySelector("[data-pmsg]").textContent = "Choose at least one location."; return; }
+      const job = ++fatJob, stop = host.querySelector("[data-stop]"); e.target.disabled = true; stop.hidden = false;
+      stop.onclick = () => { fatJob++; };
+      const t0 = performance.now(), inp = { bins: Object.fromEntries(FBINS.map(([k]) => [k, host.querySelector(`[data-b="${k}"]`).value])), locs, all };
+      const res = await SOLVERS.fatigue(TT.get(bSel), { bins, locs, all }, (f) => { if (!host.isConnected) return; host.querySelector("[data-bar]").style.width = (100 * f) + "%"; host.querySelector("[data-pmsg]").textContent = `${fmt(100 * f, 0)} % · ${((performance.now() - t0) / 1000).toFixed(1)} s`; }, () => job !== fatJob);
+      e.target.disabled = false; stop.hidden = true;
+      if (!res) { host.querySelector("[data-pmsg]").textContent = "Stopped."; return; }
+      RUNS.set(bSel + ":fat", { key: runKey(), input: inp, result: res, ui: { loc: 0, filt: {}, sortBy: "d" } }); fatResults(host);
+    });
+    if (r) fatResults(host);
+  }
+  function fatResults(host) {
+    const r = RUNS.get(bSel + ":fat"), res = r.result, ui = r.ui, box = host.querySelector("[data-res]"), ty = TT.get(bSel);
+    const hot = res.locs.map((L, i) => [L, i]).filter(([L]) => !L.field), names = ["Hs", "Tp", "gamma", "U10", "wdir", "vdir"], fmtD = (v) => (v > 0 ? v.toExponential(2) : "0");
+    if (ui.loc >= res.nL) ui.loc = 0;
+    const sel = (k, i) => `<select data-f="${k}"><option value="">all</option>${res.bins[k].map((v) => `<option value="${v}"${ui.filt[k] === v ? " selected" : ""}>${v}</option>`).join("")}</select>`;
+    const rows = []; res.combos.forEach((c, ci) => { if (names.every((k, i) => ui.filt[k] === undefined || c[i] === ui.filt[k])) rows.push(ci); });
+    const D3 = (ci, l) => { const o = (ci * res.nL + l) * 3; return [res.out[o], res.out[o + 1], res.out[o + 2]]; };
+    rows.sort((a, b) => D3(b, ui.loc)[0] - D3(a, ui.loc)[0]);
+    const AZ = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+    box.innerHTML = stale(r) + `<div class="bl-row"><label class="sel">Location<select data-loc>${res.locs.map((L, i) => (L.field && i % 6 ? "" : `<option value="${i}"${i === ui.loc ? " selected" : ""}>${L.name}</option>`)).join("")}</select></label>` +
+      `<span class="muted">${res.combos.length.toLocaleString()} combinations · ${res.nL} locations · ${rows.length.toLocaleString()} shown</span><button class="btn" type="button" data-csv style="margin-left:auto">Export table (CSV)</button></div>` +
+      `<div class="grid2"><div><h4 class="bl-h">Damage per hour, H<sub>s</sub> × T<sub>p</sub></h4><div data-heat></div><p class="cap">Mean over the bins of the other variables (or the filtered value). Log colour scale.</p></div>` +
+      `<div><h4 class="bl-h">One hour of environment → damage</h4><div class="bl-q">${[["Hs", 2.5], ["Tp", 8], ["gamma", 3.3], ["U10", 12], ["wdir", 240], ["vdir", 260]].map(([k, v]) => `<label>${FBINS.find((b) => b[0] === k)[1]}<input type="number" data-q="${k}" value="${v}" step="any"></label>`).join("")}</div><div data-qout></div></div></div>` +
+      (res.locs.some((L) => L.field) ? `<h4 class="bl-h">Damage field along the structure</h4><div data-prof></div><p class="cap">For the top row of the table below: worst azimuth at each elevation, mean and 95 % interval over the six seeds.</p>` : "") +
+      `<h4 class="bl-h">Lookup table</h4><div class="tbl-wrap bl-lut"><table class="list"><thead><tr>${names.map((k, i) => `<th>${FBINS[i][1]}<br>${sel(k, i)}</th>`).join("")}<th class="r">Damage / h</th><th class="r">95 % interval</th><th>Azimuth</th></tr></thead><tbody>` +
+      rows.slice(0, 120).map((ci) => { const c = res.combos[ci], [m, lo, hi] = D3(ci, ui.loc); return `<tr>${c.map((v) => `<td class="mono">${v}</td>`).join("")}<td class="r mono">${fmtD(m)}</td><td class="r mono muted" style="white-space:nowrap">${fmtD(lo)} – ${fmtD(hi)}</td><td class="mono">${AZ[res.az[ci * res.nL + ui.loc]]}</td></tr>`; }).join("") +
+      `</tbody></table></div><p class="cap">Sorted by damage; first 120 rows. Damage per hour against the DNV S-N curve for the location (D in air, D in seawater with cathodic protection, bolts detail 50). The interval is for a single hour: six seeds give the scatter, Student-t on the log damage.</p>`;
+    box.querySelector("[data-loc]").addEventListener("change", (e) => { ui.loc = +e.target.value; fatResults(host); });
+    box.querySelectorAll("[data-f]").forEach((s2) => s2.addEventListener("change", () => { const v = s2.value; if (v === "") delete ui.filt[s2.dataset.f]; else ui.filt[s2.dataset.f] = +v; fatResults(host); }));
+    // heat map
+    const hsB = res.bins.Hs, tpB = res.bins.Tp, cell = {}; rows.forEach((ci) => { const c = res.combos[ci], k = c[0] + "|" + c[1]; (cell[k] = cell[k] || []).push(D3(ci, ui.loc)[0]); });
+    const vals = Object.values(cell).map((a) => a.reduce((s2, v) => s2 + v, 0) / a.length).filter((v) => v > 0), lo = Math.log10(Math.min(...vals)), hi = Math.log10(Math.max(...vals));
+    const cw = 52, ch = 26, Wd = 60 + cw * tpB.length, Hd = 30 + ch * hsB.length;
+    box.querySelector("[data-heat]").innerHTML = `<svg viewBox="0 0 ${Wd} ${Hd}" class="bl-heat" role="img" aria-label="Damage heat map">` + hsB.map((h, i) => tpB.map((tp, j) => { const a = cell[h + "|" + tp], v = a ? a.reduce((s2, x) => s2 + x, 0) / a.length : 0, u = v > 0 ? (Math.log10(v) - lo) / Math.max(hi - lo, 1e-9) : 0, [cr, cg, cb] = turbo(0.08 + 0.9 * u);
+        return `<rect x="${60 + j * cw}" y="${Hd - 30 - (i + 1) * ch}" width="${cw - 2}" height="${ch - 2}" rx="2" fill="rgb(${[cr, cg, cb].map((x) => Math.round(255 * x)).join(",")})"><title>Hs ${h} m, Tp ${tp} s: ${fmtD(v)} per hour</title></rect>`; }).join("") +
+        `<text x="54" y="${Hd - 30 - (i + 0.5) * ch + 4}" text-anchor="end" font-size="10" fill="${css("--muted")}" font-family="IBM Plex Mono, monospace">${h}</text>`).join("") +
+      tpB.map((tp, j) => `<text x="${60 + j * cw + cw / 2}" y="${Hd - 14}" text-anchor="middle" font-size="10" fill="${css("--muted")}" font-family="IBM Plex Mono, monospace">${tp}</text>`).join("") +
+      `<text x="${60 + cw * tpB.length / 2}" y="${Hd - 1}" text-anchor="middle" font-size="10" fill="${css("--muted")}">T<tspan baseline-shift="sub" font-size="8">p</tspan> (s)</text><text x="10" y="${(Hd - 30) / 2}" font-size="10" fill="${css("--muted")}" transform="rotate(-90 10 ${(Hd - 30) / 2})" text-anchor="middle">Hs (m)</text></svg>` + cbar(Math.pow(10, lo), Math.pow(10, hi), "per hour");
+    // query: nearest bin per variable (directions on the circle)
+    const q = () => { const want = Object.fromEntries([...box.querySelectorAll("[data-q]")].map((x) => [x.dataset.q, +x.value]));
+      const pickB = (k) => res.bins[k].reduce((b, v) => { const dd = (x) => (k === "wdir" || k === "vdir" ? Math.min(Math.abs(x - want[k]) % 360, 360 - Math.abs(x - want[k]) % 360) : Math.abs(x - want[k])); return dd(v) < dd(b) ? v : b; }, res.bins[k][0]);
+      const cb = names.map(pickB), ci = res.combos.findIndex((c) => c.every((v, i) => v === cb[i]));
+      box.querySelector("[data-qout]").innerHTML = `<p class="cap">Nearest bin: ${names.map((k, i) => `${FBINS[i][1]} ${cb[i]}`).join(" · ")}</p><div class="tbl-wrap"><table class="list"><thead><tr><th>Location</th><th class="r">Damage this hour</th><th class="r">95 % interval</th><th class="r">Design-life days</th></tr></thead><tbody>` +
+        hot.map(([L, l]) => { const [m, a, b] = D3(ci, l); return `<tr><td>${L.name}</td><td class="r mono">${fmtD(m)}</td><td class="r mono muted" style="white-space:nowrap">${fmtD(a)} – ${fmtD(b)}</td><td class="r mono">${fmt(m * 20 * 365 * 24 / 24, 3)}</td></tr>`; }).join("") + `</tbody></table></div>` +
+        `<p class="cap">Design-life days: this hour's share of a 20-year life, in days. Interpolating between bins is the next step; this picks the nearest.</p>`; };
+    box.querySelectorAll("[data-q]").forEach((x) => x.addEventListener("input", q)); q();
+    // damage field profile
+    const pf = box.querySelector("[data-prof]");
+    if (pf && rows.length) { const ci = rows[0], fl = res.locs.map((L, i) => [L, i]).filter(([L]) => L.field), zs = fl.map(([L]) => L.z), m = fl.map(([, l]) => D3(ci, l));
+      chart(pf, { series: [{ x: zs, y: m.map((v) => Math.log10(Math.max(v[0], 1e-30))), color: "--accent", width: 2 }], areas: [{ x: zs, lo: m.map((v) => Math.log10(Math.max(v[1], 1e-30))), hi: m.map((v) => Math.log10(Math.max(v[2], 1e-30))), color: "--accent", opacity: 0.2 }],
+        xl: "elevation (m MSL)", yl: "log₁₀ damage per hour", h: 200, label: "Damage along the structure", vlines: [{ x: 0, label: "MSL", color: "--sea" }, { x: -res.depth, label: "seabed", color: "--warn" }, { x: ty.z_interface, label: "flange", color: "--muted" }] }); }
+    box.querySelector("[data-csv]").addEventListener("click", () => {
+      const head = names.concat(res.locs.flatMap((L) => [L.name + " mean", L.name + " p2.5", L.name + " p97.5"])).join(",");
+      const lines = res.combos.map((c, ci) => c.concat(res.locs.flatMap((_, l) => D3(ci, l).map((v) => v.toExponential(4)))).join(","));
+      const data = head + "\n" + lines.join("\n"), filename = (ty.name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "turbine") + "_fatigue_lookup.csv";
+      const use = window.claude && window.claude.use; const fallback = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type: "text/csv" })); a.download = filename; document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); };
+      if (!use) { fallback(); return; } Promise.resolve(use("downloads")).then((dl) => (dl ? dl.save({ filename, data }) : fallback())).catch(() => {});
+    });
+  }
   // ---------- turbine builder ----------
   const bldEl = document.getElementById("builder");
   const BF = [
@@ -3722,9 +4208,11 @@ details.sec > * + * { margin-top: 8px; }
     ty.z_hub = Math.max(ty.z_hub, ty.z_interface + 40); ty.rated_rpm = Math.max(ty.rated_rpm, ty.min_rpm + 0.1); ty.cut_out = Math.max(ty.cut_out, ty.cut_in + 8);
     for (const k of ["mp", "tw"]) ty[k] = (Array.isArray(ty[k]) ? ty[k] : []).slice(0, 10).map((st) => ({ z: isFinite(+st.z) ? +st.z : 0, D: Math.min(15, Math.max(2, +st.D || 6)), t: Math.min(0.2, Math.max(0.01, +st.t || 0.04)) }));
     TT.norm(ty);
-    ty.soil = (ty.soil || []).slice(0, 6); if (!ty.soil.length) ty.soil = [{ to: 200, kind: "sand", phi: 35, gamma: 10, k: 22, su: 60, su_grad: 3, eps50: 0.01 }];
+    ty.soil = (ty.soil || []).slice(0, 6);
+    setTimeout(() => 0);  if (!ty.soil.length) ty.soil = [{ to: 200, kind: "sand", phi: 35, gamma: 10, k: 22, su: 60, su_grad: 3, eps50: 0.01 }];
     let last = 0; ty.soil.forEach((l, i) => { l.kind = l.kind === "clay" ? "clay" : "sand"; l.to = i === ty.soil.length - 1 ? 200 : Math.max(last + 0.5, +l.to || last + 5); last = l.to;
       SOILF[l.kind].forEach(([k, , , lo, hi]) => { const v = +l[k]; l[k] = Math.min(hi, Math.max(lo, isFinite(v) ? v : lo)); }); });
+    fdnClean(ty);
     return ty;
   }
   function bCompute(ty) {
@@ -3792,8 +4280,10 @@ details.sec > * + * { margin-top: 8px; }
       ["Soil uncertainty (stiffness ½× to 2×)", `f₁ ${fmt(r.lo.f1, 3)}–${fmt(r.hi.f1, 3)} Hz`, ok(r.lo.f1 > p1 && r.hi.f1 < p3)],
       ["Tower-base stress, ultimate", `${fmt(r.sTb, 0)} MPa of ${fmt(fy, 0)}`, amb(r.sTb / fy, 0.8, 1)],
       ["Mudline stress, ultimate", `${fmt(r.sMud, 0)} MPa of ${fmt(fy, 0)}`, amb(r.sMud / fy, 0.8, 1)],
-      ["Pile stress in the soil, ultimate", `${fmt(r.sPile, 0)} MPa at ${fmt(-r.zPile, 1)} m below the seabed`, amb(r.sPile / fy, 0.8, 1)],
+      r.B.base ? ["Pile stress in the soil, ultimate", "not modelled with this foundation model", `<span class="pill">n/a</span>`] : ["Pile stress in the soil, ultimate", `${fmt(r.sPile, 0)} MPa at ${fmt(-r.zPile, 1)} m below the seabed`, amb(r.sPile / fy, 0.8, 1)],
       ["Mudline rotation, ultimate (linear soil)", `${fmt(r.rot, 3)}° of 0.25° (0.5° less 0.25° installation tolerance)`, amb(r.rot / 0.25, 0.8, 1)],
+      r.B.fm === "macro" && ty.fdn.macro ? ["Lateral capacity (macro-element)", `load ${fmt(r.Htot / 1e6, 1)} MN, H<sub>ult</sub> ${fmt(ty.fdn.macro.Hult, 1)} MN`, amb(r.Htot / 1e6 / ty.fdn.macro.Hult, 0.8, 1)] :
+      r.B.base || r.B.fm === "py_lin" ? ["Lateral soil resistance", "no capacity in this foundation model", `<span class="pill">n/a</span>`] :
       ["Lateral soil resistance (rigid-pile bound)", `load ${fmt(r.Htot / 1e6, 1)} MN, Σ p<sub>u</sub> ${fmt(r.Hcap / 1e6, 0)} MN`, amb(r.Htot / (0.5 * r.Hcap), 0.8, 1)],
       ["Shell slenderness D/t", `pile ${fmt(r.dtp, 0)}, tower base ${fmt(r.dtb, 0)}, tower top ${fmt(r.towerTop, 0)}`, amb(Math.max(r.dtp, r.dtb, r.towerTop) / 300, 0.8, 1)],
       ["Embedment ratio L/D", fmt(ty.embedment / ty.D_pile, 1), ok(ty.embedment / ty.D_pile >= 3)],
@@ -3842,7 +4332,7 @@ details.sec > * + * { margin-top: 8px; }
     const inp = (k, lab, unit, sc, step) => `<label class="bl-f"><span>${lab}</span><span class="bl-in"><input type="number" data-k="${k}" step="${step}" value="${+(ty[k] / sc).toPrecision(5)}"${ro ? " disabled" : ""}><i>${unit}</i></span></label>`;
     host.innerHTML = `<label class="bl-f bl-name"><span>Name</span><input type="text" data-k="name" value="${ty.name.replace(/"/g, "&quot;")}"${ro ? " disabled" : ""}></label>` +
       (ro ? `<p class="hint bl-ro">Built-in types are read-only. <button class="btn" type="button" data-dup>Duplicate to edit</button></p>` : "") +
-      `<fieldset class="bl-g"><legend>Soil (from the seabed down)</legend><div class="bl-soil">${ty.soil.map((l, i) => `<div class="bl-l" data-i="${i}"><select data-sk="kind"${ro ? " disabled" : ""}><option value="sand"${l.kind === "sand" ? " selected" : ""}>Sand</option><option value="clay"${l.kind === "clay" ? " selected" : ""}>Clay</option></select>` +
+      fdnHTML(ty, ro) + `<fieldset class="bl-g"><legend>Soil layers (from the seabed down)</legend><div class="bl-soil">${ty.soil.map((l, i) => `<div class="bl-l" data-i="${i}"><select data-sk="kind"${ro ? " disabled" : ""}><option value="sand"${l.kind === "sand" ? " selected" : ""}>Sand</option><option value="clay"${l.kind === "clay" ? " selected" : ""}>Clay</option></select>` +
         `<label>to <input type="number" data-sk="to" step="0.5" value="${i === ty.soil.length - 1 ? "" : l.to}" placeholder="toe"${ro || i === ty.soil.length - 1 ? " disabled" : ""}> m</label>` +
         SOILF[l.kind].map(([k, lb, u, , , st]) => `<label>${lb} <input type="number" data-sk="${k}" step="${st}" value="${l[k]}"${ro ? " disabled" : ""}>${u ? " " + u : ""}</label>`).join("") +
         (ro || ty.soil.length === 1 ? "" : `<button class="btn icon" type="button" data-del="${i}" aria-label="Remove layer">✕</button>`) + `</div>`).join("")}</div>` +
@@ -3851,6 +4341,7 @@ details.sec > * + * { margin-top: 8px; }
         (g === "Tower-base flange" ? `<label class="bl-f"><span>Bolt size</span><span class="bl-in"><select data-k="bolt_d"${ro ? " disabled" : ""}>${Object.keys(TFE.BOLT_AS).map((b) => `<option value="${b}"${+b === ty.bolt_d ? " selected" : ""}>M${b} 10.9</option>`).join("")}</select></span></label>` : "") +
         (g === "Rotor and nacelle" && !ro ? `<button class="btn" type="button" data-jest>Estimate inertia from the masses</button>` : "") + `</fieldset>`).join("");
     const edit = (fn) => { if (ro) return; const nt = bClean(JSON.parse(JSON.stringify(TT.get(bSel)))); fn(nt); bClean(nt); TT.upsert(nt); clearTimeout(bTimer); bTimer = setTimeout(() => { bList(); bResults(TT.get(bSel)); bFarm(); }, 300); };
+    fdnWire(host, edit, ro);
     host.querySelectorAll("[data-k]").forEach((x) => x.addEventListener("change", () => edit((nt) => {
       const k = x.dataset.k; if (k === "name") { nt.name = x.value.trim() || "Unnamed type"; return; }
       if (k === "bolt_d") { nt.bolt_d = +x.value; return; }
@@ -3887,7 +4378,8 @@ details.sec > * + * { margin-top: 8px; }
     host.querySelectorAll("[data-ti]").forEach((s) => s.addEventListener("change", () => { TT.assign(+s.dataset.ti, s.value); bList(); bFarm(); }));
     host.querySelector("[data-all]").addEventListener("click", () => { T.forEach((t, i) => TT.assign(i, bSel)); bList(); bFarm(); });
   }
-  function bOpenSel() { bList(); bForm(); document.getElementById("bl-out").innerHTML = `<p class="muted">Solving the model…</p>`; setTimeout(() => bResults(TT.get(bSel)), 20); bFarm(); }
+  function bOpenSel() { bList(); bForm(); document.getElementById("bl-out").innerHTML = `<p class="muted">Solving the model…</p>`; setTimeout(() => bResults(TT.get(bSel)), 20); bFarm(); if (bTab !== "design") bShowTab(bTab); }
+  document.querySelectorAll("#builder [data-btab]").forEach((b) => b.addEventListener("click", () => bShowTab(b.dataset.btab)));
   function openBuilder(ti) {
     bldEl.hidden = false; bSite = ti !== undefined && ti >= 0 ? ti : (current >= 0 ? current : 0);
     bSel = bSel && TT.get(bSel) ? bSel : TT.typeOf(bSite).id;
