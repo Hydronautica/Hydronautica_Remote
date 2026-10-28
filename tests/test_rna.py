@@ -51,3 +51,42 @@ def test_assess_runs():
     assert "main_bearing" in keys and "bolts" in keys
     gears = next(c for c in out if c["key"] == "gears")
     assert gears["ageing"] < 1e-3          # a parked rotor does not age the gears
+
+
+def test_rbe3_resultant():
+    from rna.fe import rbe3
+    rng = np.random.default_rng(0)
+    X = rng.random((40, 3))
+    F, M, p = np.array([1.0, -2, 3]), np.array([0.5, 0.2, -1]), np.array([2.0, 0, 1])
+    f = rbe3(X, p, F, M)
+    assert np.allclose(f.sum(0), F)
+    assert np.allclose(np.cross(X - p, f).sum(0), M)
+
+
+def test_voxel_bar_axial_stiffness_and_reaction():
+    from rna.fe import VoxelModel
+    L, a = 1.0, 0.2
+    m = VoxelModel(lambda p: np.ones(p.shape[:-1], bool), ((0, L), (0, a), (0, a)), 0.05, E=200e9, nu=0.0)
+    m.fix("root", m.where(lambda X: X[:, 0] < 1e-9))
+    tip = m.where(lambda X: X[:, 0] > L - 1e-9)
+    U = m.solve(m.load(tip, [L, a / 2, a / 2], F=[1e6, 0, 0]))
+    u_tip = U[3 * tip].mean()
+    # equal forces on every tip node (corners included) add a little local flexibility at the loaded end
+    assert np.isclose(u_tip, 1e6 * L / (200e9 * a * a), rtol=0.04)
+    R = m.reaction("root", np.array([0, a / 2, a / 2]))
+    assert np.allclose(R[:3, 0], [1e6, 0, 0], atol=1.0)
+
+
+def test_chain_closes_if_built():
+    import os
+    import pytest
+    from rna.chain import closure, load, run, turbine_for
+    path = os.path.join(os.path.dirname(__file__), "..", "demo", "rna", "fe_chain.npz")
+    if not os.path.exists(path):
+        pytest.skip("run examples/rna_fe_chain.py first")
+    fe = load(path)
+    tb = turbine_for(fe)
+    for kind in ("op", "storm"):
+        rec = synthetic(kind, tb)
+        c = closure(rec, run(rec, fe))
+        assert c["hub"] < 0.02 and c["tower"] < 0.02

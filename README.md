@@ -400,7 +400,22 @@ python examples/higher_order_sweep.py     # linear vs 2nd order vs Dysthe, swept
 - **Castings:** unit-load FE fields, critical-plane rainflow, then S-N (`unit_load_hotspot`).
 
 `rna.synthetic` builds illustrative operating and parked-storm records blade by blade and
-reduces them to hub-centre and tower-top loads. `demo/rna/build.py` combines these with the
-bedplate FE fields into the 3D page. Run `examples/rna_bedplate_fe.py` first; it writes
-`bedplate.json` in about 40 s. All sizes and ratings are representative, not data for a
-real turbine.
+reduces them to hub-centre and tower-top loads.
+
+**FE load chain.** `examples/rna_fe_chain.py` builds and solves three voxel FE models with the
+small hexahedral FE library in `rna.fe` (about 6 minutes in total):
+
+- **hub:** 21 unit cases, rotor frame;
+- **drivetrain:** shaft plus gearbox housing, 9 cases;
+- **bedplate:** 15 cases.
+
+Each model's support reactions per unit load are stored as a matrix. `rna.chain.run` multiplies
+these matrices to pass the blade-root loads down to the tower top, and `rna.chain.closure` checks
+the result against rigid-body statics (agreement within 1 %). `rna.chain.assess_chain` combines:
+
+- FE hot spots for the hub, the gearbox housing and the bedplate;
+- rotating-bending fatigue at material points on the shaft;
+- the formula-based bearing, gear and bolt checks, fed by the chain's interface loads.
+
+`demo/rna/build.py` packs all of this into the 3D page. All sizes and ratings are
+representative, not data for a real turbine.

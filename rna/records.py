@@ -22,10 +22,10 @@ class Turbine:
     r_root: float = 1.85               # blade-root flange radius from the hub centre, m
     blade_mass: float = 60e3
     blade_cg: float = 30.0             # from the root, m
-    hub_mass: float = 100e3
+    hub_mass: float = 136e3            # matches the hub FE model
     nacelle_mass: float = 400e3        # everything on the tower top except the rotor
     nacelle_cg: tuple = (1.0, 2.0, 0.0)
-    hub: tuple = (-6.2, 2.55, 0.0)     # hub centre (matches the bedplate FE model)
+    hub: tuple = (-7.6, 2.55, 0.0)     # hub centre (matches the FE models)
     yaw_centre: tuple = (-0.2, 0.0, 0.0)
     x_main_bearing: float = -3.2
     x_gear_bearing: float = -1.2       # gearbox front carrier bearing, the second shaft support

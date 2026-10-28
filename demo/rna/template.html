@@ -1,10 +1,11 @@
-<title>RNA Unit-Load Map</title>
+<title>RNA Load Chain</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500;75..100,700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: engineering model viewer. A geared nacelle with a real FE bedplate mesh on the left;
-   the model inputs or live results on the right; load and hot-spot traces below. */
+/* Layout: engineering model viewer. Three FE parts (hub, drivetrain, bedplate) of a geared nacelle on
+   the left, exploded to show the load chain or assembled to show stress; the chain, unit cases or
+   component life on the right; traces under the 3D view. */
 :root {
   --bg: #eef1f3;
   --panel: #f9fafb;
@@ -99,23 +100,34 @@ aside { display: grid; gap: 12px; min-width: 0; }
 .scale div span { position: absolute; transform: translateX(-50%); }
 .tag { font: 0.72rem var(--font-data); color: var(--muted); }
 @media (max-width: 520px) { .crow, .scale { grid-template-columns: 8.5rem minmax(0, 1fr) 3.8rem; } }
+.chain { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 2px 10px; font-size: 0.8rem; align-items: baseline; }
+.chain .h { font: 500 0.7rem var(--font-display); font-stretch: 80%; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.chain .v { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.chain .sep { grid-column: 1 / -1; height: 1px; background: var(--rule); margin: 3px 0; }
+.chain .chk { color: var(--muted); }
+.chain .step { color: var(--muted); font-size: 0.74rem; grid-column: 1 / -1; }
+.ok { color: var(--fy); font-weight: 600; }
+.ctl input[type=checkbox] { width: 16px; height: 16px; }
+@media (max-width: 520px) { .chain { font-size: 0.72rem; gap: 2px 6px; } }
 </style>
 
 <div class="wrap">
   <header>
-    <span class="label">Rotor–nacelle assembly · geared drivetrain, 3-point mount · representative, about 10–15 MW class</span>
-    <h1>From blade-root loads to component life</h1>
-    <p class="lede">The bedplate below is a real finite element mesh, solved once for nine unit cases; its colours are those unit fields multiplied by the loads of the moment and added up, live in your browser. The Components view takes the same blade-root loads through every other part (bearings, gears, shaft, bolts) with the standard formulas and puts them all on one scale: how fast each one is using its design life.</p>
+    <span class="label">Rotor–nacelle assembly · geared drivetrain, 3-point mount · representative, about 14 MW class</span>
+    <h1>From blade-root loads to every part, by FE</h1>
+    <p class="lede">Three finite element models (the hub, the shaft with the gearbox housing, and the bedplate), each solved once for unit loads. What one part's supports carry becomes the load on the next, so the blade-root loads from the global model run down the chain to the tower top, and every part's stress is a sum of its unit fields. The chain is checked against plain statics at the hub and the tower top.</p>
   </header>
 
   <div class="bar">
     <div class="seg" id="mode" role="group" aria-label="View">
-      <button type="button" data-mode="map" aria-pressed="false">Model inputs</button>
+      <button type="button" data-mode="chain" aria-pressed="true">Load chain</button>
       <button type="button" data-mode="unit" aria-pressed="false">Unit cases</button>
-      <button type="button" data-mode="live" aria-pressed="false">Live load history</button>
-      <button type="button" data-mode="comp" aria-pressed="true">Components</button>
+      <button type="button" data-mode="live" aria-pressed="false">Live stress</button>
+      <button type="button" data-mode="comp" aria-pressed="false">Components</button>
     </div>
-    <div class="seg small" id="unitsel" role="group" aria-label="Unit case" hidden></div>
+    <span id="unitCtl" class="bar" hidden>
+      <div class="seg" id="partsel" role="group" aria-label="Part"></div>
+    </span>
     <span id="liveCtl" class="bar">
       <label class="ctl" for="preset"><span class="label">Record</span>
         <select id="preset"><option value="op">Operating at 12 m/s</option><option value="storm">Parked storm with wave slam</option></select>
@@ -129,10 +141,11 @@ aside { display: grid; gap: 12px; min-width: 0; }
       <select id="metric"><option value="vm">von Mises</option><option value="p1">Max principal</option></select>
     </label>
   </div>
+  <div class="seg small" id="unitsel" role="group" aria-label="Unit case" hidden></div>
 
   <div class="main">
     <div class="view">
-      <div id="gl" role="img" aria-label="3D nacelle with the FE bedplate coloured by stress"></div>
+      <div id="gl" role="img" aria-label="3D view of the hub, drivetrain and bedplate FE models coloured by stress"></div>
       <span class="hint">Drag to orbit · scroll to zoom</span>
       <div class="cbar" id="cbar"><span id="cmax">–</span><div class="ramp" id="ramp"></div><span>0 MPa</span></div>
       <div class="legend" id="legend"></div>
@@ -142,174 +155,195 @@ aside { display: grid; gap: 12px; min-width: 0; }
       <div class="card" id="side"></div>
       <div class="card" id="detail" hidden></div>
       <div class="card" id="feCard">
-        <span class="label">Bedplate FE model</span>
+        <span class="label">FE models</span>
         <div class="kv" id="fe"></div>
       </div>
     </aside>
     <div class="charts" id="charts">
-      <div class="chart"><span class="label" id="loadsLabel">Hub-centre loads from the global model</span><canvas id="cLoads" aria-label="Load history"></canvas></div>
-      <div class="chart"><span class="label" id="hotLabel">Stress at the hot spot</span><canvas id="cHot" aria-label="Hot-spot stress history"></canvas></div>
+      <div class="chart"><span class="label" id="lab1">–</span><canvas id="c1" aria-label="Load history"></canvas></div>
+      <div class="chart"><span class="label" id="lab2">–</span><canvas id="c2" aria-label="Second history"></canvas></div>
     </div>
   </div>
 
-
-  <div class="eq" id="eqComp" style="white-space: normal; line-height: 1.7" hidden>ageing = damage in the record × 20 years ÷ record length &nbsp;·&nbsp; damage = Σ n<sub>i</sub> / N(S<sub>i</sub>) (rainflow + S-N) or Σ revolutions / L10(P) (bearings) &nbsp;·&nbsp; 1.0 = using life at exactly the design rate</div>
-  <div class="eq" id="eq">σ(x, t) = Fx(t)·σ<sub>Fx</sub>(x) + Fy(t)·σ<sub>Fy</sub>(x) + Fz(t)·σ<sub>Fz</sub>(x) + Mx(t)·σ<sub>Mx</sub>(x) + My(t)·σ<sub>My</sub>(x) + Mz(t)·σ<sub>Mz</sub>(x) + a<sub>x</sub>(t)·σ<sub>ax</sub>(x) + a<sub>y</sub>(t)·σ<sub>ay</sub>(x) + a<sub>z</sub>(t)·σ<sub>az</sub>(x)</div>
+  <div class="eq" id="eq" style="white-space: normal; line-height: 1.7"></div>
 
   <div class="notes">
-    <p><b>Inputs.</b> The global model gives the three blade-root loads, which add up to six loads at the hub centre in the fixed frame, plus the nacelle's accelerations. Gravity is the vertical acceleration case. The bedplate is held at the yaw bearing, and the reaction there is checked against the tower-top load from the global model.</p>
-    <p><b>Drivetrain.</b> Shaft and gearbox act as one stiff body tied to the bedplate at the main bearing (radial and axial only, so no torque) and at the two gearbox torque arms (rubber mounts). The rotor torque therefore reaches the bedplate as a push-pull pair at the torque-arm lugs, which is why the lugs light up under Mx.</p>
-    <p><b>What is representative.</b> The bedplate shape, wall thickness, spring stiffnesses and load records are illustrative, sized for a 10–15 MW class turbine. The method is the real one: unit solves once, then superposition for any record, then rainflow and S-N at each hot spot.</p>
+    <p><b>The chain.</b> Hub: held at the shaft flange, loaded by the three blade roots (6 loads each) and its own inertia; it turns with the rotor, so it lives in the rotor frame. Drivetrain: shaft and gearbox housing in one model, joined by the carrier bearing and the planet carrier at the ring gear; held by the main bearing (self-aligning, so no moment) and the two torque-arm elastomers. Bedplate: loaded by those reactions and held at the yaw bearing.</p>
+    <p><b>Why it closes.</b> Each model is solved once per unit load and its support reactions are stored as a matrix. Multiplying matrices passes the loads down the chain. At the hub and the tower top the result is compared with rigid-body statics of the global loads; they agree to within 1 %. The differences come from the hub's centre of mass not sitting exactly at the hub centre and from the main bearing's distributed springs.</p>
+    <p><b>What is representative.</b> Geometry, wall thicknesses, spring stiffnesses, masses, S-N curves and load records are illustrative for a 14 MW class turbine. The voxel meshes give false stress peaks at supports and load points, so those zones are left out of the hot-spot search; a production model would use a smooth tetrahedral mesh from CAD. Bearings, gears and bolts are contact problems, so they keep their standard formulas, fed by the chain's interface loads.</p>
   </div>
 </div>
 
-<script type="application/json" id="fedata">__FEDATA__</script>
 <script type="application/json" id="rnadata">__RNADATA__</script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 (function () {
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-  const FE = JSON.parse(document.getElementById("fedata").textContent);
   const RD = JSON.parse(document.getElementById("rnadata").textContent);
   const b64 = (s, T) => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
-  const NV = FE.nv, NC = 9;
-  const grid = b64(FE.grid, Uint8Array), tris = b64(FE.tris, Uint32Array);
-  const S16 = b64(FE.stress, Int16Array), D16 = b64(FE.disp, Int16Array);
-  // decode to float: stress Pa per unit case (case-major: [c][v][6]), disp m per unit case ([c][v][3])
-  const S = new Float32Array(S16.length), Dp = new Float32Array(D16.length);
-  for (let c = 0; c < NC; c++) { const s = FE.s_scale[c], d = FE.d_scale[c];
-    for (let i = 0; i < NV * 6; i++) S[c * NV * 6 + i] = S16[c * NV * 6 + i] * s;
-    for (let i = 0; i < NV * 3; i++) Dp[c * NV * 3 + i] = D16[c * NV * 3 + i] * d; }
-  const base = new Float32Array(NV * 3);
-  for (let v = 0; v < NV; v++) for (let k = 0; k < 3; k++) base[3 * v + k] = FE.origin[k] + grid[3 * v + k] * FE.h;
-  const SH_Y = FE.shaft_y, HUB = FE.hub;
+  const GEO = RD.geo, HUB = GEO.hub, SY = HUB[1];
+  const PK = ["hub", "dt", "bed"], PNAME = { hub: "Hub", dt: "Drivetrain", bed: "Bedplate" };
 
-  // ---------- stress evaluation ---------------------------------------------------------------
-  const sig = new Float32Array(NV * 6), val = new Float32Array(NV);
-  function combine(L) {          // L: 9 load factors in case units (MN, MN m, m/s2)
-    sig.fill(0);
-    for (let c = 0; c < NC; c++) { const f = L[c]; if (!f) continue; const o = c * NV * 6;
-      for (let i = 0; i < NV * 6; i++) sig[i] += f * S[o + i]; }
+  // ---------- FE parts: decode once ------------------------------------------------------------
+  const P = {};
+  PK.forEach((k) => {
+    const d = RD.parts[k], nv = d.nv, nc = d.names.length;
+    const g = b64(d.grid, Uint8Array), s8 = b64(d.S, Int8Array), d8 = b64(d.D, Int8Array);
+    const S = new Float32Array(s8.length), D = new Float32Array(d8.length);
+    for (let c = 0; c < nc; c++) { const a = d.s_scale[c], b = d.d_scale[c];
+      for (let i = 0; i < nv * 6; i++) S[c * nv * 6 + i] = s8[c * nv * 6 + i] * a;
+      for (let i = 0; i < nv * 3; i++) D[c * nv * 3 + i] = d8[c * nv * 3 + i] * b; }
+    const local = k === "hub" ? HUB : [0, 0, 0];               // the hub lives in the rotating group
+    const base = new Float32Array(nv * 3);
+    for (let v = 0; v < nv; v++) for (let j = 0; j < 3; j++) base[3 * v + j] = d.origin[j] + g[3 * v + j] * d.h - local[j];
+    P[k] = { d, nv, nc, S, D, base, near: b64(d.nearbc, Uint8Array), sig: new Float32Array(nv * 6), val: new Float32Array(nv),
+      pos: new Float32Array(base), col: new Float32Array(nv * 3), tris: b64(d.tris, Uint16Array), hotV: 0, hot: null };
+  });
+
+  function combine(p, L) {
+    const { sig, S, nv, nc } = p; sig.fill(0);
+    for (let c = 0; c < nc; c++) { const f = L[c]; if (!f) continue; const o = c * nv * 6; for (let i = 0; i < nv * 6; i++) sig[i] += f * S[o + i]; }
   }
-  function metricAt(v, kind) {
-    const a = sig[6 * v], b = sig[6 * v + 1], c = sig[6 * v + 2], xy = sig[6 * v + 3], yz = sig[6 * v + 4], zx = sig[6 * v + 5];
+  function metric6(a, b, c, xy, yz, zx, kind) {
     if (kind === "vm") return Math.sqrt(0.5 * ((a - b) ** 2 + (b - c) ** 2 + (c - a) ** 2) + 3 * (xy * xy + yz * yz + zx * zx));
-    // largest principal stress (cubic, trigonometric solution)
     const m = (a + b + c) / 3, a1 = a - m, b1 = b - m, c1 = c - m;
     const p2 = (a1 * a1 + b1 * b1 + c1 * c1 + 2 * (xy * xy + yz * yz + zx * zx)) / 6;
     if (p2 < 1e-6) return m;
-    const p = Math.sqrt(p2), det = (a1 * (b1 * c1 - yz * yz) - xy * (xy * c1 - yz * zx) + zx * (xy * yz - b1 * zx)) / (p * p * p);
-    const phi = Math.acos(Math.max(-1, Math.min(1, det / 2))) / 3;
-    return m + 2 * p * Math.cos(phi);
+    const pp = Math.sqrt(p2), det = (a1 * (b1 * c1 - yz * yz) - xy * (xy * c1 - yz * zx) + zx * (xy * yz - b1 * zx)) / (pp * pp * pp);
+    return m + 2 * pp * Math.cos(Math.acos(Math.max(-1, Math.min(1, det / 2))) / 3);
   }
+  const metricAt = (p, v, kind) => { const s = p.sig, o = 6 * v; return metric6(s[o], s[o + 1], s[o + 2], s[o + 3], s[o + 4], s[o + 5], kind); };
 
-  // ---------- load records: built blade by blade in Python (rna.synthetic), reduced to the hub centre ----
-  // channels: Fx Fy Fz (MN), Mx My Mz (MN m), ax ay az (m/s², ay includes gravity)
+  // ---------- load records and the chain ---------------------------------------------------------
+  // inputs: 18 blade-root loads (MN, MN m, blade frame), azimuth, nacelle acceleration (ay includes gravity)
+  const RH = RD.chain.R_hub, RMB = RD.chain.R_mb, RAL = RD.chain.R_armL, RAR = RD.chain.R_armR, RY = RD.chain.R_yaw;
   function rec(kind) {
-    const d = RD.records[kind], L = d.L.map((x) => b64(x, Float32Array)), t = new Float32Array(d.n);
-    for (let i = 0; i < d.n; i++) t[i] = i * d.dt;
+    const d = RD.records[kind], n = d.n;
+    const blade = b64(d.blade, Float32Array), psi = b64(d.psi, Float32Array), A = b64(d.A, Float32Array);
+    const L = { hub: new Float32Array(21 * n), dt: new Float32Array(9 * n), bed: new Float32Array(15 * n) };
+    const link = { fl: new Float32Array(6 * n), mb: new Float32Array(6 * n), aL: new Float32Array(6 * n), aR: new Float32Array(6 * n), yaw: new Float32Array(6 * n) };
+    const x = new Float64Array(21), y = new Float64Array(15), z = new Float64Array(9);
+    for (let t = 0; t < n; t++) {
+      const c = Math.cos(psi[t]), s = Math.sin(psi[t]), ax = A[t], ay = A[n + t], az = A[2 * n + t];
+      for (let i = 0; i < 18; i++) x[i] = blade[i * n + t];
+      x[18] = ax; x[19] = c * ay + s * az; x[20] = -s * ay + c * az;              // acceleration in the rotor frame
+      for (let i = 0; i < 21; i++) L.hub[i * n + t] = x[i];
+      const fr = [0, 0, 0, 0, 0, 0]; for (let r = 0; r < 6; r++) for (let i = 0; i < 21; i++) fr[r] += RH[r][i] * x[i];
+      const rot = (v0, v1, v2) => [v0, c * v1 - s * v2, s * v1 + c * v2];          // rotor frame -> fixed frame
+      const fl = [...rot(fr[0], fr[1], fr[2]), ...rot(fr[3], fr[4], fr[5])].map((v) => v / 1e6);
+      for (let i = 0; i < 6; i++) { z[i] = fl[i]; link.fl[i * n + t] = fl[i]; }
+      z[6] = ax; z[7] = ay; z[8] = az;
+      for (let i = 0; i < 9; i++) L.dt[i * n + t] = z[i];
+      const mul = (R, v, m) => { const o = []; for (let r = 0; r < 6; r++) { let a = 0; for (let i = 0; i < m; i++) a += R[r][i] * v[i]; o.push(a / 1e6); } return o; };
+      const mb = mul(RMB, z, 9), aL = mul(RAL, z, 9), aR = mul(RAR, z, 9);
+      for (let i = 0; i < 6; i++) { link.mb[i * n + t] = mb[i]; link.aL[i * n + t] = aL[i]; link.aR[i * n + t] = aR[i]; y[i] = mb[i]; }
+      for (let i = 0; i < 3; i++) { y[6 + i] = aL[i]; y[9 + i] = aR[i]; }
+      y[12] = ax; y[13] = ay; y[14] = az;
+      for (let i = 0; i < 15; i++) L.bed[i * n + t] = y[i];
+      const yw = mul(RY, y, 15); for (let i = 0; i < 6; i++) link.yaw[i * n + t] = yw[i];
+    }
     const comps = RD.comps[kind].map((c) => ({ ...c, sig: c.signal ? b64(c.signal.data, Float32Array) : null, cumA: c.cum ? b64(c.cum, Float32Array) : null }));
-    return { t, L, dt: d.dt, n: d.n, kind, comps };
+    const t = new Float32Array(n); for (let i = 0; i < n; i++) t[i] = i * d.dt;
+    return { kind, n, dt: d.dt, t, psi, blade, A, L, link, hubS: b64(d.hub, Float32Array), ttS: b64(d.tt, Float32Array), comps, closure: RD.closure[kind] };
   }
+  const cur = { hub: new Float32Array(21), dt: new Float32Array(9), bed: new Float32Array(15) };
+  function Lat(k, i) { const a = cur[k], nc = a.length; for (let c = 0; c < nc; c++) a[c] = R.L[k][c * R.n + i]; return a; }
+  const vec = (arr, i, o = 0) => [0, 1, 2].map((j) => arr[(o + j) * R.n + i]);
 
   // ---------- 3D scene ------------------------------------------------------------------------
   const host = document.getElementById("gl");
   let r; try { r = window.THREE && new THREE.WebGLRenderer({ antialias: true }); } catch (e) { r = null; }
   if (!r || !r.getContext()) { document.getElementById("fallback").hidden = false; return; }
   r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); host.append(r.domElement);
-  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(34, 1, 0.1, 300);
-  const ctl = new THREE.OrbitControls(cam, r.domElement); ctl.enableDamping = true; ctl.target.set(-1.2, 1.9, 0);
-  cam.position.set(7.5, 7.5, 13.5);
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(34, 1, 0.1, 400);
+  const ctl = new THREE.OrbitControls(cam, r.domElement); ctl.enableDamping = true; ctl.target.set(-2.6, 2.6, 0);
+  cam.position.set(9.5, 9.0, 19.0);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.8));
   const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(8, 14, 10); scene.add(sun);
   const sun2 = new THREE.DirectionalLight(0xffffff, 0.3); sun2.position.set(-10, 6, -8); scene.add(sun2);
+  const G = { bed: new THREE.Group(), dt: new THREE.Group(), pivot: new THREE.Group(), rotor: new THREE.Group() };
+  scene.add(G.bed, G.dt); G.dt.add(G.pivot); G.pivot.add(G.rotor); G.pivot.position.set(...HUB);
+  G.dt.position.y = 3.0; G.pivot.position.x = HUB[0] - 2.6;          // start exploded (the load-chain view)
 
-  // FE bedplate
-  const geo = new THREE.BufferGeometry();
-  const pos = new Float32Array(base); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  const colArr = new Float32Array(NV * 3); geo.setAttribute("color", new THREE.BufferAttribute(colArr, 3));
-  geo.setIndex(new THREE.BufferAttribute(tris, 1)); geo.computeVertexNormals();
-  const bedMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.15, side: THREE.DoubleSide, flatShading: false });
-  const bed = new THREE.Mesh(geo, bedMat); scene.add(bed);
-  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), new THREE.LineBasicMaterial({ transparent: true, opacity: 0.18 }));
-  scene.add(edges);
+  function feMesh(p, from, count) {
+    const geo = new THREE.BufferGeometry();
+    if (!p.posAttr) { p.posAttr = new THREE.BufferAttribute(p.pos, 3); p.colAttr = new THREE.BufferAttribute(p.col, 3); }
+    geo.setAttribute("position", p.posAttr); geo.setAttribute("color", p.colAttr);
+    geo.setIndex(new THREE.BufferAttribute(p.tris.subarray(3 * from, 3 * (from + count)), 1)); geo.computeVertexNormals();
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.15, side: THREE.DoubleSide, transparent: true });
+    return new THREE.Mesh(geo, mat);
+  }
+  const M = {
+    hub: feMesh(P.hub, 0, P.hub.d.nt),
+    shaft: feMesh(P.dt, 0, P.dt.d.n_shaft_tris), housing: feMesh(P.dt, P.dt.d.n_shaft_tris, P.dt.d.nt - P.dt.d.n_shaft_tris),
+    bed: feMesh(P.bed, 0, P.bed.d.nt),
+  };
+  G.rotor.add(M.hub); G.dt.add(M.shaft, M.housing); G.bed.add(M.bed);
+  const meshesOf = { hub: [M.hub], dt: [M.shaft, M.housing], bed: [M.bed] };
 
-  // context parts (not in the FE model)
-  const ctx = new THREE.Group(); scene.add(ctx);
+  // context parts (not FE)
   const ctxMat = new THREE.MeshStandardMaterial({ roughness: 0.5, metalness: 0.3, transparent: true });
   const darkMat = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.2, transparent: true });
-  const alongX = (len, r0, r1, seg = 40) => { const g = new THREE.CylinderGeometry(r1, r0, len, seg); g.rotateZ(-Math.PI / 2); return g; };
-  const at = (mesh, x, y = SH_Y, z = 0) => { mesh.position.set(x, y, z); ctx.add(mesh); return mesh; };
-  // tower and yaw system
-  at(new THREE.Mesh(new THREE.CylinderGeometry(2.45, 2.6, 2.4, 48, 1, true), ctxMat), -0.2, -1.25);
-  for (let k = 0; k < 6; k++) { const a = k / 6 * 2 * Math.PI + 0.3; at(new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.9, 16), darkMat), -0.2 + 1.55 * Math.cos(a), 0.75, 1.55 * Math.sin(a)); }
-  // main shaft, main bearing, gearbox, torque arms, coupling, generator
-  const shaftM = at(new THREE.Mesh(alongX(5.4, 0.5, 0.42), ctxMat), -3.3);
-  const mbM = at(new THREE.Mesh(alongX(0.5, 0.66, 0.66), darkMat), -3.2);
-  const gb1 = at(new THREE.Mesh(alongX(1.3, 1.25, 1.25, 48), ctxMat), -0.75);          // planetary stage 1
-  const gb2 = at(new THREE.Mesh(alongX(0.9, 1.0, 0.95, 48), ctxMat), 0.35);            // planetary stage 2
-  const gb3 = at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.9, 1.7), ctxMat), 1.2, SH_Y - 0.25);   // parallel stage
-  for (const s of [-1, 1]) {
-    const armM = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.35, 0.9), ctxMat); at(armM, 0.4, 2.45, s * 1.1);
-    at(new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.12, 20), darkMat), 0.4, 2.33, s * 1.5);
-  }
-  at(new THREE.Mesh(alongX(0.06, 0.75, 0.75, 40), darkMat), 1.85, SH_Y - 0.25);          // brake disc
-  at(new THREE.Mesh(alongX(0.8, 0.22, 0.22), ctxMat), 2.2, SH_Y - 0.25);               // coupling
-  const genM = at(new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.6, 1.8), ctxMat), 3.65, SH_Y - 0.35);  // generator
-  const cabs = [-1, 1].map((s) => at(new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.4, 0.6), ctxMat), 3.0, 2.45, s * 1.9));   // converter and cooling cabinets
-  const yawM = at(new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.14, 56), darkMat), -0.2, 0.07);   // yaw bearing
-  for (const s of [-1, 1]) at(new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.3, 0.3), darkMat), 2.9, 1.55, s * 1.1);   // welded rear frame
-  // hub, pitch bearings, blade stubs, spinner
-  const hubC = new THREE.Vector3(...HUB);
-  const hub = at(new THREE.Mesh(new THREE.SphereGeometry(1.85, 36, 28), ctxMat), HUB[0], HUB[1]); hub.scale.set(1.05, 1, 1);
-  at(new THREE.Mesh(new THREE.ConeGeometry(1.55, 2.4, 36), ctxMat), HUB[0] - 2.2, HUB[1]).rotation.z = Math.PI / 2;
+  const alongX = (len, r0, r1, seg = 40, open = false) => { const g = new THREE.CylinderGeometry(r1, r0, len, seg, 1, open); g.rotateZ(-Math.PI / 2); return g; };
+  const put = (grp, mesh, x, y = SY, z = 0) => { mesh.position.set(x, y, z); grp.add(mesh); return mesh; };
+  put(G.bed, new THREE.Mesh(new THREE.CylinderGeometry(2.45, 2.6, 2.4, 48, 1, true), ctxMat), -0.2, -1.25);
+  for (let k = 0; k < 6; k++) { const a = k / 6 * 2 * Math.PI + 0.3; put(G.bed, new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.9, 16), darkMat), -0.2 + 1.55 * Math.cos(a), 0.75, 1.55 * Math.sin(a)); }
+  const yawM = put(G.bed, new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.14, 56, 1, true), darkMat), -0.2, -0.09);
+  const genM = put(G.bed, new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.6, 1.8), ctxMat), 3.65, SY - 0.35);
+  const cabs = [-1, 1].map((s) => put(G.bed, new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.4, 0.6), ctxMat), 3.0, 2.45, s * 1.9));
+  for (const s of [-1, 1]) put(G.bed, new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.3, 0.3), darkMat), 3.1, 1.55, s * 1.1);
+  const mbM = put(G.dt, new THREE.Mesh(alongX(0.36, 0.98, 0.98, 48, true), darkMat), GEO.x_mb);
+  put(G.dt, new THREE.Mesh(alongX(0.06, 0.75, 0.75, 40), darkMat), 1.85, SY - 0.25);
+  put(G.dt, new THREE.Mesh(alongX(0.8, 0.22, 0.22), ctxMat), 2.2, SY - 0.25);
+  const gearsG = [put(G.dt, new THREE.Mesh(alongX(1.0, 0.32, 0.32, 24), darkMat), -0.85)];
+  const planetB = [];
+  for (let k = 0; k < 3; k++) { const a = k * 2 * Math.PI / 3 + 0.4;
+    gearsG.push(put(G.dt, new THREE.Mesh(alongX(1.0, 0.36, 0.36, 24), darkMat), -0.85, SY + 0.7 * Math.cos(a), 0.7 * Math.sin(a)));
+    planetB.push(put(G.dt, new THREE.Mesh(alongX(1.1, 0.14, 0.14, 16), ctxMat), -0.85, SY + 0.7 * Math.cos(a), 0.7 * Math.sin(a))); }
   const bladeDir = (k) => { const a = k * 2 * Math.PI / 3; return new THREE.Vector3(0, Math.cos(a), Math.sin(a)); };
-  const roots = [], flanges = [];
+  const pitchR = [], boltR = [];
   for (let k = 0; k < 3; k++) {
     const d = bladeDir(k), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
-    const fl = new THREE.Mesh(new THREE.CylinderGeometry(1.35, 1.35, 0.22, 40), darkMat); fl.position.copy(hubC).add(d.clone().multiplyScalar(1.85)); fl.quaternion.copy(q); ctx.add(fl); flanges.push(fl);
-    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.3, 4.0, 32, 1, true), ctxMat); st.position.copy(hubC).add(d.clone().multiplyScalar(3.9)); st.quaternion.copy(q); ctx.add(st);
-    roots.push(hubC.clone().add(d.clone().multiplyScalar(1.85)));
+    const add = (geo, mat, dist) => { const m = new THREE.Mesh(geo, mat); m.position.copy(d.clone().multiplyScalar(dist)); m.quaternion.copy(q); G.rotor.add(m); return m; };
+    pitchR.push(add(new THREE.CylinderGeometry(2.32, 2.32, 0.3, 56, 1, true), darkMat, GEO.r_root + 0.15));
+    const tor = new THREE.TorusGeometry(2.05, 0.05, 6, 72); tor.rotateX(Math.PI / 2); boltR.push(add(tor, ctxMat, GEO.r_root + 0.05));
+    add(new THREE.CylinderGeometry(1.6, 2.1, 5.0, 40, 1, true), ctxMat, GEO.r_root + 2.8);
   }
-  const parts = { bedplate: [], main_shaft: [shaftM], main_bearing: [mbM], gears: [gb1, gb2, gb3], gear_bearings: [gb1, gb2, gb3],
-    pitch_bearings: flanges, bolts: flanges, yaw_bearing: [yawM], equipment: cabs, hub: [hub], generator: [genM] };
+  { const sp = new THREE.Mesh(new THREE.ConeGeometry(1.5, 2.2, 36), ctxMat); sp.rotation.z = Math.PI / 2; sp.position.set(-3.4, 0, 0); G.rotor.add(sp); }
+  const cover = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(11.4, 4.4, 5.6)), new THREE.LineBasicMaterial({ transparent: true, opacity: 0.25 }));
+  cover.position.set(-0.3, 2.35, 0); G.bed.add(cover); cover.visible = false;
+  const ctxParts = { main_bearing: [mbM], gears: gearsG, gear_bearings: planetB, pitch_bearings: pitchR, bolts: boltR, yaw_bearing: [yawM], equipment: cabs, generator: [genM] };
+  const feParts = { hub: [M.hub], main_shaft: [M.shaft], housing: [M.housing], bedplate: [M.bed] };
   const hiMat = new THREE.MeshStandardMaterial({ roughness: 0.45, metalness: 0.2 });
-  Object.values(parts).flat().forEach((m) => { m.userData.orig = m.material; });
-  function highlight(key) {
-    Object.values(parts).flat().forEach((m) => { m.material = m.userData.orig; });
-    hiMat.color = new THREE.Color(css("--hi")); hiMat.emissive = new THREE.Color(css("--hi")).multiplyScalar(0.25);
-    if (mode === "comp" && parts[key]) parts[key].forEach((m) => { m.material = hiMat; });
-  }
-  // nacelle cover outline
-  const cover = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(9.6, 4.4, 5.4)), new THREE.LineBasicMaterial({ transparent: true, opacity: 0.25 }));
-  cover.position.set(0.6, 2.35, 0); scene.add(cover);
+  Object.values(ctxParts).flat().forEach((m) => { m.userData.orig = m.material; });
 
-  // overlays: arrows, supports, hot spot
+  // overlays
   const overlay = new THREE.Group(); scene.add(overlay);
-  function arrow(o, dir, len, color, th = 0.05, op = 1) {
-    const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity: op });
+  function arrow(o, dir, len, color, th = 0.05) {
+    const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true });
     const s1 = new THREE.Mesh(new THREE.CylinderGeometry(th, th, len * 0.78, 10), m); s1.position.y = len * 0.39;
     const hd = new THREE.Mesh(new THREE.ConeGeometry(th * 3, len * 0.22, 14), m); hd.position.y = len * 0.89;
     g.add(s1, hd); g.position.copy(o); g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize()); g.traverse((x) => { x.renderOrder = 20; }); return g;
   }
-  function moment(o, axis, rad, color, op = 1) {
-    const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity: op });
+  function moment(o, axis, rad, color) {
+    const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true });
     const arc = new THREE.Mesh(new THREE.TorusGeometry(rad, 0.035, 8, 40, Math.PI * 1.45), m);
     const hd = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.26, 12), m); const a = Math.PI * 1.45; hd.position.set(rad * Math.cos(a), rad * Math.sin(a), 0); hd.rotation.z = a;
     g.add(arc, hd); g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis.clone().normalize()); g.position.copy(o); g.traverse((x) => { x.renderOrder = 20; }); return g;
   }
-  function label(text, p, color) {
+  function label(text, p, color, size = 0.42) {
     const c = document.createElement("canvas"), g = c.getContext("2d"), f = 30;
     g.font = `600 ${f}px Public Sans, sans-serif`; const w = Math.ceil(g.measureText(text).width) + 24; c.width = w; c.height = f + 18;
     g.font = `600 ${f}px Public Sans, sans-serif`; g.fillStyle = css("--panel"); g.globalAlpha = 0.9; g.fillRect(0, 0, w, c.height); g.globalAlpha = 1;
     g.fillStyle = color; g.textBaseline = "middle"; g.fillText(text, 12, c.height / 2);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
-    sp.scale.set(w / c.height * 0.42, 0.42, 1); sp.position.copy(p); sp.renderOrder = 30; return sp;
+    sp.scale.set(w / c.height * size, size, 1); sp.position.copy(p); sp.renderOrder = 30; return sp;
   }
-  const hotDot = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 12), new THREE.MeshBasicMaterial({ depthTest: false, transparent: true }));
-  hotDot.renderOrder = 25; scene.add(hotDot);
-  const ax3 = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+  const labels = new THREE.Group(); scene.add(labels);
+  const dots = PK.map(() => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), new THREE.MeshBasicMaterial({ depthTest: false, transparent: true })); m.renderOrder = 25; return m; });
+  G.rotor.add(dots[0]); G.dt.add(dots[1]); G.bed.add(dots[2]);
+  const V3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 
   // ---------- colormap ------------------------------------------------------------------------
   const STOPS = [[0.05, 0.03, 0.25], [0.29, 0.07, 0.47], [0.55, 0.15, 0.48], [0.80, 0.27, 0.36], [0.96, 0.49, 0.21], [0.99, 0.75, 0.25], [0.98, 0.99, 0.64]];
@@ -318,103 +352,144 @@ aside { display: grid; gap: 12px; min-width: 0; }
   document.getElementById("ramp").style.background = `linear-gradient(to top, ${STOPS.map((s, i) => `rgb(${s.map((x) => Math.round(255 * x)).join(",")}) ${Math.round(i / (STOPS.length - 1) * 100)}%`).join(",")})`;
 
   // ---------- state -----------------------------------------------------------------------------
-  let mode = "comp", sel = null, unit = 3, metric = "vm", defo = 1500, R = rec("op"), ti = 0, playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches, last = performance.now();
-  let scaleMax = 1, hotV = 0, hotSeries = null;
-  const curL = new Float32Array(NC);
-  function Lat(i) { for (let c = 0; c < NC; c++) curL[c] = R.L[c][i]; return curL; }
-  function analyseRecord() {                    // hot spot over the record and the colour scale
-    let best = 0; hotV = 0;
-    for (let i = 0; i < R.n; i += 20) { combine(Lat(i)); for (let v = 0; v < NV; v++) { const m = metricAt(v, metric); if (m > best) { best = m; hotV = v; } } }
-    hotSeries = new Float32Array(R.n);
-    for (let i = 0; i < R.n; i++) { const L = Lat(i); let a = [0, 0, 0, 0, 0, 0];
-      for (let c = 0; c < NC; c++) { const o = c * NV * 6 + 6 * hotV; for (let k = 0; k < 6; k++) a[k] += L[c] * S[o + k]; }
-      for (let k = 0; k < 6; k++) sig[6 * hotV + k] = a[k]; hotSeries[i] = metricAt(hotV, metric); }
-    scaleMax = Math.max(...hotSeries) * 1.02;
+  let mode = "chain", part = "hub", unit = 3, metric = "vm", defo = 1500, sel = null;
+  let R = rec("op"), ti = 0, playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches, last = performance.now();
+  let explode = 1, scaleMax = 1;
+  const effDefo = () => (mode === "unit" ? defo : defo / 20);
+  function analyseRecord() {               // per part: hot spot over the record (away from supports) and its stress history
+    scaleMax = 0;
+    PK.forEach((k) => {
+      const p = P[k]; let best = 0; p.hotV = 0;
+      for (let i = 0; i < R.n; i += 24) { combine(p, Lat(k, i)); for (let v = 0; v < p.nv; v++) { if (p.near[v]) continue; const m = metricAt(p, v, metric); if (m > best) { best = m; p.hotV = v; } } }
+      p.hot = new Float32Array(R.n);
+      const o = 6 * p.hotV;
+      for (let i = 0; i < R.n; i++) { const L = Lat(k, i); const a = [0, 0, 0, 0, 0, 0];
+        for (let c = 0; c < p.nc; c++) { const f = L[c]; if (!f) continue; const so = c * p.nv * 6 + o; for (let j = 0; j < 6; j++) a[j] += f * p.S[so + j]; }
+        p.hot[i] = metric6(...a, metric); }
+      scaleMax = Math.max(scaleMax, Math.max(...p.hot) * 1.05);
+    });
   }
-  // live loads are ~20 MN, unit cases 1 MN: keep the drawn deflection comparable
-  function effDefo() { return mode === "unit" ? defo : defo / 20; }
-  function paint(L, smax) {
-    combine(L);
-    for (let v = 0; v < NV; v++) { val[v] = metricAt(v, metric); cmap(Math.abs(val[v]) / smax, colArr, 3 * v); }
-    geo.attributes.color.needsUpdate = true;
-    for (let v = 0; v < NV; v++) for (let k = 0; k < 3; k++) { let d = 0; for (let c = 0; c < NC; c++) { const f = L[c]; if (f) d += f * Dp[c * NV * 3 + 3 * v + k]; } pos[3 * v + k] = base[3 * v + k] + effDefo() * d; }
-    geo.attributes.position.needsUpdate = true;
-    document.getElementById("cmax").textContent = (smax / 1e6).toFixed(smax < 1e7 ? 1 : 0) + " MPa";
+  function paint(k, L, smax) {
+    const p = P[k]; combine(p, L);
+    for (let v = 0; v < p.nv; v++) { p.val[v] = metricAt(p, v, metric); cmap(Math.abs(p.val[v]) / smax, p.col, 3 * v); }
+    const e = effDefo(), D = p.D, nv = p.nv;
+    for (let v = 0; v < nv; v++) for (let j = 0; j < 3; j++) { let d = 0; for (let c = 0; c < p.nc; c++) { const f = L[c]; if (f) d += f * D[c * nv * 3 + 3 * v + j]; } p.pos[3 * v + j] = p.base[3 * v + j] + e * d; }
+    p.colAttr.needsUpdate = true; p.posAttr.needsUpdate = true;
   }
-  function paintPlain() {
-    const c = new THREE.Color(css("--steel")); for (let v = 0; v < NV; v++) { colArr[3 * v] = c.r; colArr[3 * v + 1] = c.g; colArr[3 * v + 2] = c.b; pos[3 * v] = base[3 * v]; pos[3 * v + 1] = base[3 * v + 1]; pos[3 * v + 2] = base[3 * v + 2]; }
-    geo.attributes.color.needsUpdate = true; geo.attributes.position.needsUpdate = true;
+  function paintPlain(k) {
+    const p = P[k], c = new THREE.Color(css("--steel"));
+    for (let v = 0; v < p.nv; v++) { p.col[3 * v] = c.r; p.col[3 * v + 1] = c.g; p.col[3 * v + 2] = c.b; }
+    p.pos.set(p.base); p.colAttr.needsUpdate = true; p.posAttr.needsUpdate = true;
+  }
+  function unitVec(k) { const L = new Float32Array(P[k].nc); L[unit] = 1; return L; }
+  function paintFrame() {
+    if (mode === "unit") {
+      PK.forEach((k) => { if (k !== part) paintPlain(k); });
+      const L = unitVec(part); combine(P[part], L); let m = 0; for (let v = 0; v < P[part].nv; v++) if (!P[part].near[v]) m = Math.max(m, Math.abs(metricAt(P[part], v, metric)));
+      paint(part, L, m || 1); document.getElementById("cmax").textContent = (m / 1e6).toFixed(m < 1e7 ? 2 : 1) + " MPa";
+      G.rotor.rotation.x = 0;
+    } else {
+      PK.forEach((k) => paint(k, Lat(k, ti), scaleMax));
+      document.getElementById("cmax").textContent = (scaleMax / 1e6).toFixed(0) + " MPa";
+      G.rotor.rotation.x = R.psi[ti];
+    }
   }
 
   // ---------- overlays per mode ---------------------------------------------------------------
+  const sc = (f) => 0.25 + 0.55 * Math.sqrt(Math.abs(f));
+  function forceArrow(o, F, color) { const m = Math.hypot(...F); if (m < 0.02) return; overlay.add(arrow(o, V3(F), sc(m), color, 0.05)); }
+  function momentArc(o, Mv, color) { const m = Math.hypot(...Mv); if (m < 0.05) return; overlay.add(moment(o, V3(Mv), 0.35 + 0.09 * Math.sqrt(m), color)); }
+  const world = (grp, p) => grp.localToWorld(V3(p));
   function drawOverlay() {
     while (overlay.children.length) overlay.remove(overlay.children[0]);
-    const cols = [css("--fx"), css("--fy"), css("--fz")];
-    const seat = new THREE.Vector3(-3.2, SH_Y, 0), armsP = [new THREE.Vector3(0.4, 2.33, 1.5), new THREE.Vector3(0.4, 2.33, -1.5)];
-    if (mode === "map") {
-      roots.forEach((p, k) => { for (let i = 0; i < 3; i++) overlay.add(arrow(p, ax3[i], 0.9, cols[i], 0.03, 0.9)); overlay.add(label("Blade root " + "ABC"[k], p.clone().add(bladeDir(k).multiplyScalar(1.0)), css("--ink"))); });
-      for (let i = 0; i < 3; i++) { overlay.add(arrow(hubC, ax3[i], 1.7, cols[i], 0.055)); overlay.add(moment(hubC, ax3[i], 0.75, cols[i])); }
-      overlay.add(label("Hub centre: Fx Fy Fz Mx My Mz", hubC.clone().add(new THREE.Vector3(0, -2.4, 1.2)), css("--ink")));
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.07, 8, 64), new THREE.MeshBasicMaterial({ color: css("--support"), depthTest: false, transparent: true })); ring.rotation.x = Math.PI / 2; ring.position.set(-0.2, 0.02, 0); ring.renderOrder = 19; overlay.add(ring);
-      overlay.add(label("Yaw bearing · fixed (reaction checked against tower top)", new THREE.Vector3(-0.2, -0.5, 2.4), css("--support")));
-      overlay.add(label("Main bearing: radial + axial springs", seat.clone().add(new THREE.Vector3(0.6, 1.9, 0.6)), css("--ink")));
-      armsP.forEach((p, i) => { overlay.add(arrow(p.clone().add(new THREE.Vector3(0, 0.5, 0)), new THREE.Vector3(0, -1, 0), 0.45, css("--ink"), 0.03)); });
-      overlay.add(label("Torque-arm mounts (rubber springs)", armsP[0].clone().add(new THREE.Vector3(1.6, 0.2, 1.6)), css("--ink")));
-      const cg = new THREE.Vector3(-1.2, 1.4, 0); for (let i = 0; i < 3; i++) overlay.add(arrow(cg, ax3[i], 0.9, cols[i], 0.03, 0.85));
-      overlay.add(label("Nacelle acceleration ax ay az (gravity = ay)", cg.clone().add(new THREE.Vector3(0.4, -0.7, 1.6)), css("--ink")));
-      hotDot.visible = false;
-    } else {
-      const L = mode === "unit" ? unitVec() : Lat(ti);
-      // arrows show the current hub-centre forces, scaled (1 MN ~ 0.55 m)
-      for (let i = 0; i < 3; i++) { const f = L[i]; if (Math.abs(f) > 0.02) overlay.add(arrow(hubC, ax3[i].clone().multiplyScalar(Math.sign(f)), 0.35 + 0.55 * Math.min(4, Math.abs(f)), cols[i], 0.05)); }
-      for (let i = 0; i < 3; i++) { const m = L[3 + i]; if (Math.abs(m) > 0.05) overlay.add(moment(hubC, ax3[i].clone().multiplyScalar(Math.sign(m)), 0.45 + 0.04 * Math.min(20, Math.abs(m)), cols[i])); }
-      const hv = mode === "comp" ? (curComp().vertex ?? -1) : hotV;
-      hotDot.visible = (mode === "live" || mode === "comp") && hv >= 0;
-      if (hotDot.visible) { hotDot.material.color = new THREE.Color(css("--hot")); hotDot.position.set(pos[3 * hv], pos[3 * hv + 1], pos[3 * hv + 2]); }
-    }
-  }
-  function unitVec() { const L = new Float32Array(NC); L[unit] = 1; return L; }
-
-  // ---------- side panel, FE facts, legend -----------------------------------------------------------
-  const NAMES = FE.cases, UNITS = FE.units;
-  document.getElementById("fe").innerHTML = [["Mesh", `${(FE.nt / 2).toLocaleString()} surface faces, 8-node bricks, ${FE.h * 1000} mm`], ["Material", "ductile cast iron, E 169 GPa"], ["Mass", `${FE.mass_t.toFixed(0)} t`], ["Unit cases", "9 (6 hub-centre loads, 3 accelerations)"], ["Held at", "yaw bearing face"]]
-    .map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("");
-  function side() {
-    const el = document.getElementById("side");
-    const leg = document.getElementById("legend");
-    if (mode === "map") {
-      el.innerHTML = `<h2>Model inputs</h2><p>Only two things come from the global model: the blade-root loads and the nacelle's motion. Everything else follows from the FE model.</p>
-        <ul><li><b>3 blade roots × 6 loads</b>, added up to 6 loads at the hub centre in the fixed frame using the rotor azimuth.</li>
-        <li><b>3 nacelle accelerations</b> (with gravity), for the bedplate's own weight and inertia.</li>
-        <li><b>Held at the yaw bearing.</b> The FE reaction there must equal the tower-top load from the global model. If not, a load is missing.</li>
-        <li>Drivetrain tied in by springs: main bearing (radial and axial) and two torque-arm mounts.</li></ul><p>Bedplate unit cases: 6 + 3 = 9. The hub has its own model with the 18 blade-root cases.</p>`;
-      leg.innerHTML = `<span><i style="background:var(--fx)"></i>x, along the shaft</span><span><i style="background:var(--fy)"></i>y, vertical</span><span><i style="background:var(--fz)"></i>z, lateral</span><span>straight = force · curved = moment</span><span><i class="dot" style="background:var(--support)"></i>fixed support</span>`;
+    scene.updateMatrixWorld(true);
+    const cF = css("--fx"), cM = css("--fz");
+    dots.forEach((d) => { d.visible = false; d.material.color = new THREE.Color(css("--hot")); });
+    if (mode === "chain") {
+      // blade roots (rotor frame, drawn in the rotating group's world placement)
+      for (let k = 0; k < 3; k++) {
+        const er = bladeDir(k), et = new THREE.Vector3(0, -er.z, er.y), x = new THREE.Vector3(1, 0, 0);
+        const b = (j) => R.blade[(6 * k + j) * R.n + ti];
+        const Fl = x.clone().multiplyScalar(b(0)).add(et.clone().multiplyScalar(b(1))).add(er.clone().multiplyScalar(b(2)));
+        const Ml = et.clone().multiplyScalar(-b(3)).add(x.clone().multiplyScalar(b(4))).add(er.clone().multiplyScalar(b(5)));
+        const o = G.rotor.localToWorld(er.clone().multiplyScalar(GEO.r_root + 0.9));
+        const q = new THREE.Quaternion(); G.rotor.getWorldQuaternion(q);
+        forceArrow(o, Fl.applyQuaternion(q).toArray(), cF); momentArc(o, Ml.applyQuaternion(q).toArray(), cM);
+      }
+      const gap = world(G.dt, [-4.9, SY, 0]).add(new THREE.Vector3(-1.0 * explode, 0, 0));
+      forceArrow(gap, vec(R.link.fl, ti), cF); momentArc(gap, vec(R.link.fl, ti, 3), cM);
+      const mbW = world(G.dt, [GEO.x_mb, SY - 1.3, 0]).add(new THREE.Vector3(0, -0.9 * explode, 0));
+      forceArrow(mbW, vec(R.link.mb, ti), cF); momentArc(mbW, vec(R.link.mb, ti, 3), cM);
+      GEO.pads.forEach((pp, i) => forceArrow(world(G.dt, pp).add(new THREE.Vector3(0, -0.9 * explode, 0)), vec(i ? R.link.aR : R.link.aL, ti), cF));
+      const yw = world(G.bed, [GEO.yaw[0], -0.6, 0]);
+      forceArrow(yw, vec(R.link.yaw, ti), cF); momentArc(yw, vec(R.link.yaw, ti, 3), cM);
     } else if (mode === "unit") {
-      el.innerHTML = `<h2>Unit case ${NAMES[unit]} = 1 ${UNITS[unit]}</h2><p>${unitText[unit]}</p><p>This field is stored once. Every later load record reuses it, scaled by that record's ${NAMES[unit]}.</p>`;
-      leg.innerHTML = `<span>Colour: ${metric === "vm" ? "von Mises" : "max principal"} stress for this unit case</span><span>Deformation exaggerated ×${defo}</span>`;
+      const k = part, L = unitVec(k), nm = RD.parts[k].names[unit];
+      let o, F = [0, 0, 0], Mv = [0, 0, 0], grp = G.bed;
+      const acc = /^a[xyz]$/.test(nm), ax = "xyz".indexOf(nm[1]);
+      if (k === "hub") {
+        grp = G.rotor;
+        if (acc) { o = [0, 0, 0]; F[ax] = 1; }
+        else { const b = Math.floor(unit / 6), j = unit % 6, er = bladeDir(b), et = new THREE.Vector3(0, -er.z, er.y);
+          o = er.clone().multiplyScalar(GEO.r_root + 0.6).toArray();
+          const dir = [[1, 0, 0], et.toArray(), er.toArray(), et.clone().multiplyScalar(-1).toArray(), [1, 0, 0], er.toArray()][j];
+          if (j < 3) F = dir; else Mv = dir; }
+      } else if (k === "dt") {
+        grp = G.dt;
+        if (acc) { o = RD.parts.dt.cg; F[ax] = 1; } else { o = HUB.map((v, i) => (i ? v : -4.4)); if (unit < 3) F[unit] = 1; else Mv[unit - 3] = 1; }
+      } else {
+        if (acc) { o = RD.parts.bed.cg; F[ax] = 1; }
+        else if (unit < 6) { o = [GEO.x_mb, SY + 1.2, 0]; if (unit < 3) F[unit] = 1; else Mv[unit - 3] = 1; }
+        else { const i = unit < 9 ? 0 : 1; o = GEO.pads[i].map((v, j) => (j === 1 ? v + 0.6 : v)); F[(unit - 6) % 3] = 1; }
+      }
+      const q = new THREE.Quaternion(); grp.getWorldQuaternion(q);
+      const ow = grp.localToWorld(V3(o));
+      if (Math.hypot(...F)) overlay.add(arrow(ow, V3(F).applyQuaternion(q), 1.6, cF, 0.06));
+      if (Math.hypot(...Mv)) overlay.add(moment(ow, V3(Mv).applyQuaternion(q), 0.7, cM));
+    } else if (mode === "live") {
+      PK.forEach((k, i) => { const p = P[k]; dots[i].visible = true; dots[i].position.set(p.pos[3 * p.hotV], p.pos[3 * p.hotV + 1], p.pos[3 * p.hotV + 2]); });
     } else if (mode === "comp") {
-      renderComps();
-      leg.innerHTML = `<span><i class="dot" style="background:var(--hi)"></i>selected component</span><span>Bedplate: von Mises, superposed live</span>${curComp().vertex != null ? '<span><i class="dot" style="background:var(--hot)"></i>bedplate critical point</span>' : ""}`;
-    } else {
-      el.innerHTML = `<h2>${R.kind === "op" ? "Operating at 12 m/s" : "Parked storm with wave slam"}</h2>
-        <p>${R.kind === "op" ? "Thrust, rotor weight, about 18 MN·m of torque and turbulent bending moments, sampled every 0.25 s." : "Rotor parked and feathered: lower thrust but large gust moments and nacelle motion. A breaking-wave slam at 330 s shakes the nacelle."}</p>
-        <div class="kv" id="readout"></div>`;
-      leg.innerHTML = `<span>Colour: ${metric === "vm" ? "von Mises" : "max principal"} stress, superposed live</span><span><i class="dot" style="background:var(--hot)"></i>hot spot over the record</span><span>Deformation ×${effDefo()}</span>`;
+      const c = curComp(); if (c.part) { const i = PK.indexOf(c.part), p = P[c.part]; dots[i].visible = true; dots[i].position.set(p.pos[3 * c.vertex], p.pos[3 * c.vertex + 1], p.pos[3 * c.vertex + 2]); }
     }
-    document.getElementById("cbar").hidden = mode === "map";
-    const timed = mode === "live" || mode === "comp";
-    document.getElementById("charts").hidden = !timed;
-    document.getElementById("liveCtl").hidden = !timed;
-    document.getElementById("detail").hidden = mode !== "comp";
-    document.getElementById("feCard").hidden = mode === "comp";
-    document.getElementById("eq").hidden = mode === "comp";
-    document.getElementById("eqComp").hidden = mode !== "comp";
-    document.getElementById("unitsel").hidden = mode !== "unit";
   }
-  // ---------- components ----------------------------------------------------------------------------
+  function drawLabels() {
+    while (labels.children.length) labels.remove(labels.children[0]);
+    if (mode !== "chain") return;
+    scene.updateMatrixWorld(true);
+    const ink = css("--ink"), mut = css("--muted");
+    const L = (t, grp, p, c = ink) => labels.add(label(t, world(grp, p), c));
+    L("① Blade roots: 3 × 6 loads from the global model", G.pivot, [-1.0, 4.9, 0]);
+    L("② Hub FE → shaft flange: 6 loads", G.pivot, [0.8, -3.4, 2.6]);
+    L("③ Drivetrain FE (shaft + gearbox)", G.dt, [-1.6, 4.2, 0]);
+    L("④ Main bearing: 6   ⑤ Torque arms: 3 + 3", G.dt, [-1.2, 0.6, 2.6]);
+    L("⑥ Bedplate FE → yaw bearing: 6 → tower top", G.bed, [0.8, -1.4, 2.8]);
+    L("force", G.bed, [-6.4, -1.0, 2.6], css("--fx")); L("moment", G.bed, [-6.4, -1.6, 2.6], css("--fz"));
+  }
+
+  // ---------- side panels ---------------------------------------------------------------------
   const curComp = () => R.comps.find((c) => c.key === sel) || R.comps[0];
   const fmtA = (a) => (a === 0 ? "0" : a < 0.001 ? "<0.001" : a < 0.1 ? a.toFixed(3) : a.toFixed(2));
   const posA = (a) => Math.max(0, Math.min(1, (Math.log10(Math.max(a, 1e-6)) + 4) / 5));
+  const f3 = (v, d = 1) => v.map((x) => (x >= 0 ? " " : "") + x.toFixed(d)).join(" ");
+  document.getElementById("fe").innerHTML = PK.map((k) => { const d = RD.parts[k]; return `<span>${PNAME[k]}</span><span>${d.nv.toLocaleString()} vertices · ${d.mass_t.toFixed(0)} t · ${d.names.length} unit cases</span>`; }).join("")
+    + `<span>Elements</span><span>8-node bricks, ${RD.parts.hub.h * 1000} mm</span><span>Generator, rear frame</span><span>${GEO.rest_mass_t.toFixed(0)} t lumped on the bedplate</span>`;
+  function renderChain() {
+    const el = document.getElementById("side"), i = ti;
+    const row = (name, F, Mv, cls = "") => `<span class="${cls}">${name}</span><span class="v ${cls}">${f3(F, 2)}</span><span class="v ${cls}">${Mv ? f3(Mv) : ""}</span>`;
+    const blades = [0, 1, 2].map((k) => { const b = (j) => R.blade[(6 * k + j) * R.n + i]; return row(`① Blade ${"ABC"[k]} root (blade frame)`, [b(0), b(1), b(2)], [b(3), b(4), b(5)]); }).join("");
+    el.innerHTML = `<h2>The load chain · ${R.kind === "op" ? "operating" : "parked storm"}</h2>
+      <p>Loads each part passes to the next at t = ${R.t[i].toFixed(1)} s. Forces in MN (x, y, z), moments in MN·m. Grey rows: the same link from rigid-body statics of the global loads.</p>
+      <div class="chain"><span class="h">Link</span><span class="h v">Force</span><span class="h v">Moment</span>
+      ${blades}<span class="sep"></span>
+      ${row("② Shaft flange (from hub FE)", vec(R.link.fl, i), vec(R.link.fl, i, 3))}
+      ${row("statics", vec(R.hubS, i), vec(R.hubS, i, 3), "chk")}<span class="sep"></span>
+      ${row("④ Main bearing (drivetrain FE)", vec(R.link.mb, i), vec(R.link.mb, i, 3))}
+      ${row("⑤ Torque arm, left", vec(R.link.aL, i), null)}
+      ${row("⑤ Torque arm, right", vec(R.link.aR, i), null)}<span class="sep"></span>
+      ${row("⑥ Tower top (bedplate FE)", vec(R.link.yaw, i), vec(R.link.yaw, i, 3))}
+      ${row("statics", vec(R.ttS, i), vec(R.ttS, i, 3), "chk")}</div>
+      <p>Largest difference from statics over the record: hub <span class="ok">${(100 * R.closure.hub).toFixed(1)} %</span>, tower top <span class="ok">${(100 * R.closure.tower).toFixed(1)} %</span>.</p>`;
+  }
   function renderComps() {
     if (!sel) sel = R.comps.reduce((b, c) => ((c.ageing ?? -1) > (b.ageing ?? -1) ? c : b)).key;
     const top = R.comps.reduce((b, c) => ((c.ageing ?? -1) > (b.ageing ?? -1) ? c : b));
@@ -427,28 +502,74 @@ aside { display: grid; gap: 12px; min-width: 0; }
         const a = c.ageing;
         const bar = a == null ? `<span class="na">${c.check != null ? "peak / limit check" : "not modelled yet"}</span>` : `<span class="track"><span class="fill${a > 1 ? " over" : ""}" style="width:${posA(a) * 100}%"></span><span class="one" style="left:${posA(1) * 100}%"></span></span>`;
         const v = a == null ? (c.check != null ? c.check.toFixed(2) : "–") : fmtA(a);
-        return `<button type="button" class="crow" data-k="${c.key}" aria-pressed="${c.key === sel}"><span>${c.name}</span>${bar}<span class="v">${v}</span></button>`; }).join("")}</div>`;
-    el.querySelectorAll(".crow").forEach((b) => b.addEventListener("click", () => { sel = b.dataset.k; side(); highlight(sel); drawOverlay(); drawCharts(); }));
+        return `<button type="button" class="crow" data-k="${c.key}" aria-pressed="${c.key === sel}"><span>${c.part ? "◆ " : ""}${c.name}</span>${bar}<span class="v">${v}</span></button>`; }).join("")}</div>
+      <p class="tag">◆ stress from the FE chain · others: standard formulas fed by the chain's interface loads</p>`;
+    el.querySelectorAll(".crow").forEach((b) => b.addEventListener("click", () => { sel = b.dataset.k; side(); highlight(); drawOverlay(); drawCharts(); }));
     const c = curComp(), d = document.getElementById("detail");
     const rows = [];
     if (c.ageing != null) rows.push(["Ageing (design hours per hour)", fmtA(c.ageing)]);
     if (c.check != null) rows.push([c.key === "equipment" ? "Peak / limit" : "Static utilisation (1 / s0)", c.check.toFixed(2)]);
     d.innerHTML = `<h2>${c.name}</h2><span class="tag">${c.method} · ${c.standard}</span>
-      ${rows.length + c.metrics.length ? `<div class="kv">${rows.concat(c.metrics).map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}<span id="liveK">${c.signal ? c.signal.label + " now" : ""}</span><span id="liveV"></span></div>` : ""}
+      ${rows.length + c.metrics.length ? `<div class="kv">${rows.concat(c.metrics).map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}<span>${c.signal ? c.signal.label + " now" : ""}</span><span id="liveV"></span></div>` : ""}
       <p>${c.note}</p>`;
   }
-
-  const unitText = [
-    "Push along the shaft (thrust). Carried mostly by the main bearing's axial springs into the front housing and down the snout walls.",
-    "Vertical load at the hub (rotor weight). Bends the snout forward of the yaw bearing; the floor and the housing web carry it.",
-    "Sideways load at the hub. Twists the snout walls and loads the yaw-bearing flange unevenly.",
-    "Rotor torque. The main bearing cannot carry it, so it goes through the gearbox torque arms as an up-down pair. The lugs and the body behind them light up.",
-    "Yaw moment at the hub. Shared between the bearing seat and the torque-arm mounts as lateral forces.",
-    "Tilt moment at the hub. A vertical force pair between the main bearing and the torque arms.",
-    "Bedplate accelerating along the shaft at 1 m/s². Its own mass pushes back; small next to the rotor loads.",
-    "Bedplate accelerating up at 1 m/s². Gravity is this case times 9.81.",
-    "Bedplate accelerating sideways at 1 m/s².",
-  ];
+  const UNIT_TEXT = {
+    hub: (nm) => /^a/.test(nm) ? "The hub's own inertia for 1 m/s² in the rotor frame (gravity turns through this as the rotor spins)." : `Blade ${nm[0]} root: ${({ Foop: "out-of-plane force (thrust)", Fedge: "in-plane force", Frad: "radial force (centrifugal and weight)", Moop: "out-of-plane (flapwise) bending", Medge: "in-plane (edgewise) bending: torque and blade weight", Mpitch: "pitching moment" })[nm.slice(2)]}. The hub is held at the shaft flange.`,
+    dt: (nm) => /^a/.test(nm) ? "Shaft and gearbox (with its gears smeared in) accelerating at 1 m/s²." : `Load at the shaft flange, about the hub centre, in the fixed frame. It reaches the bedplate through the main bearing and the torque arms; the split comes from their stiffness.`,
+    bed: (nm) => /^a/.test(nm) ? "Bedplate plus the lumped generator and rear frame accelerating at 1 m/s². Gravity is ay × 9.81." : nm.startsWith("MB") ? "Main-bearing reaction from the drivetrain model, spread over the bearing seat." : "Torque-arm reaction from the drivetrain model, on the elastomer pad of the lug.",
+  };
+  function side() {
+    const el = document.getElementById("side"), leg = document.getElementById("legend");
+    if (mode === "chain") {
+      renderChain();
+      leg.innerHTML = `<span><i style="background:var(--fx)"></i>force passed on</span><span><i style="background:var(--fz)"></i>moment passed on</span><span>colour: von Mises, live</span>`;
+    } else if (mode === "unit") {
+      const nm = RD.parts[part].names[unit], u = RD.parts[part].units[unit];
+      el.innerHTML = `<h2>${PNAME[part]} · unit case ${nm} = 1 ${u}</h2><p>${UNIT_TEXT[part](nm)}</p><p>Stored once. The live view scales this field by the record's ${nm} every frame and adds the other ${RD.parts[part].names.length - 1}.</p>`;
+      leg.innerHTML = `<span>Colour: ${metric === "vm" ? "von Mises" : "max principal"} for this unit case (scale ignores supports and load points)</span><span>Deformation ×${defo}</span>`;
+    } else if (mode === "live") {
+      el.innerHTML = `<h2>${R.kind === "op" ? "Operating at 12 m/s" : "Parked storm with wave slam"}</h2><p>${R.kind === "op" ? "Thrust, rotor weight, about 18 MN·m of torque and turbulent bending, sampled every 0.25 s. All three parts superposed every frame; the hub turns with the rotor." : "Parked and feathered: lower thrust but large gust moments and nacelle motion. A breaking-wave slam at 330 s shakes the nacelle."}</p><div class="kv" id="readout"></div>`;
+      leg.innerHTML = `<span>Colour: ${metric === "vm" ? "von Mises" : "max principal"}, superposed live, one scale for all parts</span><span><i class="dot" style="background:var(--hot)"></i>hot spot of each part</span><span>Deformation ×${effDefo()}</span>`;
+    } else {
+      renderComps();
+      leg.innerHTML = `<span><i class="dot" style="background:var(--hi)"></i>selected part</span><span>FE parts: von Mises, live</span>${curComp().part ? '<span><i class="dot" style="background:var(--hot)"></i>critical point</span>' : ""}`;
+    }
+    document.getElementById("cbar").hidden = false;
+    document.getElementById("charts").hidden = mode === "unit";
+    document.getElementById("liveCtl").hidden = mode === "unit";
+    document.getElementById("unitCtl").hidden = mode !== "unit";
+    document.getElementById("unitsel").hidden = mode !== "unit";
+    document.getElementById("detail").hidden = mode !== "comp";
+    document.getElementById("feCard").hidden = mode === "comp" || mode === "chain";
+    document.getElementById("eq").innerHTML = {
+      chain: "blade roots (18) + a → <b>R<sub>hub</sub></b> → shaft flange (6) → rotate by azimuth → <b>R<sub>drivetrain</sub></b> → main bearing (6) + torque arms (3 + 3) → <b>R<sub>bedplate</sub></b> → tower top (6) &nbsp;·&nbsp; each R holds one FE model's support reactions per unit load",
+      unit: "σ(x, t) = Σ<sub>i</sub> L<sub>i</sub>(t) · σ<sub>i</sub>(x) &nbsp;·&nbsp; this is one σ<sub>i</sub>: hub 21, drivetrain 9, bedplate 15 unit fields",
+      live: "σ<sub>part</sub>(x, t) = Σ<sub>i</sub> L<sub>part,i</sub>(t) · σ<sub>part,i</sub>(x), with each part's loads L from the chain",
+      comp: "ageing = damage in the record × 20 years ÷ record length &nbsp;·&nbsp; damage = Σ n<sub>i</sub> / N(S<sub>i</sub>) (rainflow + S-N) or Σ revolutions / L10(P) (bearings) &nbsp;·&nbsp; 1.0 = using life at exactly the design rate",
+    }[mode];
+  }
+  function highlight() {
+    Object.values(ctxParts).flat().forEach((m) => { m.material = m.userData.orig; });
+    const c = mode === "comp" ? curComp() : null;
+    hiMat.color = new THREE.Color(css("--hi")); hiMat.emissive = new THREE.Color(css("--hi")).multiplyScalar(0.25);
+    if (c && ctxParts[c.key]) ctxParts[c.key].forEach((m) => { m.material = hiMat; });
+    const selFE = c ? feParts[c.key] : null;
+    Object.entries(meshesOf).forEach(([k, ms]) => ms.forEach((m) => {
+      let op = 1;
+      if (mode === "unit" && k !== part) op = 0.35;
+      if (c) op = selFE ? (selFE.includes(m) ? 1 : 0.12) : 0.18;
+      m.material.opacity = op; m.material.depthWrite = op > 0.5;
+    }));
+  }
+  const unitsel = document.getElementById("unitsel"), partsel = document.getElementById("partsel");
+  PK.forEach((k) => { const b = document.createElement("button"); b.type = "button"; b.textContent = PNAME[k]; b.dataset.k = k; b.setAttribute("aria-pressed", k === part);
+    b.addEventListener("click", () => { part = k; unit = k === "hub" ? 3 : 1; [...partsel.children].forEach((x) => x.setAttribute("aria-pressed", x === b)); buildUnitButtons(); refresh(); }); partsel.append(b); });
+  function buildUnitButtons() {
+    unitsel.innerHTML = "";
+    RD.parts[part].names.forEach((n, i) => { const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.setAttribute("aria-pressed", i === unit);
+      b.addEventListener("click", () => { unit = i; [...unitsel.children].forEach((x) => x.setAttribute("aria-pressed", x === b)); refresh(); }); unitsel.append(b); });
+  }
+  buildUnitButtons();
 
   // ---------- charts ---------------------------------------------------------------------------------
   function chart(cv, series, cursor, ylab) {
@@ -462,7 +583,8 @@ aside { display: grid; gap: 12px; min-width: 0; }
     const step = Math.pow(10, Math.floor(Math.log10((hi - lo) / 3))); const st = [1, 2, 5, 10].map((m) => m * step).find((s) => (hi - lo) / s <= 5);
     for (let v = Math.ceil(lo / st) * st; v <= hi; v += st) { g.beginPath(); g.moveTo(L0, Y(v)); g.lineTo(W, Y(v)); g.stroke(); g.fillText(+v.toFixed(2), L0 - 4, Y(v) + 3); }
     g.textAlign = "center"; for (let s = 0; s <= R.t[R.n - 1]; s += 100) g.fillText(s + (s === 0 ? " s" : ""), X(s / R.dt), H - 4);
-    series.forEach((s) => { g.strokeStyle = s.c; g.lineWidth = 1.2; g.beginPath(); for (let i = 0; i < s.y.length; i += 2) { const y = Y(s.y[i] * s.k); i ? g.lineTo(X(i), y) : g.moveTo(X(i), y); } g.stroke(); });
+    series.forEach((s) => { g.strokeStyle = s.c; g.lineWidth = s.w || 1.2; g.setLineDash(s.dash || []); g.beginPath(); for (let i = 0; i < s.y.length; i += 2) { const y = Y(s.y[i] * s.k); i ? g.lineTo(X(i), y) : g.moveTo(X(i), y); } g.stroke(); });
+    g.setLineDash([]);
     g.strokeStyle = css("--ink"); g.lineWidth = 2; g.beginPath(); g.moveTo(X(cursor), 4); g.lineTo(X(cursor), H - 16); g.stroke();
     g.save(); g.translate(10, H / 2 - 8); g.rotate(-Math.PI / 2); g.textAlign = "center"; g.fillStyle = css("--muted"); g.fillText(ylab, 0, 0); g.restore();
   }
@@ -472,67 +594,73 @@ aside { display: grid; gap: 12px; min-width: 0; }
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
     g.fillStyle = css("--muted"); g.font = "13px " + css("--font-body"); g.textAlign = "center"; g.fillText(msg, W / 2, H / 2);
   }
+  const row = (arr, j) => arr.subarray(j * R.n, (j + 1) * R.n);
   let refLine = null;
-  function drawComp() {
-    const c = curComp(), cL = document.getElementById("cLoads"), cH = document.getElementById("cHot");
-    document.getElementById("loadsLabel").textContent = c.signal ? `${c.signal.label} (${c.signal.unit})` : "No load signal";
-    if (c.sig) {
-      const s = [{ y: c.sig, k: 1, c: css("--hi") }];
-      if (c.key === "equipment") s.push({ y: new Float32Array(R.n).fill(2.0), k: 1, c: css("--hot") });
-      chart(cL, s, ti, c.signal.unit);
-    } else blank(cL, "Not worked out from the global loads");
-    if (c.cumA) {
-      if (!refLine || refLine.length !== R.n) { refLine = new Float32Array(R.n); for (let i = 0; i < R.n; i++) refLine[i] = (i + 1) * R.dt / 60; }
-      document.getElementById("hotLabel").textContent = "Design life used, minutes (grey: the design rate)";
-      chart(cH, [{ y: refLine, k: 1, c: css("--muted") }, { y: c.cumA, k: 1, c: css("--hot") }], ti, "design min");
-    } else { document.getElementById("hotLabel").textContent = "Design life used"; blank(cH, c.check != null ? "A peak check, not a fatigue calculation" : "Not modelled yet"); }
-    const lv = document.getElementById("liveV"); if (lv && c.sig) lv.textContent = `${c.sig[ti].toFixed(c.signal.unit === "MPa" ? 1 : 2)} ${c.signal.unit}`;
-  }
   function drawCharts() {
-    if (mode === "comp") { drawComp(); return; }
-    document.getElementById("loadsLabel").textContent = "Hub-centre loads from the global model";
-    chart(document.getElementById("cLoads"), [
-      { y: R.L[0], k: 1, c: css("--fx") }, { y: R.L[1], k: 1, c: css("--fy") }, { y: R.L[2], k: 1, c: css("--fz") }, { y: R.L[3], k: 0.1, c: css("--ink") }], ti, "MN  (torque Mx ÷10, MN·m)");
-    chart(document.getElementById("cHot"), [{ y: hotSeries, k: 1e-6, c: css("--hot") }], ti, "MPa");
-    document.getElementById("hotLabel").textContent = `${metric === "vm" ? "von Mises" : "Max principal"} stress at the hot spot`;
-    const ro = document.getElementById("readout");
-    if (ro) ro.innerHTML = [["Time", `${R.t[ti].toFixed(1)} s`], ["Thrust Fx", `${R.L[0][ti].toFixed(2)} MN`], ["Rotor weight Fy", `${R.L[1][ti].toFixed(2)} MN`], ["Torque Mx", `${R.L[3][ti].toFixed(1)} MN·m`], ["Tilt Mz", `${R.L[5][ti].toFixed(1)} MN·m`], ["Nacelle ax", `${R.L[6][ti].toFixed(2)} m/s²`], ["Hot-spot stress", `${(hotSeries[ti] / 1e6).toFixed(1)} MPa`], ["Peak in record", `${(Math.max(...hotSeries) / 1e6).toFixed(1)} MPa`]]
-      .map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("");
+    const c1 = document.getElementById("c1"), c2 = document.getElementById("c2"), l1 = document.getElementById("lab1"), l2 = document.getElementById("lab2");
+    if (mode === "chain") {
+      l1.textContent = "Down the chain: torque ÷ 10 (black), main bearing Fy, arm Fy left / right";
+      chart(c1, [{ y: row(R.link.fl, 3), k: 0.1, c: css("--ink") }, { y: row(R.link.mb, 1), k: 1, c: css("--fy") }, { y: row(R.link.aL, 1), k: 1, c: css("--fx") }, { y: row(R.link.aR, 1), k: 1, c: css("--fz") }], ti, "MN  (torque MN·m ÷ 10)");
+      l2.textContent = "Tower-top moments: chain (solid) vs statics (dashed)";
+      chart(c2, [{ y: row(R.link.yaw, 0), k: 1, c: css("--fx"), w: 2.2 }, { y: row(R.ttS, 0), k: 1, c: css("--ink"), dash: [4, 3] }, { y: row(R.link.yaw, 2), k: 1, c: css("--fz"), w: 2.2 }, { y: row(R.ttS, 2), k: 1, c: css("--ink"), dash: [4, 3] }], ti, "MN·m  (Mx orange, Mz blue)");
+    } else if (mode === "live") {
+      l1.textContent = "Shaft-flange loads from the hub FE (fixed frame)";
+      chart(c1, [{ y: row(R.link.fl, 0), k: 1, c: css("--fx") }, { y: row(R.link.fl, 1), k: 1, c: css("--fy") }, { y: row(R.link.fl, 2), k: 1, c: css("--fz") }, { y: row(R.link.fl, 3), k: 0.1, c: css("--ink") }], ti, "MN  (torque MN·m ÷ 10)");
+      l2.textContent = `${metric === "vm" ? "von Mises" : "Max principal"} at each part's hot spot: hub, drivetrain, bedplate`;
+      chart(c2, [{ y: P.hub.hot, k: 1e-6, c: css("--fz") }, { y: P.dt.hot, k: 1e-6, c: css("--fy") }, { y: P.bed.hot, k: 1e-6, c: css("--hot") }], ti, "MPa");
+      const ro = document.getElementById("readout");
+      if (ro) ro.innerHTML = [["Time", `${R.t[ti].toFixed(1)} s`], ["Rotor azimuth", `${((R.psi[ti] * 180 / Math.PI) % 360).toFixed(0)}°`], ["Torque", `${R.link.fl[3 * R.n + ti].toFixed(1)} MN·m`],
+        ["Hub hot spot", `${(P.hub.hot[ti] / 1e6).toFixed(1)} MPa`], ["Drivetrain hot spot", `${(P.dt.hot[ti] / 1e6).toFixed(1)} MPa`], ["Bedplate hot spot", `${(P.bed.hot[ti] / 1e6).toFixed(1)} MPa`]]
+        .map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("");
+    } else if (mode === "comp") {
+      const c = curComp();
+      l1.textContent = c.signal ? `${c.signal.label} (${c.signal.unit})` : "No load signal";
+      if (c.sig) { const s = [{ y: c.sig, k: 1, c: css("--hi") }]; if (c.key === "equipment") s.push({ y: new Float32Array(R.n).fill(2.0), k: 1, c: css("--hot") }); chart(c1, s, ti, c.signal.unit); }
+      else blank(c1, "Not worked out from the global loads");
+      if (c.cumA) {
+        if (!refLine || refLine.length !== R.n) { refLine = new Float32Array(R.n); for (let i = 0; i < R.n; i++) refLine[i] = (i + 1) * R.dt / 60; }
+        l2.textContent = "Design life used, minutes (grey: the design rate)";
+        chart(c2, [{ y: refLine, k: 1, c: css("--muted") }, { y: c.cumA, k: 1, c: css("--hot") }], ti, "design min");
+      } else { l2.textContent = "Design life used"; blank(c2, c.check != null ? "A peak check, not a fatigue calculation" : "Not modelled yet"); }
+      const lv = document.getElementById("liveV"); if (lv && c.sig) lv.textContent = `${c.sig[ti].toFixed(c.signal.unit === "MPa" ? 1 : 2)} ${c.signal.unit}`;
+    }
   }
 
   // ---------- controls -------------------------------------------------------------------------------
   const modeBtns = [...document.querySelectorAll("#mode button")];
-  modeBtns.forEach((b) => b.addEventListener("click", () => { mode = b.dataset.mode; modeBtns.forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false")); refresh(); }));
-  const us = document.getElementById("unitsel");
-  NAMES.forEach((n, i) => { const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.setAttribute("aria-pressed", i === unit ? "true" : "false");
-    b.addEventListener("click", () => { unit = i; [...us.children].forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false")); refresh(); }); us.append(b); });
-  document.getElementById("preset").addEventListener("change", (e) => { R = rec(e.target.value); R.kind = e.target.value; ti = 0; analyseRecord(); refresh(); });
+  modeBtns.forEach((b) => b.addEventListener("click", () => { mode = b.dataset.mode; modeBtns.forEach((x) => x.setAttribute("aria-pressed", x === b)); refresh(); }));
+  document.getElementById("preset").addEventListener("change", (e) => { R = rec(e.target.value); ti = 0; analyseRecord(); refresh(); });
   const playBtn = document.getElementById("play"); const sync = () => { playBtn.textContent = playing ? "Pause" : "Play"; };
   playBtn.addEventListener("click", () => { playing = !playing; sync(); });
   document.getElementById("defo").addEventListener("change", (e) => { defo = +e.target.value; refresh(); });
   document.getElementById("metric").addEventListener("change", (e) => { metric = e.target.value; analyseRecord(); refresh(); });
 
-  function refresh() {
-    const dim = mode === "map" ? 0.95 : 0.22;
-    ctxMat.opacity = dim; darkMat.opacity = dim; ctxMat.depthWrite = darkMat.depthWrite = mode === "map";
+  function applyTheme() {
+    const dim = mode === "chain" || mode === "unit" ? 0.55 : 0.2;
+    ctxMat.opacity = dim; darkMat.opacity = Math.min(1, dim + 0.15); ctxMat.depthWrite = darkMat.depthWrite = false;
     ctxMat.color = new THREE.Color(css("--steel")).multiplyScalar(0.95); darkMat.color = new THREE.Color(css("--ink")).lerp(new THREE.Color(css("--steel")), 0.55);
-    edges.material.color = new THREE.Color(css("--ink")); cover.material.color = new THREE.Color(css("--ink")); scene.background = new THREE.Color(css("--sky"));
-    if (mode === "map") paintPlain();
-    else if (mode === "unit") { const L = unitVec(); combine(L); let m = 0; for (let v = 0; v < NV; v++) m = Math.max(m, Math.abs(metricAt(v, metric))); paint(L, m); }
-    else paint(Lat(ti), scaleMax);
-    side(); highlight(sel); drawOverlay(); if (mode === "live" || mode === "comp") drawCharts();
+    cover.material.color = new THREE.Color(css("--ink")); scene.background = new THREE.Color(css("--sky"));
   }
-  R.kind = "op"; analyseRecord(); sync(); refresh();
-  function resize() { const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); if (mode === "live" || mode === "comp") drawCharts(); }
+  function refresh() {
+    applyTheme(); paintFrame(); side(); highlight(); drawOverlay(); drawLabels(); drawCharts();
+  }
+  analyseRecord(); sync(); refresh();
+  function resize() { const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); drawCharts(); }
   new ResizeObserver(resize).observe(host); resize();
-  let acc = 0;
+  let acc = 0, frame = 0;
   (function loop(now) {
     requestAnimationFrame(loop);
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
-    if ((mode === "live" || mode === "comp") && playing) {
+    const target = mode === "chain" || mode === "unit" ? 1 : 0;
+    if (Math.abs(explode - target) > 1e-3) {
+      explode += (target - explode) * Math.min(1, dt * 4);
+      G.dt.position.y = 3.0 * explode; G.pivot.position.x = HUB[0] - 2.6 * explode; cover.visible = explode < 0.05;
+      drawOverlay(); if (mode === "chain" && Math.abs(explode - target) < 0.01) drawLabels();
+    }
+    if (mode !== "unit" && playing) {
       acc += dt * 8;                                   // 8x real time
       const steps = Math.floor(acc / R.dt);
-      if (steps > 0) { acc -= steps * R.dt; ti = (ti + steps) % R.n; paint(Lat(ti), scaleMax); drawOverlay(); drawCharts(); }
+      if (steps > 0) { acc -= steps * R.dt; ti = (ti + steps) % R.n; paintFrame(); drawOverlay(); drawCharts(); if (mode === "chain" && ++frame % 3 === 0) renderChain(); }
     }
     ctl.update(); r.render(scene, cam);
   })(performance.now());
