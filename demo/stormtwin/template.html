@@ -198,8 +198,9 @@ button.tab { font: inherit; }
   .list tr td, .farm circle { transition: background 0.15s, stroke-width 0.15s; }
 }
 /* ---------- app shell ---------- */
-.app { display: grid; grid-template-columns: 272px minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr);
-  grid-template-areas: "top top top" "tree stage drawer"; height: 100vh; height: 100dvh; overflow: hidden; }
+.app { --tree-w: 272px; --drawer-w: min(500px, 42vw);
+  display: grid; grid-template-columns: var(--tree-w) 0 minmax(0, 1fr) 0 auto; grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "top top top top top" "tree sl stage sr drawer"; height: 100vh; height: 100dvh; overflow: hidden; }
 .topbar { grid-area: top; display: flex; align-items: center; gap: 14px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); background: var(--surface); min-width: 0; }
 .brand b { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; letter-spacing: 0.02em; }
 .badge { margin-left: auto; font-family: var(--font-data); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 7px; border: 1px solid var(--warn); color: var(--warn); border-radius: 3px; white-space: nowrap; }
@@ -279,7 +280,7 @@ button.tab { font: inherit; }
 .btn.icon { padding: 4px 8px; }
 .vp-btns .btn { background: color-mix(in srgb, var(--surface) 88%, transparent); }
 
-.drawer { grid-area: drawer; width: min(500px, 42vw); display: flex; flex-direction: column; min-height: 0; background: var(--bg); border-left: 1px solid var(--line); }
+.drawer { grid-area: drawer; width: var(--drawer-w); display: flex; flex-direction: column; min-height: 0; background: var(--bg); border-left: 1px solid var(--line); }
 .dr-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px 10px; background: var(--surface); }
 .dr-h h2 { font-size: 1.5rem; }
 .drawer .tabs { display: flex; gap: 0; padding: 0 10px; background: var(--surface); border-bottom: 1px solid var(--line); overflow-x: auto; }
@@ -315,7 +316,15 @@ details.sec > * + * { margin-top: 8px; }
 .insp summary { list-style-position: inside; }
 .insp .lead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 4px; }
 
-@media (max-width: 1100px) { .app { grid-template-columns: 236px minmax(0, 1fr) auto; } .drawer { width: min(440px, 46vw); } }
+@media (max-width: 1100px) { .app { --tree-w: 236px; --drawer-w: min(440px, 46vw); } }
+.split { position: relative; z-index: 6; width: 0; cursor: col-resize; touch-action: none; }
+.split::before { content: ""; position: absolute; top: 0; bottom: 0; left: -5px; width: 10px; }
+.split::after { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 2px; background: transparent; transition: background 0.15s; }
+.split:hover::after, .split:focus-visible::after, .split.drag::after { background: var(--accent); }
+.split:focus-visible { outline: none; }
+#split-l { grid-area: sl; } #split-r { grid-area: sr; }
+.app.resizing, .app.resizing * { cursor: col-resize !important; user-select: none; }
+.app.resizing #three { pointer-events: none; }
 @media (max-width: 860px) {
   .app { display: block; height: auto; overflow: visible; }
   .topbar { position: sticky; top: 0; z-index: 20; flex-wrap: wrap; row-gap: 4px; }
@@ -326,6 +335,7 @@ details.sec > * + * { margin-top: 8px; }
   .app.tree-open::after { content: ""; position: fixed; inset: 0; z-index: 25; background: rgba(0, 0, 0, 0.4); }
   .stage { height: 58vh; min-height: 320px; }
   .drawer { width: auto; border-left: 0; border-top: 1px solid var(--line); }
+  .split { display: none; }
   .dr-b { overflow: visible; }
   .vp-hint { white-space: normal; text-align: center; width: max-content; max-width: calc(100% - 32px); }
 }
@@ -393,6 +403,7 @@ details.sec > * + * { margin-top: 8px; }
     <ul class="tree" id="tree" role="tree" aria-label="Farms, turbines and components"></ul>
   </aside>
 
+  <div class="split" id="split-l" role="separator" aria-orientation="vertical" aria-label="Resize explorer" tabindex="0"></div>
   <main class="stage">
     <div class="viewport" id="viewport">
       <div id="three" role="img" aria-label="3D view of the farm and sea; click a turbine to analyse it"></div>
@@ -429,6 +440,7 @@ details.sec > * + * { margin-top: 8px; }
     </div>
   </main>
 
+  <div class="split" id="split-r" role="separator" aria-orientation="vertical" aria-label="Resize analysis panel" tabindex="0" hidden></div>
   <aside class="drawer" id="drawer" aria-label="Analysis" hidden>
     <div class="dr-h">
       <div><div class="eyebrow" id="dr-eyebrow"></div><h2 id="dr-title"></h2></div>
@@ -2212,6 +2224,7 @@ details.sec > * + * { margin-top: 8px; }
     const dr = document.getElementById("drawer"), tabs = document.getElementById("dr-tabs");
     const ey = document.getElementById("dr-eyebrow"), ti = document.getElementById("dr-title");
     dr.hidden = !drawerOpen || NAV.type === "none";
+    document.getElementById("split-r").hidden = dr.hidden;
     stopLive(); if (FLV) { FLV.stop(); FLV = null; }
     tabs.hidden = NAV.type !== "turbine"; tabs.innerHTML = "";
     if (dr.hidden) return;
@@ -2298,6 +2311,34 @@ details.sec > * + * { margin-top: 8px; }
   function setWIsilent(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); readWI(); }
 
   document.getElementById("dr-close").addEventListener("click", () => { drawerOpen = false; drawDrawer(); });
+  // ---------- resizable panes ----------
+  (function splitters() {
+    const app = document.getElementById("app"), KEY = "stormtwin-panes";
+    const lim = { tree: () => [180, Math.min(480, window.innerWidth * 0.35)], drawer: () => [320, Math.min(960, window.innerWidth * 0.7)] };
+    const clamp = (k, v) => { const [a, b] = lim[k](); return Math.round(Math.max(a, Math.min(b, v))); };
+    const apply = (k, v) => app.style.setProperty(k === "tree" ? "--tree-w" : "--drawer-w", clamp(k, v) + "px");
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ tree: app.style.getPropertyValue("--tree-w"), drawer: app.style.getPropertyValue("--drawer-w") })); } catch (e) { /* storage unavailable */ } };
+    try { const v = JSON.parse(localStorage.getItem(KEY) || "{}"); if (v.tree) apply("tree", parseFloat(v.tree)); if (v.drawer) apply("drawer", parseFloat(v.drawer)); } catch (e) { /* ignore */ }
+    const width = (k) => (k === "tree" ? document.getElementById("explorer") : document.getElementById("drawer")).getBoundingClientRect().width;
+    [["split-l", "tree", 1], ["split-r", "drawer", -1]].forEach(([id, k, sign]) => {
+      const h = document.getElementById(id);
+      h.addEventListener("pointerdown", (e) => {
+        e.preventDefault(); h.setPointerCapture(e.pointerId);
+        const x0 = e.clientX, w0 = width(k);
+        app.classList.add("resizing"); h.classList.add("drag");
+        const move = (ev) => apply(k, w0 + sign * (ev.clientX - x0));
+        const up = () => { h.removeEventListener("pointermove", move); h.removeEventListener("pointerup", up); h.removeEventListener("pointercancel", up); app.classList.remove("resizing"); h.classList.remove("drag"); save(); };
+        h.addEventListener("pointermove", move); h.addEventListener("pointerup", up); h.addEventListener("pointercancel", up);
+      });
+      h.addEventListener("dblclick", () => { app.style.removeProperty(k === "tree" ? "--tree-w" : "--drawer-w"); save(); });
+      h.addEventListener("keydown", (e) => {
+        const d = e.key === "ArrowRight" ? 16 : e.key === "ArrowLeft" ? -16 : 0; if (!d) return;
+        e.preventDefault(); apply(k, width(k) + sign * d); save();
+      });
+    });
+    window.addEventListener("resize", () => { ["tree", "drawer"].forEach((k) => { const v = parseFloat(app.style.getPropertyValue(k === "tree" ? "--tree-w" : "--drawer-w")); if (v) apply(k, v); }); });
+  })();
+
   // ---------- settings ----------
   const setEl = document.getElementById("settings");
   function rulesTable() {
