@@ -386,3 +386,21 @@ python examples/higher_order_sweep.py     # linear vs 2nd order vs Dysthe, swept
   (first order) in each mode. At the focus of a steep breather the envelope is
   only a wavelength or two long, so check `negative_wavenumber_fraction()`.
   Bound second-order harmonics are not included in either model.
+
+## Rotor-nacelle component damage (`rna`)
+
+`python -m rna` turns blade-root loads into an ageing rate for each nacelle component
+(design-life hours used per hour, 1.0 = exactly the 20-year design rate):
+
+- **Main bearing:** shaft statics, then the ISO 281 equivalent load and L10 at each step.
+- **Main shaft:** rotating bending plus mean torsion, against an FKM-style curve.
+- **Gearbox gears and bearings:** torque and speed against the design load spectrum (ISO 6336 slopes), so no gear geometry is needed.
+- **Pitch and yaw bearings:** slewing-bearing equivalent load, static margin, and a count of small pitch oscillations (wear risk).
+- **Blade-root bolts:** joint diagram with gap opening, then rainflow and EC3 detail 50.
+- **Castings:** unit-load FE fields, critical-plane rainflow, then S-N (`unit_load_hotspot`).
+
+`rna.synthetic` builds illustrative operating and parked-storm records blade by blade and
+reduces them to hub-centre and tower-top loads. `demo/rna/build.py` combines these with the
+bedplate FE fields into the 3D page. Run `examples/rna_bedplate_fe.py` first; it writes
+`bedplate.json` in about 40 s. All sizes and ratings are representative, not data for a
+real turbine.
