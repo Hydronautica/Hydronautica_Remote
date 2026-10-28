@@ -110,3 +110,20 @@ def test_virtual_sensing_observability_if_built():
         _, x_hat, _, _ = estimate(rec, fe, P, which, tb)
         fit.append(r2(tilt, run(as_record(rec, x_hat, fe), fe)["flange"][5]))
     assert fit[0] < 0.3 < 0.9 < fit[1]       # SCADA alone cannot see hub bending; tower-top gauges can
+
+
+def test_latent_force_bands_are_calibrated_if_built():
+    import os
+    import pytest
+    from rna.chain import load, turbine_for
+    from rna.lfm import LFM, aero_prior, truth_record
+    path = os.path.join(os.path.dirname(__file__), "..", "demo", "rna", "fe_chain.npz")
+    if not os.path.exists(path):
+        pytest.skip("run examples/rna_fe_chain.py first")
+    fe = load(path)
+    tb = turbine_for(fe)
+    rec = truth_record("op", tb, 2.6, 8.0)
+    lf = LFM(tb, "op", aero_prior(tb, "op", seeds=range(201, 207)), 2.6, 8.0)
+    r = lf.smooth(rec, fe, 1, n_samples=5)
+    cover = np.mean(np.abs(r["x_true"] - r["Xmean"]) < 1.96 * r["Xsd"], 0)
+    assert 0.85 < np.median(cover) < 1.0          # 95 % bands hold the truth about 95 % of the time

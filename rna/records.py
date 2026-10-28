@@ -46,12 +46,14 @@ def _band(rng, t, fc, bw, sd, n=24):
     return sd * np.sqrt(2.0 / n) * np.cos(2 * np.pi * np.outer(t, f) + ph).sum(axis=1)
 
 
-def synthetic(kind="op", tb=None, dt=0.25, duration=600.0, seed=None):
+def synthetic(kind="op", tb=None, dt=0.25, duration=600.0, seed=None, tower=None):
     """Ten-minute record built blade by blade.
 
     kind "op": power production just above rated (12 m/s), turbulence, shear, 1P pitch.
     kind "storm": parked, feathered and idling, gusty side loads, a wave slam at 330 s
     that shakes the nacelle.
+    tower: None, or a callable (rec_so_far) -> n × 3 nacelle acceleration (gravity included), used
+    instead of the prescribed acceleration bands so the nacelle motion follows the rotor loads.
     """
     tb = tb or Turbine()
     rng = np.random.default_rng(seed if seed is not None else (11 if kind == "op" else 23))
@@ -84,9 +86,9 @@ def synthetic(kind="op", tb=None, dt=0.25, duration=600.0, seed=None):
     A = np.stack([ax, G + ay, az], axis=1)                      # n × 3
     omega = rpm / 60 * 2 * np.pi
     xh = np.array([1.0, 0, 0])
-    F_root = np.zeros((3, n, 3)); M_root = np.zeros((3, n, 3))
-    blade6 = np.zeros((3, 6, n)); pitch = np.zeros((3, n))
-    for k in range(3):
+    r_f, r_e = tb.r_flap - tb.r_root, tb.r_edge - tb.r_root
+    aero, pitch = [], np.zeros((3, n))
+    for k in range(3):                                          # aerodynamic loads first (they drive the tower)
         pk = psi + 2 * np.pi * k / 3
         er = np.stack([np.zeros(n), np.cos(pk), np.sin(pk)], 1)
         et = np.stack([np.zeros(n), -np.sin(pk), np.cos(pk)], 1)
@@ -101,20 +103,27 @@ def synthetic(kind="op", tb=None, dt=0.25, duration=600.0, seed=None):
             f_flap = 0.23e6 * (1 + u + own)
             f_in = np.outer(f_lat, [0, 0, 1.0]) + (torque / 3 / tb.r_edge)[:, None] * et
             pitch[k] = 88.0
+        m_pitch = -0.3e6 + _band(rng, t, 0.2, 0.15, 0.15e6)
         Ff = f_flap[:, None] * xh
-        r_f, r_e = tb.r_flap - tb.r_root, tb.r_edge - tb.r_root
+        Fa = Ff + f_in
+        Ma = np.cross(r_f * er, Ff) + np.cross(r_e * er, f_in) + m_pitch[:, None] * er
+        aero.append((er, et, Fa, Ma))
+    if tower is not None:
+        A = tower(dict(t=t, dt=dt, psi=psi, rpm=rpm, aero_F=sum(x[2] for x in aero), kind=kind, rng=rng))
+    F_root = np.zeros((3, n, 3)); M_root = np.zeros((3, n, 3))
+    blade6 = np.zeros((3, 6, n)); aero6 = np.zeros((3, 6, n))
+    proj = lambda F, M, er, et: [np.sum(F * xh, 1), np.sum(F * et, 1), np.sum(F * er, 1), -np.sum(M * et, 1), np.sum(M * xh, 1), np.sum(M * er, 1)]
+    for k, (er, et, Fa, Ma) in enumerate(aero):
         F_inert = -tb.blade_mass * A
         F_cf = (tb.blade_mass * omega ** 2 * (tb.r_root + tb.blade_cg))[:, None] * er
-        F = Ff + f_in + F_inert + F_cf
-        m_pitch = -0.3e6 + _band(rng, t, 0.2, 0.15, 0.15e6)
-        M = (np.cross(r_f * er, Ff) + np.cross(r_e * er, f_in) + np.cross(tb.blade_cg * er, F_inert)
-             + m_pitch[:, None] * er)
+        F = Fa + F_inert + F_cf
+        M = Ma + np.cross(tb.blade_cg * er, F_inert)
         F_root[k], M_root[k] = F, M
-        blade6[k] = [np.sum(F * xh, 1), np.sum(F * et, 1), np.sum(F * er, 1),
-                     -np.sum(M * et, 1), np.sum(M * xh, 1), np.sum(M * er, 1)]
+        blade6[k] = proj(F, M, er, et)
+        aero6[k] = proj(Fa, Ma, er, et)
 
     rec = dict(kind=kind, t=t, dt=dt, rpm=rpm, psi=psi, pitch=pitch, yaw=yaw, A=A,
-               blade=blade6, F_root=F_root, M_root=M_root, torque_aero=torque)
+               blade=blade6, aero=aero6, F_root=F_root, M_root=M_root, torque_aero=torque)
     rec["hub_F"], rec["hub_M"] = hub_loads(rec, tb)
     rec["tt_F"], rec["tt_M"] = tower_top(rec, tb)
     return rec
