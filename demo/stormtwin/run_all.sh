@@ -10,4 +10,4 @@ for F in $FARMS; do
   STORMTWIN_FARM=$F STORMTWIN_RECORD=${HIST_RECORD:-300} python3 -W ignore "$D/build_history.py" > "$D/history_$F.log" 2>&1 || exit 1
   STORMTWIN_FARM=$F python3 -W ignore "$D/build_modal.py" > "$D/modal_$F.log" 2>&1 || exit 1
 done
-python3 "$D/build_rna.py" && python3 "$D/make_page.py"
+python3 "$D/build_rna.py" && python3 "$D/build_whole.py" && python3 "$D/make_page.py"

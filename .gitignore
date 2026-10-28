@@ -13,3 +13,4 @@ demo/stormtwin/*.log
 demo/rna/bedplate.json
 demo/rna/fe_chain.npz
 demo/stormtwin/rna_chain.json
+demo/stormtwin/whole_replay.json
