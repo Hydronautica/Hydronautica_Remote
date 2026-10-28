@@ -272,3 +272,78 @@ def armour_utilisation(rock_d50, uc, hs, tp, h, rho_r=2650.0, amplification=2.0)
     tau_w = wave_shear(um, tp, rock)
     _, tau_max = combined_shear(tau_c, tau_w)
     return amplification * rock.shields(tau_max) / rock.theta_cr
+
+
+# --- rock scour protection ------------------------------------------------------------
+
+@dataclass
+class Armour:
+    """Rock scour protection around the pile (armour on a filter layer).
+
+    edge_factor: equilibrium edge scour at the rim as a fraction of the unprotected
+        pile equilibrium (edge scour is shallower, Petersen et al. 2015; screening value).
+    influence: share of edge-scour depth that acts on the pile's lateral support,
+        for a rim at `extent` pile diameters from the centre (the pile mobilises soil
+        out to roughly 2 to 3 D).
+    damage_rate: loss of armour integrity per hour per unit of utilisation above 1.
+    """
+    d50: float = 0.30            # m
+    thickness: float = 1.5       # armour + filter (m)
+    extent: float = 2.5          # rim radius from the pile centre, in pile diameters
+    rho_r: float = 2650.0
+    porosity: float = 0.40
+    edge_factor: float = 0.2
+    influence: float = 0.3
+    damage_rate: float = 0.05
+
+    @property
+    def surcharge(self):
+        """Submerged weight of the protection on the seabed (Pa)."""
+        return self.thickness * (1 - self.porosity) * (self.rho_r - RHO_W) * G
+
+
+def simulate_protected(pile, dt_hours, uc, hs, tp, armour, backfill_factor=3.0):
+    """Scour with rock protection: pile scour only where the armour has been damaged,
+    edge scour at the rim, and armour integrity tracked through the record.
+
+    Returns dict: s_pile, s_edge (m), integrity (0-1), utilisation, s_eff (scour depth
+    with the same effect on lateral support as the combination), and the unprotected
+    state from assess().
+    """
+    st = assess(pile, uc, hs, tp)
+    u = armour_utilisation(armour.d50, uc, hs, tp, pile.h, rho_r=armour.rho_r)
+    dt = dt_hours * 3600.0
+    n = len(st["s_eq"])
+    s_pile, s_edge, integ = np.empty(n), np.empty(n), np.empty(n)
+    sp = se = 0.0
+    I = 1.0
+    for i in range(n):
+        if u[i] > 1:
+            I = max(0.0, I - armour.damage_rate * (u[i] - 1) * dt_hours)
+        T, Tb, live = st["T"][i], st["T_bf"][i], st["live"][i]
+        for which in ("pile", "edge"):
+            seq = st["s_eq"][i] * ((1 - I) if which == "pile" else armour.edge_factor)
+            s = sp if which == "pile" else se
+            if seq > s:
+                s += (seq - s) * (1 - np.exp(-dt / T))
+            elif live and which == "edge":
+                s += (seq - s) * (1 - np.exp(-dt / (backfill_factor * Tb)))
+            if which == "pile":
+                sp = s
+            else:
+                se = s
+        s_pile[i], s_edge[i], integ[i] = sp, se, I
+    return dict(s_pile=s_pile, s_edge=s_edge, integrity=integ, utilisation=u,
+                s_eff=np.maximum(s_pile, armour.influence * s_edge), state=st)
+
+
+def rock_size_for(uc, hs, tp, h, target=0.8, rho_r=2650.0):
+    """Smallest armour d50 (m) keeping the peak utilisation at or below target."""
+    lo, hi = 0.01, 3.0
+    for _ in range(40):
+        mid = np.sqrt(lo * hi)
+        if np.max(armour_utilisation(mid, uc, hs, tp, h, rho_r=rho_r)) > target:
+            lo = mid
+        else:
+            hi = mid
+    return hi

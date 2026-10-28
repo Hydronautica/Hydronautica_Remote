@@ -106,3 +106,31 @@ def test_synthetic_record_and_cli(tmp_path):
     out = tmp_path / "s.json"
     assert main(["--D", "8", "--h", "25", "--d50", "0.3", "--years", "0.3", "--no-plots", "--json", str(out)]) == 0
     assert out.exists()
+
+
+def test_protection_holds_or_fails_with_rock_size():
+    from scour.core import Armour, rock_size_for, simulate_protected
+    pile = Pile(10.0, 42.0, Sediment(0.30e-3))
+    rec = synthetic("2020-01-01", 2.0, hs_median=1.6, u_spring=0.65, seed=5)
+    ok = simulate_protected(pile, 1.0, rec["uc"], rec["hs"], rec["tp"], Armour(d50=0.4))
+    assert ok["integrity"].min() == 1.0 and ok["s_pile"].max() == 0.0
+    assert 0 < ok["s_edge"].max() < 0.5 * simulate(pile, 1.0, rec["uc"], rec["hs"], rec["tp"])[0].max()
+    weak = simulate_protected(pile, 1.0, rec["uc"], rec["hs"], rec["tp"], Armour(d50=0.03))
+    assert weak["integrity"].min() < 1.0 and weak["s_pile"].max() > 0.0
+    d = rock_size_for(rec["uc"], rec["hs"], rec["tp"], 42.0)
+    assert simulate_protected(pile, 1.0, rec["uc"], rec["hs"], rec["tp"], Armour(d50=d))["utilisation"].max() <= 0.8 + 1e-6
+    assert Armour(thickness=1.5).surcharge == pytest.approx(1.5 * 0.6 * (2650 - 1025) * G)
+
+
+def test_backfill_and_surcharge_in_global_model():
+    import os
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "demo", "stormtwin"))
+    from structure import Model, Turbine
+    f = lambda **k: Model(Turbine(depth=42.0, **k)).frequencies(n=1)[0]
+    f0 = f()
+    assert f(scour=0.0, scour_max=0.0) == pytest.approx(f0)
+    # a refilled hole is softer than undisturbed soil but stiffer than an open hole
+    assert f(scour=8.0) < f(scour=0.0, scour_max=8.0) < f0
+    assert f(scour=4.0, scour_max=8.0) < f(scour=4.0)
+    assert f(surcharge=14e3) > f0

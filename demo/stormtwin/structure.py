@@ -25,7 +25,10 @@ RHO_STEEL = 7850.0
 class Turbine:
     depth: float = 45.0              # m
     embedment: float = 42.0          # m below mudline
-    scour: float = 0.0               # m of soil removed around the pile
+    scour: float = 0.0               # m of soil removed around the pile (current scour hole)
+    scour_max: float = 0.0           # deepest scour reached so far; soil between scour and scour_max is loose backfill
+    backfill_factor: float = 0.25    # p-y stiffness and capacity of backfilled sand relative to the original soil
+    surcharge: float = 0.0           # Pa on the seabed around the pile (rock scour protection)
     D_pile: float = 10.0
     t_pile: float = 0.095
     z_interface: float = 15.0        # tower base flange (m above MSL)
@@ -142,9 +145,12 @@ class Model:
         z_soil_top = mud - tb.scour
         below = z_soil_top - z
         self.soil = np.flatnonzero(below > 0)
-        pu, kz = api_sand(below[self.soil], tb.D_pile)
-        self.p_u = pu * trib[self.soil]
-        self.k0 = kz * trib[self.soil]
+        # a surcharge acts as extra overburden: equivalent depth of submerged sand
+        pu, kz = api_sand(below[self.soil] + tb.surcharge / 10e3, tb.D_pile)
+        # refilled sand above the deepest scour level is loose
+        loose = np.where(below[self.soil] < max(tb.scour_max - tb.scour, 0.0), tb.backfill_factor, 1.0)
+        self.p_u = pu * trib[self.soil] * loose
+        self.k0 = kz * trib[self.soil] * loose
         self.wet = np.flatnonzero((z > mud) & (z < tb.z_interface + 10))
         # weight above each node (for axial stress at hot spots)
         self._mass_above = None

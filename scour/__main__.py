@@ -18,9 +18,9 @@ from datetime import datetime
 
 import numpy as np
 
-from .core import Pile, Sediment
+from .core import Armour, Pile, Sediment
 from .metocean import load_csv, synthetic
-from .report import analyse, frequency_consequence, plot, text
+from .report import analyse, f1_series, frequency_consequence, plot, plot_protection, text
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -38,16 +38,28 @@ def farm_config(fid):
     return farms.FARMS[fid](), farms.TURBINES
 
 
+def armour_of(args, D):
+    if not args.armour:
+        return None
+    return Armour(d50=args.armour, thickness=args.armour_thickness, extent=args.armour_extent)
+
+
 def run_site(name, pile, rec, args, turbine_kwargs=None, make_plot=True):
-    r = analyse(pile, rec, alerts=args.alerts, allowance=args.allowance, armour_d50=args.armour)
-    if turbine_kwargs is not None and not args.no_frequency:
+    r = analyse(pile, rec, alerts=args.alerts, allowance=args.allowance, armour=armour_of(args, pile.D))
+    if turbine_kwargs is None:
+        turbine_kwargs = dict(D_pile=pile.D, D_bolt_circle=pile.D - 0.2, depth=pile.h)
+    if not args.no_frequency:
         depths = sorted({0.0, round(0.25 * pile.D, 1), round(0.5 * pile.D, 1), round(r["s_max"], 1), round(1.3 * pile.D, 1)})
         r["f1"] = list(zip(depths, frequency_consequence(turbine_kwargs, depths)))
+        r["f1t"] = f1_series(turbine_kwargs, r)
     print(text(r, name))
     if make_plot and not args.no_plots:
         os.makedirs(args.out, exist_ok=True)
         path = plot(r, rec, pile, os.path.join(args.out, f"scour_{name}.png"), name=name, tp_coef=args.tp_coef)
         print(f"  plot: {os.path.relpath(path)}")
+        if "f1t" in r or "protected" in r:
+            path = plot_protection(r, os.path.join(args.out, f"scour_protection_{name}.png"), name=name)
+            print(f"  plot: {os.path.relpath(path)}")
     print()
     return r
 
@@ -76,7 +88,9 @@ def main(argv=None):
     ap.add_argument("--start", default="2024-01-01", help="start date of the synthetic record")
     ap.add_argument("--alerts", type=lambda s: [float(x) for x in s.split(",")], default=[0.25, 0.5, 1.0], help="alert depths as fractions of D")
     ap.add_argument("--allowance", type=float, default=None, help="design scour allowance as a fraction of D (default 0.5)")
-    ap.add_argument("--armour", type=float, default=None, help="rock protection d50 (m): check armour stability")
+    ap.add_argument("--armour", type=float, default=None, help="rock protection d50 (m): run the protected case too")
+    ap.add_argument("--armour-thickness", type=float, default=1.5, help="armour plus filter thickness (m)")
+    ap.add_argument("--armour-extent", type=float, default=2.5, help="protection rim radius from the pile centre (pile diameters)")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--out", default=os.path.join(HERE, "figures", "scour"))
     ap.add_argument("--json", help="write the summary to this file")
@@ -110,7 +124,7 @@ def main(argv=None):
                 r = run_site(t["name"], pile, rec, args, turbine_kwargs=kw)
                 results[t["name"]] = r
                 continue
-            r = analyse(pile, rec, alerts=args.alerts, allowance=args.allowance, armour_d50=args.armour)
+            r = analyse(pile, rec, alerts=args.alerts, allowance=args.allowance, armour=armour_of(args, pile.D))
             f0 = f1 = None
             if not args.no_frequency:
                 f0, f1 = frequency_consequence(kw, [0.0, r["s_max"]])

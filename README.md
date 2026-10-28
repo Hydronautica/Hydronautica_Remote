@@ -274,6 +274,31 @@ python -m scour --csv hindcast.csv --D 10 --h 40 --d50 0.25   # your own record:
    - **Verdict:** red, amber or green against the design scour allowance (default
      0.5 D).
 
+**Backfill and scour protection**
+
+- **Loose backfill:** sand that refills a scour hole is loose. In the global model,
+  soil between today's scour depth and the deepest scour reached has its p-y
+  stiffness and capacity cut to 25% (`Turbine.scour_max`, `backfill_factor`). So the
+  natural frequency follows the deepest scour reached and only partly recovers when
+  the hole refills.
+- **Rock protection:** `--armour d50` (with `--armour-thickness` and
+  `--armour-extent`) runs the protected case alongside.
+  - **Armour stability:** Shields number on the rock, with 2× amplification.
+  - **Armour damage:** while utilisation is above 1, integrity is lost, and pile
+    scour then grows in proportion to the damage.
+  - **Edge scour:** forms at the rim, at 0.2× the unprotected equilibrium. Its effect
+    on the pile is weighted by 0.3 for a rim at 2.5 D.
+  - **Rock weight:** the submerged weight acts as a surcharge that stiffens the top
+    soil.
+  - **Report and plot:** the rock size needed for utilisation 0.8, pile and edge
+    scour, armour integrity, and f1 over time for three cases (unprotected with full
+    recovery, unprotected with loose backfill, protected).
+
+```bash
+python -m scour --farm A --turbine A05 --armour 0.3     # protection holds: no pile scour, f1 about +0.4%
+python -m scour --farm A --turbine A05 --armour 0.06    # undersized: storms strip it, pile scour about 3.6 m
+```
+
 **Demo farms** (synthetic seabed and tides, unprotected piles):
 
 | Farm | Sand d50 | Spring current | Result |

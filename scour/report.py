@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from .core import AMPLIFICATION, armour_utilisation, assess, onset_current, simulate
+from .core import AMPLIFICATION, Armour, assess, onset_current, rock_size_for, simulate, simulate_protected
 from .metocean import to_datetime
 
 
@@ -27,11 +27,12 @@ def growth_events(time, S, hs, uc, min_rise=0.05, gap_hours=48):
     return sorted(ev, key=lambda e: -e["rise"])
 
 
-def analyse(pile, rec, alerts=(0.25, 0.5, 1.0), allowance=0.5, armour_d50=None, s0=0.0):
+def analyse(pile, rec, alerts=(0.25, 0.5, 1.0), allowance=0.5, armour=None, s0=0.0):
     """Run the scour model through a record and summarise it.
 
     alerts and allowance are fractions of the pile diameter; allowance is the scour
     depth assumed in design (above it the foundation is outside its design basis).
+    armour: an Armour (or a rock d50 in metres) to also run the protected case.
     """
     dt = float(np.diff(rec["time"][:2]).astype("timedelta64[s]").astype(float)[0]) / 3600 if len(rec["time"]) > 1 else 1.0
     S, st = simulate(pile, dt, rec["uc"], rec["hs"], rec["tp"], s0=s0)
@@ -58,13 +59,40 @@ def analyse(pile, rec, alerts=(0.25, 0.5, 1.0), allowance=0.5, armour_d50=None, 
         reach=reach, allowance=allowance, alerts=list(alerts),
         events=growth_events(t, S, rec["hs"], rec["uc"])[:6], S=S, state=st, years=years,
         record=dict(start=to_datetime(t[0]), end=to_datetime(t[-1]), years=float(years[-1])))
-    if armour_d50:
-        u = armour_utilisation(armour_d50, rec["uc"], rec["hs"], rec["tp"], pile.h)
+    if armour:
+        arm = armour if isinstance(armour, Armour) else Armour(d50=float(armour))
+        pr = simulate_protected(pile, dt, rec["uc"], rec["hs"], rec["tp"], arm)
+        u = pr["utilisation"]
         i = int(np.argmax(u))
-        out["armour"] = dict(d50=armour_d50, u_max=float(u.max()), date=to_datetime(t[i]), hs=float(rec["hs"][i]),
-                             uc=float(rec["uc"][i]), frac_over_08=float((u > 0.8).mean()), frac_over_1=float((u > 1).mean()))
+        out["armour"] = dict(d50=arm.d50, thickness=arm.thickness, extent=arm.extent, surcharge=arm.surcharge,
+                             u_max=float(u.max()), date=to_datetime(t[i]), hs=float(rec["hs"][i]), uc=float(rec["uc"][i]),
+                             frac_over_08=float((u > 0.8).mean()), frac_over_1=float((u > 1).mean()),
+                             integrity_min=float(pr["integrity"].min()), s_pile_max=float(pr["s_pile"].max()),
+                             s_edge_max=float(pr["s_edge"].max()), s_eff_max=float(pr["s_eff"].max()),
+                             d50_needed=float(rock_size_for(rec["uc"], rec["hs"], rec["tp"], pile.h, rho_r=arm.rho_r)))
+        out["protected"] = pr
+        out["armour_obj"] = arm
     out["level"], out["why"] = verdict(out)
+    if armour:
+        out["level_p"], out["why_p"] = verdict_protected(out)
     return out
+
+
+def verdict_protected(r):
+    """Red / amber / green for the protected pile."""
+    a, D, allow = r["armour"], r["pile"]["D"], r["allowance"]
+    if a["integrity_min"] < 0.5 or a["s_eff_max"] >= allow * D:
+        return "red", (f"The armour is undersized for this site (peak utilisation {a['u_max']:.2f}, integrity down to "
+                       f"{100 * a['integrity_min']:.0f}%); scour reaches the pile. Use d50 of at least {a['d50_needed'] * 1e3:.0f} mm.")
+    if a["integrity_min"] < 0.95:
+        return "amber", (f"Storms displaced armour (integrity down to {100 * a['integrity_min']:.0f}%, peak utilisation {a['u_max']:.2f}), "
+                         f"letting scour reach {a['s_pile_max']:.1f} m at the pile. Inspect and top up after major storms, "
+                         f"or use d50 of at least {a['d50_needed'] * 1e3:.0f} mm.")
+    if a["u_max"] > 0.8 or a["s_eff_max"] >= 0.5 * allow * D:
+        return "amber", (f"The protection mostly holds (peak utilisation {a['u_max']:.2f}, edge scour up to {a['s_edge_max']:.1f} m). "
+                         "Inspect the armour and the rim after major storms.")
+    return "green", (f"The protection holds (peak utilisation {a['u_max']:.2f}); edge scour up to {a['s_edge_max']:.1f} m at the rim "
+                     "has little effect on the pile. Survey the rim on the routine programme.")
 
 
 def verdict(r):
@@ -90,6 +118,38 @@ def frequency_consequence(turbine_kwargs, depths):
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "demo", "stormtwin"))
     from structure import Model, Turbine
     return [float(Model(Turbine(**dict(turbine_kwargs, scour=float(s)))).frequencies(n=1)[0]) for s in depths]
+
+
+def f1_series(turbine_kwargs, r, step_days=7):
+    """First natural frequency through the record (demo global model) for:
+    ideal  - unprotected, backfill restores full stiffness;
+    loose  - unprotected, backfill is loose (frequency follows the deepest scour reached);
+    protected - with the rock protection (edge scour, armour damage, rock surcharge).
+    """
+    import os
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "demo", "stormtwin"))
+    from structure import Model, Turbine
+    cache = {}
+
+    def f(s, smax, q):
+        key = (round(s, 1), round(smax, 1), round(q / 1e3, 1))
+        if key not in cache:
+            cache[key] = float(Model(Turbine(**dict(turbine_kwargs, scour=key[0], scour_max=key[1], surcharge=key[2] * 1e3))).frequencies(n=1)[0])
+        return cache[key]
+
+    yrs = np.asarray(r["years"])
+    k = max(1, int(round(step_days / max((yrs[1] - yrs[0]) * 365.25, 1e-9)))) if len(yrs) > 1 else 1
+    idx = np.arange(0, len(yrs), k)
+    S = np.asarray(r["S"])
+    Smax = np.maximum.accumulate(S)
+    f0 = f(0, 0, 0)
+    out = dict(years=yrs[idx], f0=f0, ideal=np.array([f(S[i], 0, 0) for i in idx]), loose=np.array([f(S[i], Smax[i], 0) for i in idx]))
+    if "protected" in r:
+        pr, arm = r["protected"], r["armour_obj"]
+        se = np.asarray(pr["s_eff"]); semax = np.maximum.accumulate(se)
+        out["protected"] = np.array([f(se[i], semax[i], arm.surcharge * pr["integrity"][i]) for i in idx])
+    return out
 
 
 def text(r, name="site"):
@@ -120,13 +180,26 @@ def text(r, name="site"):
             L.append(f"  {e['start']:%Y-%m-%d} to {e['end']:%Y-%m-%d}: +{e['rise']:.2f} m (Hs up to {e['hs_max']:.1f} m, current up to {e['uc_max']:.2f} m/s)")
     if "armour" in r:
         a = r["armour"]
-        L += ["", f"Rock protection d50 {a['d50'] * 1e3:.0f} mm",
-              f"  peak utilisation {a['u_max']:.2f} on {a['date']:%Y-%m-%d} (Hs {a['hs']:.1f} m, current {a['uc']:.2f} m/s); "
-              f"above 0.8 for {100 * a['frac_over_08']:.2f}% of the time, above 1 for {100 * a['frac_over_1']:.2f}%"]
+        L += ["", f"With rock protection: d50 {a['d50'] * 1e3:.0f} mm, {a['thickness']:g} m thick, out to {a['extent']:g}D from the pile centre "
+                  f"(surcharge {a['surcharge'] / 1e3:.0f} kPa)",
+              f"  armour utilisation peaks at {a['u_max']:.2f} on {a['date']:%Y-%m-%d} (Hs {a['hs']:.1f} m, current {a['uc']:.2f} m/s); "
+              f"above 1 for {100 * a['frac_over_1']:.2f}% of the time; lowest integrity {100 * a['integrity_min']:.0f}%",
+              f"  rock needed for utilisation 0.8 in this record: d50 {a['d50_needed'] * 1e3:.0f} mm",
+              f"  scour at the pile up to {a['s_pile_max']:.2f} m (unprotected {r['s_max']:.1f} m); edge scour at the rim up to {a['s_edge_max']:.1f} m",
+              f"  equivalent loss of support up to {a['s_eff_max']:.2f} m of scour at the pile"]
+    if "f1t" in r:
+        ft = r["f1t"]
+        pc = lambda x: 100 * (x / ft["f0"] - 1)
+        L += ["", f"Natural frequency through the record (f1 {ft['f0']:.4f} Hz with no scour)",
+              f"  unprotected, full recovery on backfill: {pc(ft['ideal'].min()):+.1f}% at worst, {pc(ft['ideal'][-1]):+.1f}% at the end",
+              f"  unprotected, loose backfill:            {pc(ft['loose'].min()):+.1f}% at worst, {pc(ft['loose'][-1]):+.1f}% at the end (never recovers above {pc(ft['loose'][len(ft['loose']) // 4:].max()):+.1f}% after the first quarter)"]
+        if "protected" in ft:
+            L.append(f"  with rock protection:                   {pc(ft['protected'].min()):+.1f}% at worst, {pc(ft['protected'][-1]):+.1f}% at the end")
     if "f1" in r:
         L += ["", "Consequence for the structure (demo global model)"]
         L += [f"  scour {s:4.1f} m: f1 {f:.4f} Hz ({100 * (f / r['f1'][0][1] - 1):+.1f}%)" for s, f in r["f1"]]
-    L += ["", f"Verdict: {r['level'].upper()}. {r['why']}",
+    L += ["", f"Verdict, unprotected: {r['level'].upper()}. {r['why']}"] + \
+         ([f"Verdict, with protection: {r['level_p'].upper()}. {r['why_p']}"] if "level_p" in r else []) + [
           f"  (onset uses {AMPLIFICATION:g}x bed-shear amplification at the pile; equilibrium after Sumer & Fredsøe with a clear-water reduction)"]
     return "\n".join(L)
 
@@ -180,6 +253,53 @@ def plot(r, rec, pile, path, name="site", tp_coef=3.6):
     fig.colorbar(cf, ax=axm, label="equilibrium S / D", shrink=0.6)
     axm.set_xlabel("depth-averaged current (m/s)"); axm.set_ylabel("Hs (m)")
     axm.set_title("Scour regime (dots: record)\norange: onset at pile, red: bed mobile", loc="left", fontsize=9)
+    fig.savefig(path, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def plot_protection(r, path, name="site"):
+    """Unprotected against protected: scour, natural frequency and armour utilisation."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    D = r["pile"]["D"]
+    yrs = np.asarray(r["years"])
+    k = max(1, len(yrs) // 3000)
+    has_p, ft = "protected" in r, r.get("f1t")
+    rows = 2 + (1 if has_p else 0) - (0 if ft else 1)
+    fig, axs = plt.subplots(rows, 1, figsize=(11, 3.1 * rows), sharex=True)
+    axs = np.atleast_1d(axs)
+    ax = axs[0]
+    S = np.asarray(r["S"])
+    ax.plot(yrs[::k], S[::k], color="#0a6a8a", lw=1.6, label="unprotected: scour depth now")
+    ax.plot(yrs[::k], np.maximum.accumulate(S)[::k], color="#0a6a8a", lw=1, ls="--", label="unprotected: deepest so far (rest is loose backfill)")
+    if has_p:
+        pr = r["protected"]
+        ax.plot(yrs[::k], pr["s_edge"][::k], color="#b5730a", lw=1.4, label="protected: edge scour at the rim")
+        ax.plot(yrs[::k], pr["s_pile"][::k], color="#bb3328", lw=1.4, label="protected: scour at the pile")
+    ax.axhline(r["allowance"] * D, color="#bb3328", ls=":", lw=1)
+    ax.text(0.005, r["allowance"] * D, f"design allowance {r['allowance']:g}D", transform=ax.get_yaxis_transform(), va="bottom", fontsize=8, color="#bb3328")
+    ax.set_ylabel("scour depth (m)"); ax.legend(fontsize=8, loc="upper right", framealpha=0.9)
+    ax.set_title(f"{name}: scour protection and natural frequency", loc="left")
+    i = 1
+    if ft:
+        a = axs[i]; i += 1
+        pc = lambda x: 100 * (np.asarray(x) / ft["f0"] - 1)
+        a.plot(ft["years"], pc(ft["ideal"]), color="#9fb6c4", lw=1.2, label="unprotected, if backfill restored full stiffness")
+        a.plot(ft["years"], pc(ft["loose"]), color="#0a6a8a", lw=1.8, label="unprotected, loose backfill")
+        if "protected" in ft:
+            a.plot(ft["years"], pc(ft["protected"]), color="#1c7f47", lw=1.8, label="with rock protection")
+        a.axhline(0, color="#888", lw=0.8)
+        a.set_ylabel("f1 change (%)"); a.legend(fontsize=8, loc="lower left", framealpha=0.9)
+    if has_p:
+        a = axs[i]
+        pr = r["protected"]
+        a.plot(yrs[::k], pr["utilisation"][::k], color="#566676", lw=0.5, label="armour utilisation")
+        a.axhline(1, color="#bb3328", ls="--", lw=1)
+        a2 = a.twinx(); a2.plot(yrs[::k], 100 * pr["integrity"][::k], color="#1c7f47", lw=1.5); a2.set_ylabel("armour integrity (%)", color="#1c7f47"); a2.set_ylim(0, 105)
+        a.set_ylabel("utilisation"); a.legend(fontsize=8, loc="upper left")
+    axs[-1].set_xlabel("years since start of record")
     fig.savefig(path, dpi=130, bbox_inches="tight")
     plt.close(fig)
     return path
