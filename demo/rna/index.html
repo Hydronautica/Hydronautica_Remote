@@ -1,0 +1,389 @@
+<title>RNA Unit-Load Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500;75..100,700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: engineering model viewer. 3D nacelle on the left, the chosen FE model's load points and
+   unit cases on the right, the superposition equation underneath. */
+:root {
+  --bg: #eef1f3;
+  --panel: #f9fafb;
+  --ink: #141c22;
+  --muted: #5c6872;
+  --rule: #cfd6dc;
+  --steel: #9aa6b0;        /* castings */
+  --fx: #c2410c;           /* x: along the shaft */
+  --fy: #15803d;           /* y: vertical */
+  --fz: #1d4ed8;           /* z: lateral */
+  --support: #6b7280;
+  --hot: #dc2626;
+  --sky: #dfe6eb;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1418; --panel: #141c22; --ink: #e2e8ec; --muted: #94a3ae; --rule: #26323b;
+    --steel: #6b7883; --fx: #fb923c; --fy: #4ade80; --fz: #60a5fa; --support: #9ca3af; --hot: #f87171; --sky: #121a20; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1418; --panel: #141c22; --ink: #e2e8ec; --muted: #94a3ae; --rule: #26323b;
+  --steel: #6b7883; --fx: #fb923c; --fy: #4ade80; --fz: #60a5fa; --support: #9ca3af; --hot: #f87171; --sky: #121a20; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 36px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 16px; }
+h1 { font-family: var(--font-display); font-stretch: 80%; font-weight: 700; font-size: 2.1rem; line-height: 1.05; margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 72ch; margin: 4px 0 0; }
+.label { font-family: var(--font-display); font-stretch: 80%; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.76rem; color: var(--muted); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--panel); }
+.seg button { font: 500 0.85rem var(--font-body); padding: 7px 12px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+button:focus-visible { outline: 2px solid var(--fx); outline-offset: 2px; }
+.main { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.view { position: relative; aspect-ratio: 4 / 3; max-width: 100%; background: var(--sky); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+#gl { position: absolute; inset: 0; }
+#gl canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.legend { position: absolute; left: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 0.76rem; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; max-width: calc(100% - 20px); }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; }
+.legend .dot { width: 9px; height: 9px; border-radius: 50%; }
+.hint { position: absolute; right: 10px; top: 10px; font-size: 0.75rem; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); padding: 4px 8px; border-radius: 4px; }
+.fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: var(--muted); }
+aside { display: grid; gap: 12px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; display: grid; gap: 8px; }
+.card h2 { font-family: var(--font-display); font-stretch: 85%; font-size: 1.25rem; margin: 0; }
+.card p { margin: 0; color: var(--muted); font-size: 0.88rem; }
+.count { font-family: var(--font-data); font-size: 0.9rem; }
+.pts { display: grid; gap: 4px; }
+.pt { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; text-align: left; font: inherit; font-size: 0.86rem; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 5px; padding: 6px 8px; cursor: pointer; }
+.pt:hover { border-color: var(--rule); }
+.pt[aria-pressed="true"] { border-color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.pt .k { font-family: var(--font-data); font-size: 0.76rem; color: var(--muted); }
+.sw { width: 10px; height: 10px; border-radius: 2px; background: var(--ink); }
+.sw.support { background: var(--support); border-radius: 50%; }
+.sw.inertia { background: transparent; border: 2px solid var(--ink); border-radius: 50%; }
+.sw.hot { background: var(--hot); border-radius: 50%; }
+.cases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; font-family: var(--font-data); font-size: 0.78rem; }
+.cases span { border: 1px solid var(--rule); border-radius: 4px; padding: 3px 6px; text-align: center; }
+.cases .x { color: var(--fx); } .cases .y { color: var(--fy); } .cases .z { color: var(--fz); }
+.cases .na { opacity: 0.45; text-decoration: line-through; }
+.eq { font-family: var(--font-data); font-size: 0.86rem; overflow-x: auto; white-space: nowrap; padding: 10px 12px; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; font-size: 0.86rem; color: var(--muted); }
+.notes p { margin: 0; max-width: 62ch; }
+.notes b { color: var(--ink); }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="label">Rotor–nacelle assembly · schematic direct-drive layout · about 15 MW class</span>
+    <h1>Where the unit loads go on each casting</h1>
+    <p class="lede">Each cast part gets its own FE model. Every load point on it gets six unit cases: three forces and three moments. The model is held at one support. Pick a part to see its load points, its support and its usual crack locations. Drag to orbit.</p>
+  </header>
+
+  <div class="seg" id="models" role="group" aria-label="FE model"></div>
+
+  <div class="main">
+    <div class="view">
+      <div id="gl" role="img" aria-label="3D schematic of the nacelle with load points and unit-load arrows"></div>
+      <span class="hint">Drag to orbit · scroll to zoom</span>
+      <div class="legend">
+        <span><i style="background:var(--fx)"></i>x, along the shaft</span>
+        <span><i style="background:var(--fy)"></i>y, vertical</span>
+        <span><i style="background:var(--fz)"></i>z, lateral</span>
+        <span>straight = force · curved = moment</span>
+        <span><i class="dot" style="background:var(--support)"></i>fixed support</span>
+        <span><i class="dot" style="background:var(--hot)"></i>typical hot spot</span>
+      </div>
+      <div class="fallback" id="fallback" hidden><p>The 3D view needs WebGL, which this browser has turned off.</p></div>
+    </div>
+
+    <aside>
+      <div class="card">
+        <h2 id="m-title">–</h2>
+        <p id="m-desc"></p>
+        <span class="count" id="m-count"></span>
+      </div>
+      <div class="card">
+        <span class="label">Load points and support</span>
+        <div class="pts" id="pts"></div>
+      </div>
+      <div class="card" id="detail">
+        <span class="label" id="d-title">–</span>
+        <p id="d-text"></p>
+        <div class="cases" id="d-cases"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="eq" id="eq"></div>
+
+  <div class="notes">
+    <p><b>One support per model.</b> Each unit load goes in at its load point and comes out at the support, so every case is in equilibrium. The global model must give the matching set of applied loads. For the mainframe that is the bearing seats, the generator supports and its own inertia, all reacted at the yaw bearing.</p>
+    <p><b>Spread the load like the real part.</b> Each unit load is applied through a distributing connection over the bearing seat, flange or bolt circle, not at one node. The arrows mark the reference point of that connection.</p>
+    <p><b>Bearings carry five of the six.</b> A rolling bearing cannot pass torque about the shaft axis, so its Mx case is struck through. Torque reaches the mainframe through the generator stator supports instead.</p>
+    <p><b>Rotating loads.</b> Blade-root and hub loads rotate with the rotor. At each time step they are turned into the casting's axes using the rotor azimuth before the unit stresses are combined.</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const TILT = 6 * Math.PI / 180;                 // shaft tilt, nose up
+  const SH_Y = 3.4;                                // shaft axis height above the yaw bearing (m)
+  // a point on the tilted shaft axis at distance s upwind of the rear bearing
+  const onShaft = (s, dy = 0) => new THREE.Vector3(-s * Math.cos(TILT), SH_Y + s * Math.sin(TILT) + dy, 0);
+  const HUB_S = 8.0;                               // hub centre along the shaft
+  const bladeDir = (k) => { const a = k * 2 * Math.PI / 3; return new THREE.Vector3(0, Math.cos(a), Math.sin(a)); };
+  const HUB_R = 2.9;
+
+  // ---------- model definitions (load points, support, hot spots) -------------------------
+  const P = {
+    rootA: { lab: [0, 1.0, 0], name: "Blade root A", pos: () => onShaft(HUB_S).add(bladeDir(0).multiplyScalar(HUB_R)), frame: "blade", k: 0, kind: "load",
+      text: "Pitch-bearing bolt circle of blade A. Loads from the global model: blade-root forces and moments, in the rotating blade frame." },
+    rootB: { lab: [0, -1.1, 1.0], name: "Blade root B", pos: () => onShaft(HUB_S).add(bladeDir(1).multiplyScalar(HUB_R)), frame: "blade", k: 1, kind: "load", text: "As blade A, 120° round the rotor." },
+    rootC: { lab: [0, -1.1, -1.0], name: "Blade root C", pos: () => onShaft(HUB_S).add(bladeDir(2).multiplyScalar(HUB_R)), frame: "blade", k: 2, kind: "load", text: "As blade A, 240° round the rotor." },
+    hubFlange: { lab: [0.6, 2.4, 1.2], name: "Hub–shaft flange", pos: () => onShaft(6.1), frame: "shaft", kind: "load",
+      text: "Bolted flange between hub and main shaft. In the hub model it is the support; in the shaft model it is where the rotor loads come in." },
+    hubFlangeSup: { lab: [0.6, 2.4, 1.2], name: "Hub–shaft flange (support)", pos: () => onShaft(6.1), frame: "shaft", kind: "support",
+      text: "The hub model is held here. All blade-root loads flow out through this flange." },
+    bearF: { lab: [0, 2.6, 0.8], name: "Front main bearing seat", pos: () => onShaft(4.0), frame: "shaft", kind: "load", noMx: true,
+      text: "Front main bearing outer ring seat in the mainframe. Carries radial and axial load and tilting moments, but no torque about the shaft." },
+    bearR: { lab: [0.8, 2.6, 0.8], name: "Rear main bearing seat", pos: () => onShaft(0.6), frame: "shaft", kind: "load", noMx: true,
+      text: "Rear main bearing seat. Together with the front seat it carries the rotor weight, thrust and overturning moments." },
+    bearSupF: { lab: [0, 2.6, 0.8], name: "Front main bearing (support)", pos: () => onShaft(4.0), frame: "shaft", kind: "support",
+      text: "The shaft model is held at the two bearings, modelled as springs with the bearings' stiffness." },
+    bearSupR: { lab: [0.8, 2.6, 0.8], name: "Rear main bearing (support)", pos: () => onShaft(0.6), frame: "shaft", kind: "support", text: "Second shaft support." },
+    stator: { lab: [-0.6, -1.3, 1.6], name: "Generator stator supports", pos: () => onShaft(4.9, -2.2), frame: "shaft", kind: "load",
+      text: "Where the generator stator bolts to the mainframe. The rotor torque (Mx) is reacted here, plus the generator's weight and magnetic pull." },
+    rotorTorque: { lab: [-0.6, 2.9, 0.8], name: "Generator rotor attachment", pos: () => onShaft(5.3), frame: "shaft", kind: "load",
+      text: "Where the outer-rotor generator hangs off the shaft. Applies the electrical torque and the rotor's weight to the shaft." },
+    inertia: { lab: [1.4, -1.0, 2.0], name: "Inertia: own mass", pos: () => new THREE.Vector3(-1.6, 2.0, 0), frame: "fixed", kind: "inertia",
+      text: "Six body-load cases: unit accelerations ax, ay, az and unit angular accelerations about x, y and z. Scaled at each time step by the tower-top motion from the global model, including slamming shocks." },
+    yaw: { lab: [0, -0.9, 2.6], name: "Yaw bearing (support)", pos: () => new THREE.Vector3(0, 0.35, 0), frame: "fixed", kind: "support",
+      text: "The mainframe model is held on the yaw bearing bolt circle. Everything on the nacelle flows into the tower through here." },
+  };
+  const MODELS = [
+    { id: "hub", name: "Hub", desc: "Cast hub. The three blade roots load it; it is held at the hub–shaft flange.",
+      pts: ["rootA", "rootB", "rootC", "hubFlangeSup"], parts: ["hub"], extra: 0,
+      hot: [() => onShaft(HUB_S).add(bladeDir(0).multiplyScalar(HUB_R * 0.93)).add(new THREE.Vector3(0.9, 0.3, 0)),
+            () => onShaft(HUB_S).add(bladeDir(1).multiplyScalar(HUB_R * 0.93)).add(new THREE.Vector3(0.9, 0, 0)),
+            () => onShaft(6.6, 1.3)],
+      hotText: "Edges of the blade-root openings, and the fillet into the shaft flange." },
+    { id: "shaft", name: "Main shaft", desc: "Forged or cast hollow shaft. Rotor loads come in at the hub flange and the generator attachment; it is held at the two main bearings.",
+      pts: ["hubFlange", "rotorTorque", "bearSupF", "bearSupR"], parts: ["shaft"], extra: 0,
+      hot: [() => onShaft(4.45, 1.05), () => onShaft(5.85, 1.3)],
+      hotText: "Shoulder fillet next to the front bearing, and the flange fillet." },
+    { id: "frame", name: "Mainframe", desc: "Cast mainframe (bedplate). Bearing seats, generator supports and its own inertia load it; it is held at the yaw bearing.",
+      pts: ["bearF", "bearR", "stator", "inertia", "yaw"], parts: ["frame"], extra: 0,
+      hot: [() => new THREE.Vector3(-1.2, 1.1, 1.95), () => new THREE.Vector3(1.0, 1.1, -1.9), () => onShaft(4.0, -1.55), () => onShaft(4.9, -2.75).add(new THREE.Vector3(0, 0, 1.2))],
+      hotText: "Neck fillets above the yaw bearing, the rib roots under the front bearing seat and the generator support lugs." },
+    { id: "all", name: "Whole RNA", desc: "Every interface in the assembly, to show how the loads pass from the blades to the tower.",
+      pts: ["rootA", "rootB", "rootC", "hubFlange", "rotorTorque", "bearF", "bearR", "stator", "inertia", "yaw"], parts: ["hub", "shaft", "frame"], extra: 0, hot: [], hotText: "" },
+  ];
+
+  // ---------- UI -----------------------------------------------------------------------
+  let M = MODELS[2], selected = null, S3 = null;
+  const modelsEl = document.getElementById("models");
+  MODELS.forEach((m) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = m.name + (m.id === "all" ? "" : " model");
+    b.setAttribute("aria-pressed", m === M ? "true" : "false");
+    b.addEventListener("click", () => { M = m; [...modelsEl.children].forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false")); selected = null; refresh(); });
+    modelsEl.append(b);
+  });
+  const caseNames = (p) => p.kind === "inertia" ? ["ax", "ay", "az", "αx", "αy", "αz"] : ["Fx", "Fy", "Fz", "Mx", "My", "Mz"];
+  function refresh() {
+    const loads = M.pts.filter((k) => P[k].kind !== "support"), sups = M.pts.filter((k) => P[k].kind === "support");
+    const n = loads.length * 6;
+    document.getElementById("m-title").textContent = M.name + (M.id === "all" ? "" : " model");
+    document.getElementById("m-desc").textContent = M.desc;
+    document.getElementById("m-count").textContent = M.id === "all"
+      ? `${loads.length} interfaces in the assembly`
+      : `${loads.length} load point${loads.length > 1 ? "s" : ""} × 6 = ${n} unit cases · held at ${sups.map((k) => P[k].name.replace(" (support)", "")).join(" and ")}`;
+    const ptsEl = document.getElementById("pts"); ptsEl.innerHTML = "";
+    M.pts.forEach((k) => {
+      const p = P[k], b = document.createElement("button"); b.type = "button"; b.className = "pt";
+      b.setAttribute("aria-pressed", selected === k ? "true" : "false");
+      b.innerHTML = `<span class="sw ${p.kind === "support" ? "support" : p.kind === "inertia" ? "inertia" : ""}"></span><span>${p.name}</span><span class="k">${p.kind === "support" ? "fixed" : "6 cases"}</span>`;
+      b.addEventListener("click", () => { selected = selected === k ? null : k; refresh(); if (S3 && selected) S3.focus(P[selected].pos()); });
+      ptsEl.append(b);
+    });
+    if (M.hot.length) {
+      const h = document.createElement("div"); h.className = "pt"; h.style.cursor = "default";
+      h.innerHTML = `<span class="sw hot"></span><span>${M.hotText}</span><span class="k">hot spots</span>`; ptsEl.append(h);
+    }
+    const d = selected ? P[selected] : null;
+    document.getElementById("d-title").textContent = d ? d.name : "Pick a load point";
+    document.getElementById("d-text").textContent = d ? d.text : "Choose a load point or the support in the list to see its unit cases.";
+    const cs = document.getElementById("d-cases"); cs.innerHTML = "";
+    if (d && d.kind !== "support") caseNames(d).forEach((c, i) => {
+      const s = document.createElement("span"); s.textContent = c + (d.kind === "inertia" ? " = 1" : i < 3 ? " = 1 MN" : " = 1 MN·m");
+      s.className = ["x", "y", "z"][i % 3] + (d.noMx && i === 3 ? " na" : ""); cs.append(s);
+    });
+    // equation
+    const terms = loads.slice(0, 2).map((k) => `F<sub>${P[k].name.split(" ")[0].toLowerCase()}</sub>(t)·σ<sub>…</sub>`);
+    document.getElementById("eq").innerHTML = M.id === "all"
+      ? "Each casting has its own model and its own table of unit stresses. The global model supplies every interface load at every time step."
+      : `σ<sub>hot spot</sub>(t) = Σ over ${loads.length} load points Σ over 6 components &nbsp; L<sub>i</sub>(t) · σ<sub>i</sub> &nbsp;&nbsp;→&nbsp;&nbsp; σ(t) = U · L(t), &nbsp; U = stored unit stresses (stress components × ${n} cases), &nbsp; L(t) = ${n} interface loads from the global model`;
+    if (S3) S3.show(M, selected);
+  }
+
+  // ---------- 3D scene -------------------------------------------------------------------
+  function scene3d() {
+    if (!window.THREE) return null;
+    const host = document.getElementById("gl");
+    let r; try { r = new THREE.WebGLRenderer({ antialias: true }); } catch (e) { return null; }
+    if (!r.getContext()) return null;
+    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); host.append(r.domElement);
+    const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(36, 1, 0.1, 200);
+    const ctl = new THREE.OrbitControls(cam, r.domElement); ctl.enableDamping = true; ctl.target.set(-3, 3, 0);
+    cam.position.set(9, 10, 21);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.85));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(10, 20, 14); scene.add(sun);
+    const groups = { hub: new THREE.Group(), shaft: new THREE.Group(), frame: new THREE.Group(), other: new THREE.Group() };
+    Object.values(groups).forEach((g) => scene.add(g));
+    const mats = {};
+    const mat = (key, opts = {}) => (mats[key] = new THREE.MeshStandardMaterial(Object.assign({ roughness: 0.6, metalness: 0.25, transparent: true }, opts)));
+    mat("hub"); mat("shaft"); mat("frame"); mat("other");
+    const along = (len, rad0, rad1, seg = 40, open = false) => { const g = new THREE.CylinderGeometry(rad1, rad0, len, seg, 1, open); g.rotateZ(Math.PI / 2); return g; };
+    const place = (mesh, s, dy = 0) => { mesh.position.copy(onShaft(s, dy)); mesh.rotation.z = -TILT; return mesh; };
+    // tower top and yaw bearing
+    const tower = new THREE.Mesh(new THREE.CylinderGeometry(3.25, 3.4, 3, 48, 1, true), mats.other); tower.position.y = -1.5; groups.other.add(tower);
+    const yawRing = new THREE.Mesh(new THREE.TorusGeometry(3.0, 0.22, 12, 64), mats.frame); yawRing.rotation.x = Math.PI / 2; yawRing.position.y = 0.3; groups.frame.add(yawRing);
+    // mainframe: neck rising from the yaw bearing to the bearing housing, plus the housing tube
+    const prof = []; for (let i = 0; i <= 12; i++) { const u = i / 12; prof.push(new THREE.Vector2(2.9 - 1.15 * Math.pow(u, 0.8), 0.45 + 2.35 * u)); }
+    const neck = new THREE.Mesh(new THREE.LatheGeometry(prof, 48), mats.frame); neck.position.x = 0.4; groups.frame.add(neck);
+    const housing = place(new THREE.Mesh(along(4.6, 1.65, 1.7, 48), mats.frame), 2.3); groups.frame.add(housing);
+    const snout = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.4, 3.0), mats.frame); snout.position.set(-2.8, 2.4, 0); snout.rotation.z = -TILT * 2; groups.frame.add(snout);
+    const lug = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.4, 3.6), mats.frame); lug.position.copy(onShaft(4.9, -2.2)); groups.frame.add(lug);
+    // main bearings (rings) belong to the frame view as seats
+    [4.0, 0.6].forEach((s) => { const b = place(new THREE.Mesh(along(0.55, 1.75, 1.75, 48), mats.frame), s); groups.frame.add(b); });
+    // shaft
+    const shaft = place(new THREE.Mesh(along(6.6, 1.05, 1.15, 40), mats.shaft), 2.8); groups.shaft.add(shaft);
+    const sFl = place(new THREE.Mesh(along(0.35, 1.7, 1.7, 48), mats.shaft), 6.1); groups.shaft.add(sFl);
+    // direct-drive generator (outer rotor shell, part of the shaft load path)
+    const gen = place(new THREE.Mesh(along(1.7, 5.0, 5.0, 64, true), mats.other), 5.0); groups.other.add(gen);
+    const genDisc = place(new THREE.Mesh(along(0.12, 5.0, 5.0, 64), mats.other), 5.8); groups.other.add(genDisc);
+    // hub and blade stubs
+    const hub = new THREE.Mesh(new THREE.SphereGeometry(HUB_R, 40, 30), mats.hub); hub.position.copy(onShaft(HUB_S)); hub.scale.set(1.15, 1, 1); groups.hub.add(hub);
+    const spinner = new THREE.Mesh(new THREE.ConeGeometry(2.2, 3.0, 40), mats.hub); spinner.rotation.z = Math.PI / 2; spinner.position.copy(onShaft(HUB_S + 3.2)); groups.hub.add(spinner);
+    for (let k = 0; k < 3; k++) {
+      const d = bladeDir(k);
+      const flange = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 0.3, 48), mats.hub);
+      flange.position.copy(onShaft(HUB_S).add(d.clone().multiplyScalar(HUB_R))); flange.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d); groups.hub.add(flange);
+      const stub = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.3, 6, 32, 1, true), mats.other);
+      stub.position.copy(onShaft(HUB_S).add(d.clone().multiplyScalar(HUB_R + 3.2))); stub.quaternion.copy(flange.quaternion); groups.other.add(stub);
+    }
+    // overlay: load triads, supports, hot spots
+    const overlay = new THREE.Group(); scene.add(overlay);
+    const colors = () => [new THREE.Color(css("--fx")), new THREE.Color(css("--fy")), new THREE.Color(css("--fz"))];
+    function arrow(origin, dir, len, color, thick = 0.07) {
+      const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true });
+      const shaftM = new THREE.Mesh(new THREE.CylinderGeometry(thick, thick, len * 0.78, 10), m); shaftM.position.y = len * 0.39;
+      const head = new THREE.Mesh(new THREE.ConeGeometry(thick * 3, len * 0.22, 14), m); head.position.y = len * 0.89;
+      g.add(shaftM, head); g.position.copy(origin); g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+      g.renderOrder = 20; g.traverse((o) => { o.renderOrder = 20; }); return g;
+    }
+    function moment(origin, axis, rad, color, dashed) {
+      const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity: dashed ? 0.35 : 1 });
+      const arc = new THREE.Mesh(new THREE.TorusGeometry(rad, 0.05, 8, 40, Math.PI * 1.45), m);
+      const head = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.38, 12), m);
+      const a = Math.PI * 1.45; head.position.set(rad * Math.cos(a), rad * Math.sin(a), 0); head.rotation.z = a;
+      g.add(arc, head);
+      g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis.clone().normalize()); g.position.copy(origin);
+      g.traverse((o) => { o.renderOrder = 20; }); return g;
+    }
+    function frameAxes(p) {
+      if (p.frame === "blade") {                    // z' along the pitch axis, x' along the shaft
+        const zb = bladeDir(p.k), xb = new THREE.Vector3(-Math.cos(TILT), Math.sin(TILT), 0); const yb = new THREE.Vector3().crossVectors(zb, xb);
+        return [xb, yb, zb];
+      }
+      if (p.frame === "shaft") return [new THREE.Vector3(-Math.cos(TILT), Math.sin(TILT), 0), new THREE.Vector3(Math.sin(TILT), Math.cos(TILT), 0), new THREE.Vector3(0, 0, 1)];
+      return [new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+    }
+    function label(text, pos, color) {
+      const c = document.createElement("canvas"), g = c.getContext("2d"), f = 30;
+      g.font = `600 ${f}px Public Sans, sans-serif`; const w = Math.ceil(g.measureText(text).width) + 24;
+      c.width = w; c.height = f + 18; g.font = `600 ${f}px Public Sans, sans-serif`;
+      g.fillStyle = css("--panel"); g.globalAlpha = 0.9; g.fillRect(0, 0, w, c.height); g.globalAlpha = 1;
+      g.fillStyle = color; g.textBaseline = "middle"; g.fillText(text, 12, c.height / 2);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+      sp.scale.set(w / c.height * 0.52, 0.52, 1); sp.position.copy(pos); sp.renderOrder = 30; return sp;
+    }
+    let pulse = null;
+    function show(model, sel) {
+      while (overlay.children.length) overlay.remove(overlay.children[0]);
+      const active = new Set(model.parts);
+      const steel = new THREE.Color(css("--steel"));
+      Object.entries(groups).forEach(([k, g]) => {
+        const on = active.has(k);
+        g.traverse((o) => { if (o.material) { o.material.color = steel.clone().multiplyScalar(on ? 1 : 0.9); o.material.opacity = on ? 1 : model.id === "all" ? 0.55 : 0.13; o.material.depthWrite = on; } });
+      });
+      const [cx, cy, cz] = colors(), cols = [cx, cy, cz];
+      pulse = null;
+      model.pts.forEach((key) => {
+        const p = P[key], o = p.pos(), ax = frameAxes(p), isSel = sel === key, dim = sel && !isSel;
+        if (p.kind === "support") {
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(key === "yaw" ? 3.0 : 1.9, 0.12, 8, 60), new THREE.MeshBasicMaterial({ color: css("--support"), depthTest: false, transparent: true, opacity: dim ? 0.3 : 0.95 }));
+          ring.position.copy(o); ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), key === "yaw" ? new THREE.Vector3(0, 1, 0) : ax[0]); ring.renderOrder = 19;
+          overlay.add(ring);
+          for (let i = 0; i < 10; i++) {                                // hatch ticks: fixed
+            const a = i / 10 * Math.PI * 2, R = key === "yaw" ? 3.0 : 1.9;
+            const t = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), ring.material);
+            const local = new THREE.Vector3(R * Math.cos(a), R * Math.sin(a), 0).applyQuaternion(ring.quaternion);
+            t.position.copy(o).add(local).add((key === "yaw" ? new THREE.Vector3(0, -0.3, 0) : ax[0].clone().multiplyScalar(0.3)));
+            t.quaternion.copy(ring.quaternion); t.renderOrder = 19; overlay.add(t);
+          }
+          if (!dim) overlay.add(label(p.name.replace(" (support)", "") + " · fixed", o.clone().add(new THREE.Vector3(...p.lab)), css("--support")));
+          if (isSel) pulse = ring;
+          return;
+        }
+        const len = isSel ? 2.6 : 1.9, op = dim ? 0.25 : 1;
+        for (let i = 0; i < 3; i++) {
+          const a = arrow(o, ax[i], len, cols[i], isSel ? 0.08 : 0.06); a.traverse((m) => { if (m.material) m.material.opacity = op; }); overlay.add(a);
+          if (!(p.noMx && i === 0)) { const mm = moment(o, ax[i], isSel ? 0.95 : 0.7, cols[i], false); mm.traverse((m) => { if (m.material) m.material.opacity = op; }); overlay.add(mm); }
+        }
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(p.kind === "inertia" ? 0.32 : 0.2, 16, 12), new THREE.MeshBasicMaterial({ color: css("--ink"), depthTest: false, transparent: true, opacity: op, wireframe: p.kind === "inertia" }));
+        dot.position.copy(o); dot.renderOrder = 21; overlay.add(dot);
+        if (!dim) overlay.add(label(p.name, o.clone().add(new THREE.Vector3(...p.lab)), css("--ink")));
+        if (isSel) pulse = dot;
+      });
+      model.hot.forEach((f) => {
+        const h = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 12), new THREE.MeshBasicMaterial({ color: css("--hot"), depthTest: false, transparent: true, opacity: sel ? 0.45 : 0.95 }));
+        h.position.copy(f()); h.renderOrder = 22; overlay.add(h);
+      });
+      scene.background = new THREE.Color(css("--sky"));
+    }
+    let fly = null;
+    function focus(p) { fly = { t0: performance.now(), q0: ctl.target.clone(), q1: p.clone() }; }
+    function resize() { const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+    new ResizeObserver(resize).observe(host); resize();
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    (function loop(now) {
+      requestAnimationFrame(loop);
+      if (fly) { const u = Math.min(1, (now - fly.t0) / 700); ctl.target.lerpVectors(fly.q0, fly.q1, u * u * (3 - 2 * u)); if (u >= 1) fly = null; }
+      if (pulse && !reduce) { const s = 1 + 0.15 * Math.sin(now / 220); pulse.scale.setScalar(s); }
+      ctl.update(); r.render(scene, cam);
+    })(performance.now());
+    return { show, focus };
+  }
+
+  S3 = scene3d();
+  if (!S3) document.getElementById("fallback").hidden = false;
+  refresh();
+  const re = () => { if (S3) S3.show(M, selected); };
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  if (mq.addEventListener) mq.addEventListener("change", re);
+  new MutationObserver(re).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>
