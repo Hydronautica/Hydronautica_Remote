@@ -69,7 +69,7 @@ def crest_phase(d, t_focus, trough=False):
     return np.pi - (d["k0"] * d["x_focus"] - d["w0"] * t_focus) + (np.pi if trough else 0.0)
 
 
-def paddle_signal(d, duration=None, fs=50.0, ramp_waves=5, phase=None, trough=False):
+def paddle_signal(d, duration=None, fs=50.0, ramp_waves=5, phase=None, trough=False, lead_widths=6.0):
     """Surface elevation to generate at the paddle, eta(0, t).
 
     The breather passes the paddle at t_focus - x_focus / cg; the record starts
@@ -78,7 +78,7 @@ def paddle_signal(d, duration=None, fs=50.0, ramp_waves=5, phase=None, trough=Fa
     crest (trough=True: a trough) coincides with the envelope peak.
     Returns t, eta, t_focus, phase.
     """
-    lead = 6 * d["half_width"] + ramp_waves * d["T0"]
+    lead = lead_widths * d["half_width"] + ramp_waves * d["T0"]
     t_focus = lead + d["travel_time"]
     if phase is None:
         phase = crest_phase(d, t_focus, trough)
@@ -149,6 +149,9 @@ def main(argv=None):
     ap.add_argument("--gauges", default="0,5,10,13,15,17,20", help="gauge positions (m) for predicted records")
     ap.add_argument("--out", default="breather")
     ap.add_argument("--table", action="store_true", help="print a design table for this depth and focus distance")
+    ap.add_argument("--lead", type=float, default=6.0, help="background lead-in before the breather, in breather half-widths")
+    ap.add_argument("--ramp", type=float, default=5.0, help="ramp-up length in carrier periods")
+    ap.add_argument("--tank", type=float, default=None, help="tank length (m): check when the first reflection returns to the focus")
     a = ap.parse_args(argv)
     if a.table:
         print(f"depth {a.h} m, focus {a.focus} m from the paddle")
@@ -159,14 +162,18 @@ def main(argv=None):
         return 0
     d = design(a.T0, a.eps, a.h, a.focus)
     xs = [float(v) for v in a.gauges.split(",")]
-    lead = 6 * d["half_width"] + 5 * d["T0"]
+    lead = a.lead * d["half_width"] + a.ramp * d["T0"]
     duration = lead + max(max(xs), a.focus) / d["cg"] + 4 * d["half_width"]   # until the breather has passed the last gauge
-    t, eta, tf, ph = paddle_signal(d, duration=duration, fs=a.fs)
+    t, eta, tf, ph = paddle_signal(d, duration=duration, fs=a.fs, ramp_waves=a.ramp, lead_widths=a.lead)
     stroke = paddle_stroke(t, eta, a.h, a.kind)
     print(f"carrier T0 {a.T0} s, wavelength {d['wavelength']:.2f} m, kh {d['kh']:.1f}, a0 {1e3 * d['a0']:.1f} mm, "
           f"expected peak crest about {1e3 * d['crest_peak']:.0f} mm (ak {d['peak_steepness']:.2f}) at x = {a.focus} m, t = {tf:.1f} s")
     print(f"group velocity {d['cg']:.2f} m/s; normalised time at the paddle {d['T_paddle']:.2f}, modulation there {d['paddle_modulation']:.2f} a0; "
           f"record {t[-1]:.0f} s at {a.fs:g} Hz; peak {a.kind} stroke {1e3 * np.abs(stroke).max():.0f} mm")
+    if a.tank:
+        t_ref = (2 * a.tank - a.focus) / d["cg"]
+        print(f"first reflection (front of the train, no beach absorption) back at the focus after {t_ref:.0f} s; "
+              f"breather passes the focus at {tf:.0f} s: " + ("clear" if t_ref > tf + 2 * d["half_width"] else "TOO LATE: shorten --lead or --ramp"))
     with open(a.out + "_paddle.csv", "w", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["t_s", "eta_m", f"{a.kind}_stroke_m"])
