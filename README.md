@@ -234,6 +234,36 @@ What the sweep shows:
   structures, that regime needs a slamming load model rather than better
   kinematics.
 
+## Making a Peregrine breather in a wave flume
+
+`nls.flume` designs the experiment and writes the paddle signal.
+- **Equation:** the NLS is written in its flume form, evolving in space:
+  i A_x − (k₀/ω₀²) A_ττ − k₀³|A|²A = 0 (Chabchoub et al. 2011).
+- **Paddle signal:** the surface at the paddle follows the exact Peregrine solution
+  at T₀ = −ε²k₀x_f. That's a near-uniform wave train with a weak modulation, which
+  the flume's own nonlinearity grows into one wave of about 3 a₀ at the focus x_f.
+- **Carrier phase:** set so a crest (or a trough) sits on the envelope peak.
+- **Paddle stroke:** the record is converted to flap or piston stroke with Biésel's
+  transfer functions.
+
+```bash
+python -m nls.flume --h 1.0 --focus 20 --table                    # pick period and steepness
+python -m nls.flume --h 1.0 --T0 0.7 --eps 0.11 --focus 20 --gauges 0,5,10,15,18,20,22,25
+```
+
+It writes `<out>_paddle.csv` (time, surface at the paddle, paddle stroke) and the
+predicted records at each gauge.
+
+**Choosing the settings:**
+- Keep kh > 3 so the deep-water NLS applies.
+- Keep the modulation at the paddle at or below about 1.3 a₀ (T₀ ≤ −2), so the
+  flume rather than the paddle makes the breather.
+- Keep the peak steepness 3ε below about 0.35 to avoid breaking.
+
+**Higher-order effects:** Dysthe terms shift the real focus and make the wave group
+asymmetric. Expect to adjust the focus distance or steepness after the first runs,
+using a gauge array along the flume.
+
 ## Scour at monopiles from waves and current
 
 `scour` estimates when scour starts at a monopile and how deep it gets, from a
