@@ -499,8 +499,21 @@ details.sec > * + * { margin-top: 8px; }
 .bl-lut th select { font: inherit; font-size: 0.72rem; margin-top: 2px; }
 .bl-stale { color: var(--warn); }
 .bl-pyc { margin-top: 6px; }
+.bl-lt .panel-b { display: flex; flex-direction: column; gap: 10px; }
+.bl-ltt td, .bl-ltt th { font-size: 0.78rem; }
+.bl-ltt td.mono { white-space: nowrap; }
+.dt-life .wh-r[data-c] { cursor: pointer; border-radius: 4px; padding: 3px 4px; }
+.dt-life .wh-r[data-c]:hover, .dt-life .wh-r.on { background: var(--accent-soft); }
+.dt-life .wh-r { grid-template-columns: minmax(0, 13rem) minmax(0, 1fr) 9rem; }
 .live-now .muted { display: block; }
 @media (max-width: 1000px) { .bl-an, .bl-split { grid-template-columns: minmax(0, 1fr); } .bl-in-p { position: static; } }
+.bl-more { margin: 4px 0 2px; }
+.bl-more > summary { cursor: pointer; font-size: 0.76rem; color: var(--accent); padding: 3px 0; list-style: none; }
+.bl-more > summary::-webkit-details-marker { display: none; }
+.bl-more > summary::before { content: "▸ "; }
+.bl-more[open] > summary::before { content: "▾ "; }
+.bl-tg { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--muted); margin: 4px 0 2px; }
+.bl-g0 { padding-top: 6px; }
 .bl-st { width: 100%; border-collapse: collapse; font-size: 0.76rem; margin: 2px 0 6px; }
 .bl-st th { text-align: left; font-weight: 500; color: var(--muted); font-size: 0.7rem; padding: 2px 4px; }
 .bl-st td { padding: 2px 4px; }
@@ -650,9 +663,9 @@ details.sec > * + * { margin-top: 8px; }
           <div class="bl-acts"><button class="btn" type="button" id="bl-new">New from this</button><button class="btn" type="button" id="bl-del">Delete</button><button class="btn" type="button" id="bl-export">Export</button><label class="btn" style="text-align:center">Import<input type="file" id="bl-import" accept=".json,application/json" hidden></label></div>
         </nav>
         <div class="bl-main">
-          <div class="bl-tabs" role="tablist" aria-label="Builder sections"><button type="button" role="tab" data-btab="design" class="on" aria-selected="true">Design</button><button type="button" role="tab" data-btab="pile" aria-selected="false">Soil–pile 3D</button><button type="button" role="tab" data-btab="uls" aria-selected="false">ULS</button><button type="button" role="tab" data-btab="fat" aria-selected="false">Fatigue</button></div>
+          <div class="bl-tabs" role="tablist" aria-label="Builder sections"><button type="button" role="tab" data-btab="design" class="on" aria-selected="true">Design</button><button type="button" role="tab" data-btab="pile" aria-selected="false">Soil–pile 3D</button><button type="button" role="tab" data-btab="uls" aria-selected="false">ULS</button><button type="button" role="tab" data-btab="fat" aria-selected="false">Fatigue</button><button type="button" role="tab" data-btab="dt" aria-selected="false">Drivetrain</button></div>
           <div class="bl-pane" id="bl-pane-design"><div class="bl-cols"><div id="bl-form"></div><div class="bl-out" id="bl-out"></div></div><div class="panel" id="bl-farm"></div></div>
-          <div class="bl-pane" id="bl-pane-pile" hidden></div><div class="bl-pane" id="bl-pane-uls" hidden></div><div class="bl-pane" id="bl-pane-fat" hidden></div>
+          <div class="bl-pane" id="bl-pane-pile" hidden></div><div class="bl-pane" id="bl-pane-uls" hidden></div><div class="bl-pane" id="bl-pane-fat" hidden></div><div class="bl-pane" id="bl-pane-dt" hidden></div>
         </div>
       </div>
     </div>
@@ -3950,9 +3963,10 @@ details.sec > * + * { margin-top: 8px; }
       const Gt = md.Phi.slice(0, nm).map((ph) => ph[B.nd - 2]);
       const hs = TFE.hotSpots(ty, B, d), locs = [];
       const near = (z) => md.zc.reduce((b2, v, i) => (Math.abs(v - z) < Math.abs(md.zc[b2] - z) ? i : b2), 0);
-      o.locs.forEach((k) => { const h = hs[k]; locs.push({ key: k, name: h.name, j: near(h.z), z: h.z, W: h.W, scf: h.curve === "bolt" ? 4 / (h.n_bolts * h.Dbc) * 0.15 / h.As * h.W : h.scf * Math.max(1, Math.pow(h.t * 1e3 / 25, 0.2)), loga: h.curve === "air" ? 12.164 : h.curve === "sea" ? 11.764 : 11.398 }); });
+      const cal = o.calib || 1;               // stress calibration to monitored data (1 = raw model); door frames carry 1.5 for the frame reinforcement
+      o.locs.forEach((k) => { const h = hs[k]; locs.push({ key: k, name: h.name, j: near(h.z), z: h.z, W: h.W, scf: cal * (h.curve === "bolt" ? 4 / (h.n_bolts * h.Dbc) * 0.15 / h.As * h.W : h.scf * Math.max(1, Math.pow(h.t * 1e3 / 25, 0.2)) / (k === "door" ? 1.5 : 1)), loga: h.curve === "air" ? 12.164 : h.curve === "sea" ? 11.764 : 11.398 }); });
       locs.forEach((L) => { const nk = L.loga === 12.164 ? 1e7 : L.loga === 11.764 ? 1e6 : 2e6; L.a1 = Math.pow(10, L.loga); L.sq = Math.cbrt(L.a1 / nk); L.a2 = nk * L.sq ** 5; });
-      if (o.all) md.zc.forEach((z, j) => { if (j % 2) return; const D = B.gm.D(z), tw = B.gm.t(z, B.mud), [, , W] = TFE.sec(D, tw); const loga = z < 0 ? 11.764 : 12.164, nk = z < 0 ? 1e6 : 1e7, a1 = Math.pow(10, loga), sq = Math.cbrt(a1 / nk); locs.push({ key: "z" + j, name: "z " + fmt(z, 1) + " m", j, z, W, scf: 1.2, loga, a1, sq, a2: nk * sq ** 5, field: true }); });
+      if (o.all) md.zc.forEach((z, j) => { if (j % 2) return; const D = B.gm.D(z), tw = B.gm.t(z, B.mud), [, , W] = TFE.sec(D, tw); const loga = z < 0 ? 11.764 : 12.164, nk = z < 0 ? 1e6 : 1e7, a1 = Math.pow(10, loga), sq = Math.cbrt(a1 / nk); locs.push({ key: "z" + j, name: "z " + fmt(z, 1) + " m", j, z, W, scf: 1.2 * cal, loga, a1, sq, a2: nk * sq ** 5, field: true }); });
       // modal transfer to each location's moment, for two damping sets (operating fore-aft; other)
       const H = (w, wn, z) => { const re = wn * wn - w * w, im = 2 * z * wn * w, dd = re * re + im * im; return [re / dd, -im / dd]; };
       const Tm = (zset) => locs.map((L) => om.map((w, f) => { let rw = 0, iw = 0, rt = 0, it = 0; for (let j = 0; j < nm; j++) { const [a, b] = H(w, md.w[j], zset[j]), r = md.rows[L.j * nm + j]; rw += r * a * Gw[f][j]; iw += r * b * Gw[f][j]; rt += r * a * Gt[j]; it += r * b * Gt[j]; } return [rw * rw + iw * iw, rt * rt + it * it]; }));
@@ -3965,8 +3979,9 @@ details.sec > * + * { margin-top: 8px; }
         const [Hs, Tp, ga, U10, wd, vd] = combos[c], wp = 2 * Math.PI / Tp, Uh = U10 * hubF, op = Uh >= ci && Uh <= co;
         const Sw = om.map((w) => { const sg = w < wp ? 0.07 : 0.09; return w ** -5 * Math.exp(-1.25 * (wp / w) ** 4) * ga ** Math.exp(-((w - wp) ** 2) / (2 * sg * sg * wp * wp)); });
         let m0 = 0; Sw.forEach((v, i) => { m0 += v * dw[i]; }); const sc = (Hs / 4) ** 2 / Math.max(m0, 1e-12); for (let i = 0; i < NWf; i++) Sw[i] *= sc;
+        // thrust turbulence: quasi-steady thrust slope, Kaimal spectrum, 0.5 on amplitude for averaging over the rotor disc
         const T0 = thrust(Uh, m), TI = 0.12 * (0.75 * Uh + 5.6) / Math.max(Uh, 1), su = TI * Uh, dTdU = op ? (Uh < der.rated_U ? 2 * T0 / Math.max(Uh, 1) : -0.6 * T0 / Uh) : 2 * T0 / Math.max(Uh, 1), Lk = 340;
-        const St = om.map((w) => { const f = w / (2 * Math.PI); return (dTdU * su) ** 2 * 4 * Lk / Math.max(Uh, 1) / Math.pow(1 + 6 * f * Lk / Math.max(Uh, 1), 5 / 3) / (2 * Math.PI) * (op ? 1 : 0.3); });
+        const St = om.map((w) => { const f = w / (2 * Math.PI); return 0.25 * (dTdU * su) ** 2 * 4 * Lk / Math.max(Uh, 1) / Math.pow(1 + 6 * f * Lk / Math.max(Uh, 1), 5 / 3) / (2 * Math.PI) * (op ? 1 : 0.3); });
         const rel = (vd - wd) * Math.PI / 180, cf = Math.cos(rel) ** 2, cs = Math.sin(rel) ** 2, Tfa = op ? T_op : T_ss;
         for (let l = 0; l < nL; l++) {
           let vfa = 0, vss = 0, m2fa = 0, m2ss = 0;
@@ -3991,6 +4006,200 @@ details.sec > * + * { margin-top: 8px; }
     },
   };
 
+  // ----- long-term fatigue from an hourly record (hindcast, buoy, reanalysis) -----
+  // Each hour is mapped to its lookup bin (nearest value per variable, directions on the circle) and its
+  // mean damage added at every location. The 95 % band treats each bin's six-seed mean as one uncertain
+  // number shared by all the hours that fall in it, so it does not shrink with record length.
+  let LTREC = null;
+  const LTCOL = [["hs", /^(hs|hm0|swh|wvht|hsig|vhm0)$/i, "Hs"], ["tp", /^(tp|tpd|dpd|tpeak|vtpk)$/i, "Tp"], ["ga", /^(gamma|gam|γ)$/i, "γ"], ["u", /^(u10|wspd|ws|wind_?speed|ws10)$/i, "U10"], ["wd", /^(wdir|wind_?dir|wd)$/i, "wind dir"], ["vd", /^(mwd|vmdr|wave_?dir|vdir|dir|wavedir)$/i, "wave dir"], ["t", /^(time|date|datetime|yyyymmddhh|timestamp)$/i, "time"]];
+  function ltParse(txt, name) {
+    const lines = txt.split(/\r?\n/).filter((l) => l.trim() && !/^\s*#/.test(l)), split = (l) => l.trim().split(/[,;\t ]+/);
+    const head = split(lines[0]), numeric = head.every((h) => isFinite(+h));
+    const idx = {}; if (!numeric) LTCOL.forEach(([k, re]) => { const i = head.findIndex((h) => re.test(h.replace(/["']/g, ""))); if (i >= 0) idx[k] = i; });
+    else Object.assign(idx, { t: 0, hs: 1, tp: 2, u: 3, wd: 4, vd: 5 });           // no header: time, Hs, Tp, U10, wind dir, wave dir
+    const miss = ["hs", "tp", "u", "wd", "vd"].filter((k) => idx[k] === undefined);
+    if (miss.length) throw new Error("columns not found: " + miss.map((k) => LTCOL.find((c) => c[0] === k)[2]).join(", ") + ". Expected headers like time, Hs, Tp, gamma, U10, wdir, mwd.");
+    const rows = lines.slice(numeric ? 0 : 1), n = rows.length, f = (k) => new Float32Array(n), R = { hs: f(), tp: f(), ga: f(), u: f(), wd: f(), vd: f() }, tms = new Float64Array(n);
+    let bad = 0;
+    rows.forEach((l, i) => { const c = split(l); ["hs", "tp", "u", "wd", "vd"].forEach((k) => { R[k][i] = +c[idx[k]]; }); R.ga[i] = idx.ga !== undefined ? +c[idx.ga] : NaN;
+      if (!(R.hs[i] >= 0 && R.tp[i] > 0 && R.u[i] >= 0)) bad++;
+      if (idx.t !== undefined) { const s2 = c[idx.t].replace(/["']/g, ""); tms[i] = /^\d{10}$/.test(s2) ? Date.UTC(+s2.slice(0, 4), +s2.slice(4, 6) - 1, +s2.slice(6, 8), +s2.slice(8, 10)) : Date.parse(s2); } else tms[i] = Date.UTC(2000, 0, 1) + i * 3600e3; });
+    return { name, n, ...R, t: tms, bad, source: "file" };
+  }
+  function ltSynth(years) {                 // WIS-like synthetic hourly hindcast for the farm's climate
+    const n = Math.round(years * 8766), hm = D.history ? D.history.hs_mean : 1.6, rn = randn(4242 + FI), R = { hs: new Float32Array(n), tp: new Float32Array(n), ga: new Float32Array(n), u: new Float32Array(n), wd: new Float32Array(n), vd: new Float32Array(n) }, t = new Float64Array(n);
+    let x = 0, y = 0, z = 0, d = 240, t0 = Date.UTC(2005, 0, 1);
+    for (let i = 0; i < n; i++) {
+      t[i] = t0 + i * 3600e3; const doy = (i % 8766) / 24, mu = Math.log(hm * 0.82) + 0.38 * Math.cos(2 * Math.PI * (doy - 15) / 365.25);
+      x = 0.996 * x + 0.0894 * rn(); y = 0.97 * y + 0.243 * rn(); z = 0.98 * z + 0.199 * rn();
+      const hs = Math.exp(mu + 0.55 * x); R.hs[i] = hs; R.tp[i] = Math.min(18, Math.max(3, 3.4 * Math.sqrt(hs) + 2.2 + 0.9 * y));
+      R.u[i] = Math.max(0, 2.0 + 3.3 * Math.pow(hs, 0.8) * (1 + 0.25 * z)); d += 0.01 * (((240 - d + 540) % 360) - 180) + 5 * rn(); d = (d + 360) % 360; R.wd[i] = d;
+      R.vd[i] = (d + 12 + 22 * rn() + 360) % 360; const st = hs / (1.56 * R.tp[i] ** 2); R.ga[i] = 1 + 5 * Math.min(1, Math.max(0, (st - 0.01) / 0.04));
+    }
+    return { name: `Synthetic hindcast, ${years} years (${D.meta.farm.name} climate)`, n, ...R, t, bad: 0, source: "synthetic" };
+  }
+  function ltCompute(res, rec, gDefault) {
+    const B = res.bins, keys = ["Hs", "Tp", "gamma", "U10", "wdir", "vdir"], nb = keys.map((k) => B[k].length), nL = res.nL, nC = res.combos.length;
+    const near = (arr, v, circ) => { let bi = 0, bd = Infinity; for (let i = 0; i < arr.length; i++) { const d0 = Math.abs(arr[i] - v), d = circ ? Math.min(d0 % 360, 360 - d0 % 360) : d0; if (d < bd) { bd = d; bi = i; } } return bi; };
+    const lim = (arr) => { const a = Math.min(...arr), b = Math.max(...arr), h = arr.length > 1 ? (b - a) / (arr.length - 1) / 2 : Math.max(a, 1) / 2; return [a - h, b + h]; };
+    const [hl, hh] = lim(B.Hs), [tl, th] = lim(B.Tp), [ul, uh] = lim(B.U10);
+    const cnt = new Uint32Array(nC), t0 = rec.t[0], yrs = new Map(); let out = 0, used = 0;
+    const ci = new Int32Array(rec.n);
+    for (let i = 0; i < rec.n; i++) {
+      const hs = rec.hs[i], tp = rec.tp[i], u = rec.u[i]; if (!(hs >= 0 && tp > 0 && u >= 0)) { ci[i] = -1; continue; }
+      if (hs < hl || hs > hh || tp < tl || tp > th || u < ul || u > uh) out++;
+      const g = isFinite(rec.ga[i]) ? rec.ga[i] : gDefault, ix = [near(B.Hs, hs), near(B.Tp, tp), near(B.gamma, g), near(B.U10, u), near(B.wdir, rec.wd[i], 1), near(B.vdir, rec.vd[i], 1)];
+      let c = 0; for (let k = 0; k < 6; k++) c = c * nb[k] + ix[k]; ci[i] = c; cnt[c]++; used++;
+    }
+    const years = (rec.t[rec.n - 1] - t0) / (365.25 * 864e5) + 1 / 8766, tot = new Float64Array(nL), vr = new Float64Array(nL);
+    for (let c = 0; c < nC; c++) { const n = cnt[c]; if (!n) continue; for (let l = 0; l < nL; l++) { const o = (c * nL + l) * 3, m = res.out[o], s2 = Math.log(res.out[o + 2] / Math.max(res.out[o + 1], 1e-300)) / (2 * 2.571 * 1.0801); tot[l] += n * m; vr[l] += n * n * m * m * (Math.exp(s2 * s2) - 1) / 6; } }
+    // yearly and cumulative (monthly) series at every location
+    const y0 = new Date(t0).getUTCFullYear(), nY = Math.max(1, new Date(rec.t[rec.n - 1]).getUTCFullYear() - y0 + 1), yearly = new Float64Array(nY * nL), nMo = Math.ceil(rec.n / 730), monthly = new Float64Array(nMo * nL);
+    for (let i = 0; i < rec.n; i++) { const c = ci[i]; if (c < 0) continue; const yi = new Date(rec.t[i]).getUTCFullYear() - y0, mi = Math.floor(i / 730); for (let l = 0; l < nL; l++) { const m = res.out[(c * nL + l) * 3]; yearly[yi * nL + l] += m; monthly[mi * nL + l] += m; } }
+    return { tot, sd: Array.from(vr, Math.sqrt), years, used, out, cnt, yearly, nY, y0, monthly, nMo, n: rec.n };
+  }
+  function ltPanel(box, res, ui) {
+    const host = box.querySelector("[data-ltp]"), lo = ui.lt || (ui.lt = { g: 3.3 });
+    host.innerHTML = `<div class="panel-h"><h3>Long-term fatigue from an hourly record</h3>${PLACEHOLDER}</div><div class="panel-b">` +
+      `<p class="cap" style="margin-top:0">Supply hourly environment from a hindcast (for example a Wave Information Studies station), a buoy or a reanalysis. Columns: time, H<sub>s</sub>, T<sub>p</sub>, γ (optional), U<sub>10</sub>, wind direction, wave direction. Every hour is looked up in the table above and summed at each location.</p>` +
+      `<div class="bl-row"><label class="btn">Load CSV<input type="file" data-ltf accept=".csv,.txt,.dat" hidden></label><button class="btn" type="button" data-lts>Generate a synthetic 20-year hindcast</button><span class="muted" data-lti>${LTREC ? LTREC.name + " · " + LTREC.n.toLocaleString() + " hours" : "No record loaded."}</span></div>` +
+      `<details class="bl-more"><summary>Record settings</summary><label class="bl-f"><span>γ when the record has none</span><span class="bl-in"><input type="number" data-ltg value="${lo.g}" step="0.1"><i></i></span></label><p class="cap">Wind is taken as given at 10 m and scaled to the hub inside the lookup (power law, exponent 0.11). Directions are where the wind and waves come from, in degrees.</p></details><div data-lto></div></div>`;
+    const show = () => {
+      const o = host.querySelector("[data-lto]"); if (!LTREC) { o.innerHTML = ""; return; }
+      let r; try { r = ltCompute(res, LTREC, lo.g); } catch (e) { o.innerHTML = `<p class="hint">${e.message}</p>`; return; }
+      const hot = res.locs.map((L, i) => [L, i]).filter(([L]) => !L.field), sel = ui.loc, z = 1.96, fe = (v) => (v > 0 ? v.toExponential(2) : "0"), life = (d) => (d > 0 ? r.years / d : Infinity), fy2 = (y) => (y > 999 ? "> 999" : fmt(y, 0));
+      o.innerHTML = `<div class="live-now">${[["Record", fmt(r.years, 1) + " years", r.n.toLocaleString() + " hours"], ["Outside the bins", fmt(100 * r.out / Math.max(r.used, 1), 1) + " %", "of hours, mapped to the nearest edge bin"], ["Bins visited", [...r.cnt].filter((c) => c).length.toLocaleString(), "of " + res.combos.length.toLocaleString()]].map(([k, v, s2]) => `<div><span class="k">${k}</span><span class="v mono">${v}</span><span class="muted" style="font-size:0.72rem">${s2}</span></div>`).join("")}</div>` +
+        `<div class="tbl-wrap"><table class="list bl-ltt"><thead><tr><th>Location</th><th class="r">Damage over the record, 95 %</th><th class="r">Per year</th><th class="r">Fatigue life, years</th></tr></thead><tbody>` +
+        hot.map(([L, l]) => { const d = r.tot[l], a = Math.max(0, d - z * r.sd[l]), b = d + z * r.sd[l]; return `<tr${l === sel ? ' style="font-weight:600"' : ""}><td>${L.name}</td><td class="r mono">${fe(d)} <span class="muted">${fe(a)}–${fe(b)}</span></td><td class="r mono">${fe(d / r.years)}</td><td class="r mono">${fy2(life(d))} <span class="muted">${fy2(life(b))}–${fy2(life(a))}</span></td></tr>`; }).join("") +
+        `</tbody></table></div><p class="cap">Fatigue life: years for the damage to reach 1 at the record's average rate, without design fatigue factors. The interval covers the six-seed scatter of every bin visited; model and S-N uncertainty come on top.</p>` +
+        `<div class="grid2"><div data-ltc></div><div data-lty></div></div><div class="grid2"><div><h4 class="bl-h">Where the damage comes from</h4><div data-lth></div></div><div data-ltz></div></div>`;
+      const L = res.locs[sel], ratio = r.tot[sel] > 0 ? (r.tot[sel] + z * r.sd[sel]) / r.tot[sel] : 1, ratioLo = r.tot[sel] > 0 ? Math.max(0, r.tot[sel] - z * r.sd[sel]) / r.tot[sel] : 1;
+      let cum = 0; const cx = [], cy = []; for (let m = 0; m < r.nMo; m++) { cum += r.monthly[m * res.nL + sel]; cx.push(r.y0 + m * 730 / 8766); cy.push(cum); }
+      chart(o.querySelector("[data-ltc]"), { series: [{ x: cx, y: cy, color: "--accent", width: 2 }], areas: [{ x: cx, lo: cy.map((v) => v * ratioLo), hi: cy.map((v) => v * ratio), color: "--accent", opacity: 0.18 }], xl: "year", yl: "cumulative damage", w: 420, h: 210, label: "Cumulative damage, " + L.name });
+      const yv = Array.from({ length: r.nY }, (_, i) => r.yearly[i * res.nL + sel]), ymax = Math.max(...yv, 1e-30), W = 420, Hh = 210, bw = (W - 60) / r.nY;
+      o.querySelector("[data-lty]").innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" class="bl-heat" role="img" aria-label="Damage per year">${yv.map((v, i) => `<rect x="${50 + i * bw}" y="${Hh - 30 - (Hh - 50) * v / ymax}" width="${Math.max(1, bw - 2)}" height="${(Hh - 50) * v / ymax}" fill="${css("--accent")}" opacity="0.8"><title>${r.y0 + i}: ${fe(v)}</title></rect>`).join("")}` +
+        `<line x1="50" x2="${W - 10}" y1="${Hh - 30}" y2="${Hh - 30}" stroke="${css("--line")}"/>${yv.map((v, i) => (i % Math.ceil(r.nY / 8) ? "" : `<text x="${50 + (i + 0.5) * bw}" y="${Hh - 14}" text-anchor="middle" font-size="10" fill="${css("--muted")}" font-family="IBM Plex Mono, monospace">${r.y0 + i}</text>`)).join("")}` +
+        `<text x="44" y="24" text-anchor="end" font-size="10" fill="${css("--muted")}" font-family="IBM Plex Mono, monospace">${fe(ymax)}</text><text x="${W / 2}" y="${Hh - 1}" text-anchor="middle" font-size="10.5" fill="${css("--muted")}">damage per year, ${L.name}</text></svg>`;
+      // contribution by Hs x Tp
+      const hsB = res.bins.Hs, tpB = res.bins.Tp, nRest = res.combos.length / (hsB.length * tpB.length), share = new Float64Array(hsB.length * tpB.length);
+      for (let c = 0; c < res.combos.length; c++) { const n = r.cnt[c]; if (!n) continue; const ij = Math.floor(c / nRest); share[ij] += n * res.out[(c * res.nL + sel) * 3]; }
+      const tot = share.reduce((a, b) => a + b, 0) || 1, cw = 52, ch = 26, Wd = 60 + cw * tpB.length, Hd = 30 + ch * hsB.length, mx = Math.max(...share) / tot || 1;
+      o.querySelector("[data-lth]").innerHTML = `<svg viewBox="0 0 ${Wd} ${Hd}" class="bl-heat" role="img" aria-label="Share of damage by sea state">` + hsB.map((h, i) => tpB.map((tp, j) => { const v = share[i * tpB.length + j] / tot, [cr, cg, cb] = turbo(0.08 + 0.9 * Math.sqrt(v / mx));
+        return `<rect x="${60 + j * cw}" y="${Hd - 30 - (i + 1) * ch}" width="${cw - 2}" height="${ch - 2}" rx="2" fill="rgb(${[cr, cg, cb].map((q2) => Math.round(255 * q2)).join(",")})"></rect>${v > 0.005 ? `<text x="${60 + j * cw + cw / 2 - 1}" y="${Hd - 30 - (i + 0.5) * ch + 3}" text-anchor="middle" font-size="9.5" fill="#fff" font-family="IBM Plex Mono, monospace">${fmt(100 * v, 0)}%</text>` : ""}`; }).join("") +
+        `<text x="54" y="${Hd - 30 - (i + 0.5) * ch + 4}" text-anchor="end" font-size="10" fill="${css("--muted")}" font-family="IBM Plex Mono, monospace">${h}</text>`).join("") +
+        tpB.map((tp, j) => `<text x="${60 + j * cw + cw / 2}" y="${Hd - 14}" text-anchor="middle" font-size="10" fill="${css("--muted")}" font-family="IBM Plex Mono, monospace">${tp}</text>`).join("") + `<text x="${60 + cw * tpB.length / 2}" y="${Hd - 1}" text-anchor="middle" font-size="10" fill="${css("--muted")}">T<tspan baseline-shift="sub" font-size="8">p</tspan> (s) · rows H<tspan baseline-shift="sub" font-size="8">s</tspan> (m)</text></svg>`;
+      const fl = res.locs.map((L2, i) => [L2, i]).filter(([L2]) => L2.field), zEl = o.querySelector("[data-ltz]");
+      if (fl.length) chart(zEl, { series: [{ x: fl.map(([L2]) => L2.z), y: fl.map(([, l]) => Math.log10(Math.max(r.tot[l] / r.years, 1e-30))), color: "--accent", width: 2 }], areas: [{ x: fl.map(([L2]) => L2.z), lo: fl.map(([, l]) => Math.log10(Math.max((r.tot[l] - z * r.sd[l]) / r.years, 1e-30))), hi: fl.map(([, l]) => Math.log10(Math.max((r.tot[l] + z * r.sd[l]) / r.years, 1e-30))), color: "--accent", opacity: 0.2 }],
+        xl: "elevation (m MSL)", yl: "log₁₀ damage per year", w: 420, h: 210, label: "Damage per year along the structure", vlines: [{ x: 0, label: "MSL", color: "--sea" }, { x: -res.depth, label: "seabed", color: "--warn" }] });
+      else zEl.innerHTML = `<p class="cap">Tick "All elevations" before running the lookup to get the damage field along the whole structure.</p>`;
+    };
+    host.querySelector("[data-ltf]").addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (!f) return;
+      f.text().then((txt) => { LTREC = ltParse(txt, f.name); host.querySelector("[data-lti]").textContent = `${f.name} · ${LTREC.n.toLocaleString()} hours${LTREC.bad ? ` · ${LTREC.bad} incomplete rows skipped` : ""}`; show(); })
+        .catch((err) => { host.querySelector("[data-lti]").textContent = "Could not read that file: " + err.message; }); e.target.value = ""; });
+    host.querySelector("[data-lts]").addEventListener("click", () => { LTREC = ltSynth(20); host.querySelector("[data-lti]").textContent = LTREC.name + " · " + LTREC.n.toLocaleString() + " hours"; show(); });
+    host.querySelector("[data-ltg]").addEventListener("change", (e) => { lo.g = +e.target.value || 3.3; show(); });
+    show();
+  }
+
+  // ----- drivetrain: FE load chain and analytical components over a wind climate -----
+  const DT_UQ = { hub: [0.05, 7, 0.2], housing: [0.05, 7, 0.2], bedplate: [0.05, 7, 0.2], main_shaft: [0.05, 5, 0.18], bolts: [0.04, 3, 0.2], main_bearing: [0.05, 10 / 3, 0.3], gears: [0.03, 8.7, 0.15], gear_bearings: [0.03, 10 / 3, 0.3], pitch: [0.05, 10 / 3, 0.3], yaw: [0.05, 10 / 3, 0.3] };
+  const DT_COMPS = RNA_COMPS.concat([["pitch", "Pitch bearings", 0], ["yaw", "Yaw bearing", 0]]);
+  SOLVERS.drivetrain = async function (ty, o) {
+    await loadRNA();
+    const m = TT.meta(ty), der = TT.derived(ty), lam = (ty.rated_P * 1e6 / (ty.rated_rpm * Math.PI / 30) / 0.95) / RNAD.turbine.rated_torque;   // type's rated torque over the reference model's
+    const maps = Array.from({ length: 72 }, (_, i) => chainMaps(i * Math.PI / 36));
+    const hubF = Math.pow(ty.z_hub / 10, 0.11), edges = [0, ty.cut_in, 6, 8, 10, 12, 14, 17, 20, ty.cut_out, 60];
+    let wts;
+    if (o.climate === "record" && LTREC) { wts = new Array(edges.length - 1).fill(0); for (let i = 0; i < LTREC.n; i++) { const u = LTREC.u[i] * hubF; let b = 0; while (b < edges.length - 2 && u >= edges[b + 1]) b++; wts[b]++; } const s2 = wts.reduce((a, b) => a + b, 0) || 1; wts = wts.map((w) => w / s2); }
+    else { const F = (u) => 1 - Math.exp(-Math.pow(u / o.A, o.k)); wts = edges.slice(0, -1).map((u, i) => F(edges[i + 1]) - F(u)); }
+    const bins = edges.slice(0, -1).map((u, i) => ({ U: i === 0 ? Math.max(1.5, edges[1] / 2) : i === edges.length - 2 ? Math.max(30, ty.cut_out + 5) : (u + edges[i + 1]) / 2, w: wts[i] }));
+    const out = {}, perBin = [], dt = 0.25, nStep = Math.round(o.recLen / dt);
+    let paintX = null, paintMax = -1;
+    for (const b of bins) {
+      if (b.w <= 0) { perBin.push(null); continue; }
+      const op = b.U >= ty.cut_in && b.U <= ty.cut_out, rpm = op ? Math.max(ty.min_rpm, Math.min(1, b.U / der.rated_U) * ty.rated_rpm) : 0.3, Om = rpm * Math.PI / 30;
+      const M = { m, ti: bSite, op, Om, rpm }, T0 = thrust(b.U, m), dTdU = op ? (b.U < der.rated_U ? 2 * T0 / b.U : -0.6 * T0 / b.U) : 2 * T0 / b.U;
+      const g = rnaTurb(bSite), TI = 0.12 * (0.75 * b.U + 5.6) / b.U, samples = [];
+      for (let k = 0; k < nStep; k++) {
+        const tt = k * dt, u = TI * b.U * g.a(tt * 0.7 + 13), az = (Om * tt) % (2 * Math.PI);
+        const x = bladeLoads(M, { az, af: 0, as: 0, T: T0 + dTdU * u, U: b.U + 0.3 * u }, tt, false);   // generator torque follows the rotor speed, which filters the turbulence
+        for (let j = 0; j < 18; j++) x[j] /= lam;                       // reference drivetrain scaled to this rated torque
+        const mp = maps[Math.round(az / (Math.PI / 36)) % 72], E = rnaOut(mp, x);
+        samples.push({ E, s: { az } });
+        if (op && E.hub > paintMax) { paintMax = E.hub; paintX = { x: Float64Array.from(x), E }; }
+      }
+      const a = rnaAgeing(samples, M, "E");
+      // analytical: pitch and yaw bearings (equivalent dynamic load, ISO 281 style, activity per design life)
+      let pD = 0, yD = 0;
+      samples.forEach((q) => { for (let k2 = 0; k2 < 3; k2++) { const Mr = Math.hypot(q.E.x[6 * k2 + 3], q.E.x[6 * k2 + 4]), P = 2 * Mr / 4.4 + Math.abs(q.E.x[6 * k2 + 2]); pD += Math.pow(P / o.pbC, 10 / 3); }
+        const Mt = Math.hypot(q.E.yaw[4], q.E.yaw[5]), P2 = 2 * Mt / 5.6 + Math.abs(q.E.yaw[1]); yD += Math.pow(P2 / o.ybC, 10 / 3); });
+      a.pitch = (op ? 4e5 : 5e4) / 1e6 * pD / samples.length / 3; a.yaw = 3e4 / 1e6 * yD / samples.length;
+      perBin.push({ U: b.U, w: b.w, a });
+      for (const [k] of DT_COMPS) out[k] = (out[k] || 0) + b.w * (a[k] || 0);
+    }
+    if (o.layout !== "geared3") { ["hub", "housing", "bedplate", "main_shaft"].forEach((k) => { out[k] = NaN; }); if (o.layout === "dd") { out.gears = NaN; out.gear_bearings = NaN; } else { out.gears *= 0.6; out.gear_bearings *= 0.7; } }
+    out.main_bearing *= Math.pow(48 / o.mbC, 10 / 3);
+    return { out, perBin, bins, lam, paint: paintX, layout: o.layout, years: o.life };
+  };
+  function dtView() {
+    const host = document.getElementById("bl-pane-dt"), ty = TT.get(bSel), r = RUNS.get(bSel + ":dt");
+    const o = (r && r.input) || { layout: "geared3", climate: LTREC ? "record" : "weibull", k: 2.1, A: 10.5, mbC: 48, pbC: 26, ybC: 42, recLen: 120, life: 20 };
+    const lamNow = (ty.rated_P * 1e6 / (ty.rated_rpm * Math.PI / 30) / 0.95) / 18.5e6;
+    host.innerHTML = `<div class="bl-an"><div class="bl-g bl-in-p"><div class="bl-hd2"><h3>Drivetrain fatigue</h3>${PLACEHOLDER}</div>` +
+      `<p class="cap">Rotor loads for this type through the load chain: blade roots → hub → main shaft → main bearing and torque arms → bedplate → yaw bearing. Castings and the shaft use the voxel FE models (critical-plane hot spots); bearings, gears and bolts use analytical methods. Rated torque ${fmt(lamNow * 18.5, 1)} MN·m.</p>` +
+      `<label class="bl-f"><span>Layout</span><span class="bl-in"><select data-o="layout"><option value="geared3"${o.layout === "geared3" ? " selected" : ""}>Geared, three-point mount (FE models)</option><option value="ms"${o.layout === "ms" ? " selected" : ""}>Medium-speed, two main bearings</option><option value="dd"${o.layout === "dd" ? " selected" : ""}>Direct drive</option></select></span></label>` +
+      `<p class="cap" data-dep="nofe"${o.layout === "geared3" ? " hidden" : ""}>FE models for this layout have not been supplied yet: the castings and shaft are left out, the rest is analytical.</p>` +
+      `<label class="bl-f"><span>Wind climate</span><span class="bl-in"><select data-o="climate"><option value="weibull"${o.climate === "weibull" ? " selected" : ""}>Weibull at hub height</option><option value="record"${o.climate === "record" ? " selected" : ""}${LTREC ? "" : " disabled"}>From the hourly record${LTREC ? "" : " (load one in Fatigue)"}</option></select></span></label>` +
+      `<div data-dep="weib"${o.climate === "weibull" ? "" : " hidden"}>` + numIn("A", "Weibull scale A", o.A, "m/s", 0.1) + numIn("k", "Weibull shape k", o.k, "", 0.05) + `</div>` +
+      `<details class="bl-more"><summary>More settings</summary>` + numIn("mbC", "Main bearing dynamic rating", o.mbC, "MN", 1) + numIn("pbC", "Pitch bearing rating", o.pbC, "MN", 1) + numIn("ybC", "Yaw bearing rating", o.ybC, "MN", 1) + numIn("recLen", "Simulated time per wind bin", o.recLen, "s", 30) + numIn("life", "Design life", o.life, "years", 1) + `</details>` +
+      `<button class="btn bl-go" type="button" data-run>Run drivetrain analysis</button>${runBox()}</div><div class="bl-res" data-res>${r ? "" : `<p class="muted">Run the analysis to see the FE stress field, the hot spots and the lifetime of every component.</p>`}</div></div>`;
+    host.querySelector('[data-o="layout"]').addEventListener("change", (e) => { host.querySelector('[data-dep="nofe"]').hidden = e.target.value === "geared3"; });
+    host.querySelector('[data-o="climate"]').addEventListener("change", (e) => { host.querySelector('[data-dep="weib"]').hidden = e.target.value !== "weibull"; });
+    host.querySelector("[data-run]").addEventListener("click", async (e) => {
+      const inp = readO(host); e.target.disabled = true; host.querySelector("[data-log]").innerHTML = "";
+      const stg = stageLog(host, [inp.layout === "geared3" ? "FE models: hub (17k nodes), shaft and gearbox housing, bedplate; 45 unit load cases" : "Analytical models for the selected layout", "Load chain closure: blade roots to the yaw bearing", `Time-domain rotor loads in 10 wind bins (${inp.climate === "record" ? "from the hourly record" : "Weibull A " + inp.A + " m/s, k " + inp.k})`, "Hot spots: critical-plane rainflow on the castings, material point on the turning shaft", "Analytical: main, pitch and yaw bearings (ISO 281), gears (load-duration), blade-root bolts (joint diagram)"], 360);
+      const res = await SOLVERS.drivetrain(TT.get(bSel), inp); await stg;
+      RUNS.set(bSel + ":dt", { key: runKey(), input: inp, result: res, sel: "hub" }); e.target.disabled = false; dtResults(host);
+    });
+    if (r) dtResults(host);
+  }
+  function dtResults(host) {
+    const r = RUNS.get(bSel + ":dt"), res = r.result, box = host.querySelector("[data-res]"), Z = 1.645;
+    const band = (k, v) => { const [cv, mm, s10] = DT_UQ[k], s2 = Math.hypot(mm * cv, Math.LN10 * s10); return [v * Math.exp(-Z * s2), v * Math.exp(Z * s2)]; };
+    const fa = (v) => (!isFinite(v) ? "–" : v < 0.001 ? "<0.001" : v < 0.1 ? v.toFixed(3) : v.toFixed(2));
+    const pos = (a) => Math.max(0, Math.min(1, (Math.log10(Math.max(a, 1e-4)) + 3) / 4.3));
+    box.innerHTML = stale(r) + (res.layout === "geared3" ? `<div class="bl-3dp" data-v></div><div class="bl-row"><span class="muted" style="font-size:0.74rem">von Mises at the most loaded instant (operating)</span>${cbar(0, 150, "MPa")}</div>` : "") +
+      `<h4 class="bl-h">Lifetime ageing over ${res.years} years</h4><div class="wh-life dt-life">${DT_COMPS.map(([k, nm, fe]) => { const v = res.out[k]; if (!isFinite(v)) return `<div class="wh-r"><span>${fe ? "◆ " : ""}${nm}</span><span class="tr"></span><span class="mono r muted">not modelled</span></div>`;
+        const [a, b] = band(k, v); return `<div class="wh-r${k === r.sel ? " on" : ""}" data-c="${k}"><span>${fe ? "◆ " : ""}${nm}</span><span class="tr"><span class="lt" style="left:${pos(a) * 100}%;width:${Math.max(0.6, (pos(b) - pos(a)) * 100)}%"></span><span class="md" style="left:${pos(v) * 100}%"></span><span class="one" style="left:${pos(1) * 100}%"></span></span><span class="mono r">${fa(v)} <span class="muted">${fa(a)}–${fa(b)}</span></span></div>`; }).join("")}` +
+      `<div class="wh-r ax"><span></span><span class="tr0">${[[0.001, "0.001"], [0.01, "0.01"], [0.1, "0.1"], [1, "1"], [10, "10"]].map(([v, t2]) => `<span style="left:${pos(v) * 100}%">${t2}</span>`).join("")}</span><span></span></div></div>` +
+      `<p class="cap">Design lives used (1 = the component reaches its design life exactly). ◆ from the FE chain, the rest analytical. Band: P5–P95 with stress-model and S-N or bearing-life scatter. The reference FE models are scaled to this type's rated torque by geometric similarity (load scale ${fmt(res.lam, 2)}) until its own models are supplied. Click a component for its load-case contributions.</p>` +
+      `<div data-bins></div>`;
+    const binsChart = () => { const k = r.sel, pb = res.perBin.filter(Boolean), v = pb.map((b) => b.w * (b.a[k] || 0)), tot = v.reduce((a, b) => a + b, 0) || 1, W = 520, Hh = 170, bw = (W - 60) / pb.length;
+      box.querySelector("[data-bins]").innerHTML = `<h4 class="bl-h">${DT_COMPS.find((c) => c[0] === k)[1]}: share of lifetime damage by wind speed</h4><svg viewBox="0 0 ${W} ${Hh}" class="bl-heat" style="max-width:560px" role="img" aria-label="Damage by wind bin">` +
+        pb.map((b, i) => { const h = (Hh - 50) * v[i] / Math.max(...v, 1e-30); return `<rect x="${50 + i * bw}" y="${Hh - 30 - h}" width="${bw - 4}" height="${h}" rx="2" fill="${css(b.U >= TT.get(bSel).cut_in && b.U <= TT.get(bSel).cut_out ? "--accent" : "--muted")}"><title>${fmt(b.U, 1)} m/s: ${fmt(100 * v[i] / tot, 1)} % (occurs ${fmt(100 * b.w, 1)} % of the time)</title></rect><text x="${50 + i * bw + bw / 2 - 2}" y="${Hh - 14}" text-anchor="middle" font-size="9.5" fill="${css("--muted")}" font-family="IBM Plex Mono, monospace">${fmt(b.U, 0)}</text>` +
+          (v[i] / tot > 0.02 ? `<text x="${50 + i * bw + bw / 2 - 2}" y="${Hh - 34 - h}" text-anchor="middle" font-size="9.5" fill="${css("--ink")}" font-family="IBM Plex Mono, monospace">${fmt(100 * v[i] / tot, 0)}%</text>` : ""); }).join("") +
+        `<text x="${W / 2}" y="${Hh - 1}" text-anchor="middle" font-size="10.5" fill="${css("--muted")}">wind at hub (m/s), grey: parked or idling</text></svg>`; };
+    binsChart();
+    box.querySelectorAll("[data-c]").forEach((row) => row.addEventListener("click", () => { r.sel = row.dataset.c; box.querySelectorAll("[data-c]").forEach((x) => x.classList.toggle("on", x === row)); binsChart(); }));
+    if (res.layout !== "geared3" || !res.paint) return;
+    const v = V3("dt", box.querySelector("[data-v]"), { target: [-2.4, 2.2, 0], pos: [11, 8, 17] }); if (!v) return;
+    const Gb = new THREE.Group(), Gd = new THREE.Group(), Gp = new THREE.Group(); v.scene.add(Gb, Gd); Gd.add(Gp); Gp.position.set(...RNAD.geo.hub);
+    const L = { hub: res.paint.x, dt: res.paint.E.Ldt, bed: res.paint.E.Lbed };
+    for (const k of ["hub", "dt", "bed"]) {
+      const p = RNAD.P[k], s6 = new Float32Array(p.nv * 6), col = new Float32Array(p.nv * 3), l = L[k];
+      for (let c = 0; c < p.nc; c++) { const f = l[c]; if (!f) continue; const o2 = c * p.nv * 6; for (let i = 0; i < p.nv * 6; i++) s6[i] += f * p.S[o2 + i]; }
+      for (let q = 0; q < p.nv; q++) { const o3 = 6 * q, a = s6[o3], b = s6[o3 + 1], c2 = s6[o3 + 2], xy = s6[o3 + 3], yz = s6[o3 + 4], zx = s6[o3 + 5];
+        const vm = Math.sqrt(0.5 * ((a - b) ** 2 + (b - c2) ** 2 + (c2 - a) ** 2) + 3 * (xy * xy + yz * yz + zx * zx)) / 150e6; const [cr, cg, cb] = turbo(vm); col[3 * q] = cr; col[3 * q + 1] = cg; col[3 * q + 2] = cb; }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(p.base, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 3)); geo.setIndex(new THREE.BufferAttribute(p.tris, 1)); geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.15, side: THREE.DoubleSide })); mesh.userData.keepGeo = true;
+      ({ hub: Gp, dt: Gd, bed: Gb })[k].add(mesh);
+    }
+    // hot spots
+    const spot = (part, vtx, label) => { const p = RNAD.P[part], m3 = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff })); m3.position.set(p.base[3 * vtx], p.base[3 * vtx + 1], p.base[3 * vtx + 2]); ({ hub: Gp, dt: Gd, bed: Gb })[part].add(m3);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.06, 8, 32), new THREE.MeshBasicMaterial({ color: 0xd1495b })); ring.position.copy(m3.position); ({ hub: Gp, dt: Gd, bed: Gb })[part].add(ring); return ring; };
+    const sp = RNAD.spots, rings = [spot("hub", sp.hub.vertex), spot("dt", sp.housing.vertex), spot("bed", sp.bedplate.vertex), spot("dt", sp.main_shaft.ring[0])];
+    v.onTick((t) => { rings.forEach((rg) => { rg.lookAt(v.cam.position); rg.scale.setScalar(1 + 0.25 * Math.sin(t * 3)); }); });
+  }
   // ----- tabs -----
   let bTab = "design";
   const RUNS = new Map();                 // `${type id}:${tab}` -> { key, input, result }
@@ -3999,7 +4208,7 @@ details.sec > * + * { margin-top: 8px; }
     bTab = name;
     document.querySelectorAll("#builder [data-btab]").forEach((b) => { b.classList.toggle("on", b.dataset.btab === name); b.setAttribute("aria-selected", b.dataset.btab === name ? "true" : "false"); });
     document.querySelectorAll("#builder .bl-pane").forEach((p) => { p.hidden = p.id !== "bl-pane-" + name; });
-    if (name === "pile") pileView(); else if (name === "uls") ulsView(); else if (name === "fat") fatView();
+    if (name === "pile") pileView(); else if (name === "uls") ulsView(); else if (name === "fat") fatView(); else if (name === "dt") dtView();
   }
   const stale = (r) => (r && r.key !== runKey() ? `<p class="hint bl-stale">The type or site has changed since this run. Run again to update.</p>` : "");
   function editable(cb) {                   // apply a change to the selected type, duplicating a built-in first
@@ -4017,7 +4226,7 @@ details.sec > * + * { margin-top: 8px; }
       `<p class="cap">Solid finite-element model of the pile in the layered soil (${ty.soil.length} layer${ty.soil.length > 1 ? "s" : ""}, from the Design tab), pushed laterally at the mudline. The p-y curves, small-strain stiffness and macro-element are extracted from it.</p>` +
       `<label class="bl-f"><span>Soil model</span><span class="bl-in"><select data-o="model">${[["hs", "Hardening soil, small strain"], ["mc", "Mohr–Coulomb"], ["sani", "SANISAND (cyclic)"]].map(([k, l]) => `<option value="${k}"${o.model === k ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>` +
       `<label class="bl-f"><span>Mesh</span><span class="bl-in"><select data-o="mesh">${[["coarse", "Coarse (18k elements)"], ["medium", "Medium (46k)"], ["fine", "Fine (122k)"]].map(([k, l]) => `<option value="${k}"${o.mesh === k ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>` +
-      numIn("radius", "Soil domain radius", o.radius, "× D", 1) + numIn("ecc", "Load eccentricity M/H", o.ecc, "m", 1) + numIn("umax", "Mudline displacement, final", o.umax, "m", 0.05) + numIn("steps", "Load steps", o.steps, "", 1) +
+      `<details class="bl-more"><summary>More settings</summary>` + numIn("radius", "Soil domain radius", o.radius, "× D", 1) + numIn("ecc", "Load eccentricity M/H", o.ecc, "m", 1) + numIn("umax", "Mudline displacement, final", o.umax, "m", 0.05) + numIn("steps", "Load steps", o.steps, "", 1) + `</details>` +
       `<button class="btn bl-go" type="button" data-run>Run 3D analysis</button>${runBox()}</div><div class="bl-res" data-res>${r ? "" : `<p class="muted">Run the analysis to see the soil field, the derived p-y curves and the foundation coefficients.</p>`}</div></div>`;
     host.querySelector("[data-run]").addEventListener("click", async (e) => {
       const inp = readO(host); e.target.disabled = true; host.querySelector("[data-log]").innerHTML = "";
@@ -4067,12 +4276,14 @@ details.sec > * + * { margin-top: 8px; }
     const host = document.getElementById("bl-pane-uls"), ty = TT.get(bSel), t = T[bSite] || T[0], r = RUNS.get(bSel + ":uls");
     const o = (r && r.input) || { Hs: 10.5, Tp: 14, gamma: 2.2, U: 42, windDir: 260, waveDir: 285, surge: 1.5, breaking: true, Cs: +(2 * Math.PI).toFixed(3), lambda: 0.46, state: "idle", gf: 1.35, z1: -t.spec.depth - 5, z2: ty.z_interface + 10, dz: 0.5, nth: 96 };
     host.innerHTML = `<div class="bl-an"><div class="bl-g bl-in-p"><div class="bl-hd2"><h3>Ultimate limit state</h3>${PLACEHOLDER}</div><p class="cap">Extreme storm on the beam model of the whole turbine (nonlinear soil, aero-hydro loads), with a shell submodel coupled to the beam over the region below for local stresses, slamming and buckling. Site: ${t.spec.name}, ${fmt(t.spec.depth, 1)} m.</p>` +
-      `<div class="bl-sub">Sea state</div>` + numIn("Hs", "H<sub>s</sub>", o.Hs, "m", 0.1) + numIn("Tp", "T<sub>p</sub>", o.Tp, "s", 0.1) + numIn("gamma", "JONSWAP γ", o.gamma, "", 0.1) + numIn("surge", "Surge and tide", o.surge, "m", 0.1) + numIn("waveDir", "Waves from", o.waveDir, "°", 5) +
-      `<label class="bl-f"><span>Breaking wave (slam)</span><span class="bl-in"><input type="checkbox" data-o="breaking"${o.breaking ? " checked" : ""}></span></label>` + numIn("Cs", "Slam coefficient C<sub>s</sub>", o.Cs, "", 0.1) + numIn("lambda", "Curling factor λ", o.lambda, "", 0.01) +
-      `<div class="bl-sub">Wind and turbine</div>` + numIn("U", "Wind at hub", o.U, "m/s", 0.5) + numIn("windDir", "Wind from", o.windDir, "°", 5) +
+      `<div class="bl-sub">Storm</div>` + numIn("Hs", "H<sub>s</sub>", o.Hs, "m", 0.1) + numIn("Tp", "T<sub>p</sub>", o.Tp, "s", 0.1) + numIn("waveDir", "Waves from", o.waveDir, "°", 5) + numIn("U", "Wind at hub", o.U, "m/s", 0.5) + numIn("windDir", "Wind from", o.windDir, "°", 5) +
+      `<label class="bl-f"><span>Breaking wave (slam)</span><span class="bl-in"><input type="checkbox" data-o="breaking"${o.breaking ? " checked" : ""}></span></label>` +
+      `<div data-dep="breaking"${o.breaking ? "" : " hidden"}>` + numIn("Cs", "Slam coefficient C<sub>s</sub>", o.Cs, "", 0.1) + numIn("lambda", "Curling factor λ", o.lambda, "", 0.01) + `</div>` +
+      `<details class="bl-more"><summary>More settings</summary>` + numIn("gamma", "JONSWAP γ", o.gamma, "", 0.1) + numIn("surge", "Surge and tide", o.surge, "m", 0.1) +
       `<label class="bl-f"><span>Turbine state</span><span class="bl-in"><select data-o="state"><option value="idle"${o.state === "idle" ? " selected" : ""}>Parked, idling</option><option value="op"${o.state === "op" ? " selected" : ""}>Operating, extreme gust</option></select></span></label>` + numIn("gf", "Load factor γ<sub>f</sub>", o.gf, "", 0.05) +
-      `<div class="bl-sub">Shell submodel</div>` + numIn("z1", "From", o.z1, "m MSL", 0.5) + numIn("z2", "To", o.z2, "m MSL", 0.5) + numIn("dz", "Element height", o.dz, "m", 0.1) + numIn("nth", "Elements around", o.nth, "", 8) +
+      `<div class="bl-sub">Shell submodel</div>` + numIn("z1", "From", o.z1, "m MSL", 0.5) + numIn("z2", "To", o.z2, "m MSL", 0.5) + numIn("dz", "Element height", o.dz, "m", 0.1) + numIn("nth", "Elements around", o.nth, "", 8) + `</details>` +
       `<button class="btn bl-go" type="button" data-run>Run ULS simulation</button>${runBox()}</div><div class="bl-res" data-res>${r ? "" : `<p class="muted">Run the simulation to see the time histories, the moment envelope and the shell stresses.</p>`}</div></div>`;
+    host.querySelector('[data-o="breaking"]').addEventListener("change", (e) => { host.querySelector('[data-dep="breaking"]').hidden = !e.target.checked; });
     host.querySelector("[data-run]").addEventListener("click", async (e) => {
       const inp = readO(host); e.target.disabled = true; host.querySelector("[data-log]").innerHTML = "";
       const stg = stageLog(host, ["Focused-wave kinematics (NewWave, stretched to the crest)", inp.breaking ? "Breaking-wave slam: Wienke–Oumeraci impulse on the curled crest" : "Non-breaking: Morison inertia and drag only", "Beam model: 120 s time domain, nonlinear p-y, aero-elastic rotor", `Shell submodel: ${Math.round((inp.z2 - inp.z1) / inp.dz) * inp.nth} elements, kinematically coupled to the beam at ${fmt(inp.z1, 1)} and ${fmt(inp.z2, 1)} m`, "Checks: yield, shell buckling (EN 1993-1-6), mudline rotation"], 420);
@@ -4115,11 +4326,12 @@ details.sec > * + * { margin-top: 8px; }
   let fatJob = 0;
   function fatView() {
     const host = document.getElementById("bl-pane-fat"), ty = TT.get(bSel), r = RUNS.get(bSel + ":fat"), t = T[bSite] || T[0];
-    const o = (r && r.input) || { bins: Object.fromEntries(FBINS.map(([k, , , v]) => [k, v])), locs: ["tower_base", "door", "flange", "mudline", "pile"], all: true };
+    const o = (r && r.input) || { bins: Object.fromEntries(FBINS.map(([k, , , v]) => [k, v])), locs: ["tower_base", "door", "flange", "mudline", "pile"], all: true, calib: 0.7 };
     const parse = (s2) => s2.split(/[,\s]+/).map(Number).filter((x) => isFinite(x)).slice(0, 24);
     host.innerHTML = `<div class="bl-an"><div class="bl-g bl-in-p"><div class="bl-hd2"><h3>Fatigue lookup table</h3>${PLACEHOLDER}</div><p class="cap">Six time-domain runs (wave and turbulence seeds) per combination of the bins below: turbulent wind with blade-element momentum aerodynamics inside cut-in to cut-out, idling otherwise. Damage per hour at each location, with a 95 % interval from the six seeds. Site: ${t.spec.name}.</p>` +
       FBINS.map(([k, lab, u]) => `<label class="bl-f bl-fb"><span>${lab}${u ? ` <span class="muted">(${u})</span>` : ""}</span><input type="text" data-b="${k}" value="${o.bins[k]}"></label>`).join("") +
       `<div class="bl-sub">Locations</div><div class="bl-locs">${FLOCS.map(([k, l]) => `<label><input type="checkbox" data-l="${k}"${o.locs.includes(k) ? " checked" : ""}> ${l}</label>`).join("")}<label><input type="checkbox" data-l="all"${o.all ? " checked" : ""}> All elevations, 8 azimuths</label></div>` +
+      `<details class="bl-more"><summary>More settings</summary><label class="bl-f"><span>Stress calibration to monitored data</span><span class="bl-in"><input type="number" data-cal value="${o.calib ?? 0.7}" step="0.05"><i>×</i></span></label><p class="cap">Multiplies all fatigue stresses. 0.7 matches the farm's monitored fatigue history for the as-built design; 1 uses the raw model.</p></details>` +
       `<p class="mono bl-count" data-count></p><div class="bl-row"><button class="btn bl-go" type="button" data-run>Run all combinations</button><button class="btn" type="button" data-stop hidden>Stop</button></div><div class="bl-run"><div class="bl-prog"><i data-bar></i></div><p class="muted" data-pmsg></p></div></div>` +
       `<div class="bl-res" data-res>${r ? "" : `<p class="muted">Enter the bins and run. The table then gives the damage for any hour of environment, with its uncertainty.</p>`}</div></div>`;
     const count = () => { const b = {}; FBINS.forEach(([k]) => { b[k] = parse(host.querySelector(`[data-b="${k}"]`).value); }); const n = FBINS.reduce((p, [k]) => p * Math.max(1, b[k].length), 1);
@@ -4131,8 +4343,8 @@ details.sec > * + * { margin-top: 8px; }
       if (!locs.length && !all) { host.querySelector("[data-pmsg]").textContent = "Choose at least one location."; return; }
       const job = ++fatJob, stop = host.querySelector("[data-stop]"); e.target.disabled = true; stop.hidden = false;
       stop.onclick = () => { fatJob++; };
-      const t0 = performance.now(), inp = { bins: Object.fromEntries(FBINS.map(([k]) => [k, host.querySelector(`[data-b="${k}"]`).value])), locs, all };
-      const res = await SOLVERS.fatigue(TT.get(bSel), { bins, locs, all }, (f) => { if (!host.isConnected) return; host.querySelector("[data-bar]").style.width = (100 * f) + "%"; host.querySelector("[data-pmsg]").textContent = `${fmt(100 * f, 0)} % · ${((performance.now() - t0) / 1000).toFixed(1)} s`; }, () => job !== fatJob);
+      const calib = +host.querySelector("[data-cal]").value || 1, t0 = performance.now(), inp = { bins: Object.fromEntries(FBINS.map(([k]) => [k, host.querySelector(`[data-b="${k}"]`).value])), locs, all, calib };
+      const res = await SOLVERS.fatigue(TT.get(bSel), { bins, locs, all, calib }, (f) => { if (!host.isConnected) return; host.querySelector("[data-bar]").style.width = (100 * f) + "%"; host.querySelector("[data-pmsg]").textContent = `${fmt(100 * f, 0)} % · ${((performance.now() - t0) / 1000).toFixed(1)} s`; }, () => job !== fatJob);
       e.target.disabled = false; stop.hidden = true;
       if (!res) { host.querySelector("[data-pmsg]").textContent = "Stopped."; return; }
       RUNS.set(bSel + ":fat", { key: runKey(), input: inp, result: res, ui: { loc: 0, filt: {}, sortBy: "d" } }); fatResults(host);
@@ -4150,6 +4362,7 @@ details.sec > * + * { margin-top: 8px; }
     const AZ = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
     box.innerHTML = stale(r) + `<div class="bl-row"><label class="sel">Location<select data-loc>${res.locs.map((L, i) => (L.field && i % 6 ? "" : `<option value="${i}"${i === ui.loc ? " selected" : ""}>${L.name}</option>`)).join("")}</select></label>` +
       `<span class="muted">${res.combos.length.toLocaleString()} combinations · ${res.nL} locations · ${rows.length.toLocaleString()} shown</span><button class="btn" type="button" data-csv style="margin-left:auto">Export table (CSV)</button></div>` +
+      `<div class="panel bl-lt" data-ltp></div>` +
       `<div class="grid2"><div><h4 class="bl-h">Damage per hour, H<sub>s</sub> × T<sub>p</sub></h4><div data-heat></div><p class="cap">Mean over the bins of the other variables (or the filtered value). Log colour scale.</p></div>` +
       `<div><h4 class="bl-h">One hour of environment → damage</h4><div class="bl-q">${[["Hs", 2.5], ["Tp", 8], ["gamma", 3.3], ["U10", 12], ["wdir", 240], ["vdir", 260]].map(([k, v]) => `<label>${FBINS.find((b) => b[0] === k)[1]}<input type="number" data-q="${k}" value="${v}" step="any"></label>`).join("")}</div><div data-qout></div></div></div>` +
       (res.locs.some((L) => L.field) ? `<h4 class="bl-h">Damage field along the structure</h4><div data-prof></div><p class="cap">For the top row of the table below: worst azimuth at each elevation, mean and 95 % interval over the six seeds.</p>` : "") +
@@ -4157,6 +4370,7 @@ details.sec > * + * { margin-top: 8px; }
       rows.slice(0, 120).map((ci) => { const c = res.combos[ci], [m, lo, hi] = D3(ci, ui.loc); return `<tr>${c.map((v) => `<td class="mono">${v}</td>`).join("")}<td class="r mono">${fmtD(m)}</td><td class="r mono muted" style="white-space:nowrap">${fmtD(lo)} – ${fmtD(hi)}</td><td class="mono">${AZ[res.az[ci * res.nL + ui.loc]]}</td></tr>`; }).join("") +
       `</tbody></table></div><p class="cap">Sorted by damage; first 120 rows. Damage per hour against the DNV S-N curve for the location (D in air, D in seawater with cathodic protection, bolts detail 50). The interval is for a single hour: six seeds give the scatter, Student-t on the log damage.</p>`;
     box.querySelector("[data-loc]").addEventListener("change", (e) => { ui.loc = +e.target.value; fatResults(host); });
+    ltPanel(box, res, ui);
     box.querySelectorAll("[data-f]").forEach((s2) => s2.addEventListener("change", () => { const v = s2.value; if (v === "") delete ui.filt[s2.dataset.f]; else ui.filt[s2.dataset.f] = +v; fatResults(host); }));
     // heat map
     const hsB = res.bins.Hs, tpB = res.bins.Tp, cell = {}; rows.forEach((ci) => { const c = res.combos[ci], k = c[0] + "|" + c[1]; (cell[k] = cell[k] || []).push(D3(ci, ui.loc)[0]); });
@@ -4190,15 +4404,17 @@ details.sec > * + * { margin-top: 8px; }
   }
   // ---------- turbine builder ----------
   const bldEl = document.getElementById("builder");
+  // [key, label, unit, scale, step, min, max, advanced]: advanced fields sit under "More settings"
   const BF = [
-    ["Pile and monopile", [["t_pile", "Pile wall in the soil", "mm", 1e-3, 1, 30, 200], ["embedment", "Embedment below the seabed", "m", 1, 0.5, 10, 80], ["z_interface", "Interface (tower-base flange) above MSL", "m", 1, 0.5, 8, 30], ["tp_mass", "Transition piece, platform and appurtenances", "t", 1e3, 5, 0, 1500]]],
+    ["Pile and monopile", [["t_pile", "Pile wall in the soil", "mm", 1e-3, 1, 30, 200], ["embedment", "Embedment below the seabed", "m", 1, 0.5, 10, 80], ["z_interface", "Interface (tower-base flange) above MSL", "m", 1, 0.5, 8, 30, 1], ["tp_mass", "Transition piece, platform and appurtenances", "t", 1e3, 5, 0, 1500, 1]]],
     ["Tower", [["z_hub", "Hub height above MSL", "m", 1, 1, 60, 220]]],
-    ["Rotor and nacelle", [["rotor_D", "Rotor diameter", "m", 1, 1, 80, 320], ["blade_mass", "Mass per blade", "t", 1e3, 1, 5, 200], ["hub_mass", "Hub with pitch system", "t", 1e3, 5, 10, 600],
-      ["nacelle_mass", "Nacelle: drivetrain, generator, bedplate", "t", 1e3, 5, 50, 2000], ["J_rna", "Rotor-nacelle inertia about the tilt axis", "10⁶ kg·m²", 1e6, 10, 1, 3000]]],
-    ["Power and rotor speed", [["rated_P", "Rated power", "MW", 1, 0.5, 1, 30], ["Cp", "Power coefficient below rated, with losses", "–", 1, 0.01, 0.2, 0.55], ["Ct", "Thrust coefficient at rated wind", "–", 1, 0.01, 0.3, 1.0],
-      ["cut_in", "Cut-in wind", "m/s", 1, 0.5, 2, 6], ["cut_out", "Cut-out wind", "m/s", 1, 0.5, 18, 35], ["min_rpm", "Minimum rotor speed", "rpm", 1, 0.1, 1, 20], ["rated_rpm", "Rated rotor speed", "rpm", 1, 0.1, 2, 25]]],
-    ["Tower-base flange", [["n_bolts", "Number of bolts", "", 1, 4, 40, 300]]],
+    ["Rotor and nacelle", [["rotor_D", "Rotor diameter", "m", 1, 1, 80, 320], ["blade_mass", "Mass per blade", "t", 1e3, 1, 5, 200], ["hub_mass", "Hub with pitch system", "t", 1e3, 5, 10, 600, 1],
+      ["nacelle_mass", "Nacelle: drivetrain, generator, bedplate", "t", 1e3, 5, 50, 2000], ["J_rna", "Rotor-nacelle inertia about the tilt axis", "10⁶ kg·m²", 1e6, 10, 1, 3000, 1]]],
+    ["Power and rotor speed", [["rated_P", "Rated power", "MW", 1, 0.5, 1, 30], ["rated_rpm", "Rated rotor speed", "rpm", 1, 0.1, 2, 25], ["Cp", "Power coefficient below rated, with losses", "–", 1, 0.01, 0.2, 0.55, 1], ["Ct", "Thrust coefficient at rated wind", "–", 1, 0.01, 0.3, 1.0, 1],
+      ["cut_in", "Cut-in wind", "m/s", 1, 0.5, 2, 6, 1], ["cut_out", "Cut-out wind", "m/s", 1, 0.5, 18, 35, 1], ["min_rpm", "Minimum rotor speed", "rpm", 1, 0.1, 1, 20, 1]]],
+    ["Tower-base flange", [["n_bolts", "Number of bolts", "", 1, 4, 40, 300, 1]]],
   ];
+  const bTaper = { mp: false, tw: false }, bMore = new Set();
   const SOILF = { sand: [["phi", "φ′", "°", 25, 45, 0.5], ["gamma", "γ′", "kN/m³", 6, 12, 0.5], ["k", "k", "MN/m³", 2, 60, 1]], clay: [["su", "s<sub>u</sub> top", "kPa", 5, 400, 5], ["su_grad", "+", "kPa/m", 0, 20, 0.5], ["gamma", "γ′", "kN/m³", 4, 11, 0.5], ["eps50", "ε<sub>50</sub>", "", 0.002, 0.03, 0.001]] };
   let bSel = null, bSite = 0, bTimer = 0, bRes = null, bView = "3d";
   const uid = () => "t" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
@@ -4318,34 +4534,49 @@ details.sec > * + * { margin-top: 8px; }
     chart(host.querySelector("[data-tc]"), { series: [{ x: Us, y: Us.map((u) => thrust(u, m) / 1e6), color: "--warn", width: 2 }], xl: "wind at hub (m/s)", yl: "thrust (MN)", w: 380, h: 200, label: "Thrust curve" });
   }
   function bForm() {
-    const ty = TT.get(bSel), ro = !!ty.builtin, host = document.getElementById("bl-form");
-    const stations = (g) => {
-      const k = g === "Pile and monopile" ? "mp" : g === "Tower" ? "tw" : null; if (!k) return "";
+    const ty = TT.get(bSel), ro = !!ty.builtin, host = document.getElementById("bl-form"), dis = ro ? " disabled" : "";
+    if (ty.mp.length > 1) bTaper.mp = true; if (ty.tw.length > 2) bTaper.tw = true;
+    const more = (id, title, body) => (body ? `<details class="bl-more" data-more="${id}"${bMore.has(id) ? " open" : ""}><summary>${title}</summary>${body}</details>` : "");
+    const inp = (k, lab, unit, sc, step) => `<label class="bl-f"><span>${lab}</span><span class="bl-in"><input type="number" data-k="${k}" step="${step}" value="${+(ty[k] / sc).toPrecision(5)}"${dis}><i>${unit}</i></span></label>`;
+    const sv = (arr, i, key, lab, unit) => { const st = ty[arr][i === "L" ? ty[arr].length - 1 : i], v = key === "t" ? +(st.t * 1e3).toPrecision(4) : st[key];
+      return `<label class="bl-f"><span>${lab}</span><span class="bl-in"><input type="number" data-sv="${arr}:${i}:${key}" step="${key === "t" ? 1 : 0.05}" value="${v}"${dis}><i>${unit}</i></span></label>`; };
+    const toggle = (k, lab) => `<label class="bl-tg"><input type="checkbox" data-taper="${k}"${bTaper[k] ? " checked" : ""}${dis}> ${lab}</label>`;
+    const table = (k) => {
       const rows = ty[k], last = rows.length - 1, locked = (i) => i === 0 || (k === "tw" && i === last);
       return `<table class="bl-st"><thead><tr><th>${k === "mp" ? "Monopile station" : "Tower station"}, m MSL</th><th>⌀ m</th><th>wall mm</th><th></th></tr></thead><tbody>` +
-        rows.map((st, i) => `<tr data-st="${k}" data-i="${i}"><td>${locked(i) ? `<span class="mono">${fmt(st.z, 1)}</span> <span class="muted">${i === 0 ? "interface" : "top (hub − 5 m)"}</span>` : `<input type="number" step="0.5" data-sf="z" value="${st.z}"${ro ? " disabled" : ""}>`}</td>` +
-          `<td><input type="number" step="0.05" data-sf="D" value="${st.D}"${ro ? " disabled" : ""}></td><td><input type="number" step="1" data-sf="t" value="${+(st.t * 1e3).toPrecision(4)}"${ro ? " disabled" : ""}></td>` +
+        rows.map((st, i) => `<tr data-st="${k}" data-i="${i}"><td>${locked(i) ? `<span class="mono">${fmt(st.z, 1)}</span> <span class="muted">${i === 0 ? "interface" : "top (hub − 5 m)"}</span>` : `<input type="number" step="0.5" data-sf="z" value="${st.z}"${dis}>`}</td>` +
+          `<td><input type="number" step="0.05" data-sf="D" value="${st.D}"${dis}></td><td><input type="number" step="1" data-sf="t" value="${+(st.t * 1e3).toPrecision(4)}"${dis}></td>` +
           `<td>${locked(i) || ro ? "" : `<button class="btn icon" type="button" data-sdel aria-label="Remove station">✕</button>`}</td></tr>`).join("") + `</tbody></table>` +
         (ro ? "" : `<button class="btn" type="button" data-sadd="${k}">Add station</button>`) +
-        `<p class="cap">${k === "mp" ? "Linear between stations; below the lowest station the diameter stays constant to the pile toe. Add stations for a tapered monopile or a conical transition piece." : "Linear between stations, from the flange to the top. Add stations for a multi-taper or a straight lower section."}</p>`;
+        `<p class="cap">${k === "mp" ? "Linear between stations; below the lowest station the diameter stays constant to the pile toe." : "Linear between stations, from the flange to the top."}</p>`;
     };
-    const inp = (k, lab, unit, sc, step) => `<label class="bl-f"><span>${lab}</span><span class="bl-in"><input type="number" data-k="${k}" step="${step}" value="${+(ty[k] / sc).toPrecision(5)}"${ro ? " disabled" : ""}><i>${unit}</i></span></label>`;
-    host.innerHTML = `<label class="bl-f bl-name"><span>Name</span><input type="text" data-k="name" value="${ty.name.replace(/"/g, "&quot;")}"${ro ? " disabled" : ""}></label>` +
-      (ro ? `<p class="hint bl-ro">Built-in types are read-only. <button class="btn" type="button" data-dup>Duplicate to edit</button></p>` : "") +
-      fdnHTML(ty, ro) + `<fieldset class="bl-g"><legend>Soil layers (from the seabed down)</legend><div class="bl-soil">${ty.soil.map((l, i) => `<div class="bl-l" data-i="${i}"><select data-sk="kind"${ro ? " disabled" : ""}><option value="sand"${l.kind === "sand" ? " selected" : ""}>Sand</option><option value="clay"${l.kind === "clay" ? " selected" : ""}>Clay</option></select>` +
+    const shape = (g) => g === "Pile and monopile" ? (bTaper.mp ? table("mp") : sv("mp", 0, "D", "Diameter", "m") + sv("mp", 0, "t", "Wall, seabed to interface", "mm")) + toggle("mp", "Tapered or conical (diameter stations)") :
+      g === "Tower" ? (bTaper.tw ? table("tw") : sv("tw", 0, "D", "Base diameter", "m") + sv("tw", "L", "D", "Top diameter", "m") + sv("tw", 0, "t", "Base wall", "mm") + sv("tw", "L", "t", "Top wall", "mm")) + toggle("tw", "More stations (multi-taper, straight sections)") : "";
+    const soilBody = `<div class="bl-soil">${ty.soil.map((l, i) => `<div class="bl-l" data-i="${i}"><select data-sk="kind"${dis}><option value="sand"${l.kind === "sand" ? " selected" : ""}>Sand</option><option value="clay"${l.kind === "clay" ? " selected" : ""}>Clay</option></select>` +
         `<label>to <input type="number" data-sk="to" step="0.5" value="${i === ty.soil.length - 1 ? "" : l.to}" placeholder="toe"${ro || i === ty.soil.length - 1 ? " disabled" : ""}> m</label>` +
-        SOILF[l.kind].map(([k, lb, u, , , st]) => `<label>${lb} <input type="number" data-sk="${k}" step="${st}" value="${l[k]}"${ro ? " disabled" : ""}>${u ? " " + u : ""}</label>`).join("") +
+        SOILF[l.kind].map(([k, lb, u, , , st]) => `<label>${lb} <input type="number" data-sk="${k}" step="${st}" value="${l[k]}"${dis}>${u ? " " + u : ""}</label>`).join("") +
         (ro || ty.soil.length === 1 ? "" : `<button class="btn icon" type="button" data-del="${i}" aria-label="Remove layer">✕</button>`) + `</div>`).join("")}</div>` +
-        (ro ? "" : `<button class="btn" type="button" data-addl>Add layer</button>`) + `<p class="cap">Sand: API p-y, initial modulus k·depth. Clay: Matlock, small-strain secant stiffness. The live twin also scales the whole profile by each site's factor from frequency tracking.</p></fieldset>` +
-      BF.map(([g, fs]) => `<fieldset class="bl-g"><legend>${g}</legend>${stations(g)}${fs.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("")}` +
-        (g === "Tower-base flange" ? `<label class="bl-f"><span>Bolt size</span><span class="bl-in"><select data-k="bolt_d"${ro ? " disabled" : ""}>${Object.keys(TFE.BOLT_AS).map((b) => `<option value="${b}"${+b === ty.bolt_d ? " selected" : ""}>M${b} 10.9</option>`).join("")}</select></span></label>` : "") +
-        (g === "Rotor and nacelle" && !ro ? `<button class="btn" type="button" data-jest>Estimate inertia from the masses</button>` : "") + `</fieldset>`).join("");
+        (ro ? "" : `<button class="btn" type="button" data-addl>Add layer</button>`) + `<p class="cap">Sand: API p-y, initial modulus k·depth. Clay: Matlock, small-strain secant stiffness.</p>`;
+    host.innerHTML = `<label class="bl-f bl-name"><span>Name</span><input type="text" data-k="name" value="${ty.name.replace(/"/g, "&quot;")}"${dis}></label>` +
+      (ro ? `<p class="hint bl-ro">Built-in types are read-only. <button class="btn" type="button" data-dup>Duplicate to edit</button></p>` : "") +
+      fdnHTML(ty, ro) +
+      (ty.fdn.mode === "soil" ? `<fieldset class="bl-g"><legend>Soil layers (from the seabed down)</legend>${soilBody}</fieldset>` : `<fieldset class="bl-g bl-g0">${more("soil", "Soil layers (used by the 3D soil-pile analysis)", soilBody)}</fieldset>`) +
+      BF.map(([g, fs]) => { const basic = fs.filter((f) => !f[7]), adv = fs.filter((f) => f[7]);
+        const extra = (g === "Tower-base flange" ? `<label class="bl-f"><span>Bolt size</span><span class="bl-in"><select data-k="bolt_d"${dis}>${Object.keys(TFE.BOLT_AS).map((b) => `<option value="${b}"${+b === ty.bolt_d ? " selected" : ""}>M${b} 10.9</option>`).join("")}</select></span></label>` : "") +
+          (g === "Rotor and nacelle" && !ro ? `<button class="btn" type="button" data-jest>Estimate inertia from the masses</button>` : "");
+        return `<fieldset class="bl-g"><legend>${g}</legend>${shape(g)}${basic.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("")}${more(g, "More settings", adv.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("") + extra)}</fieldset>`; }).join("");
+    host.querySelectorAll("details[data-more]").forEach((d) => d.addEventListener("toggle", () => { if (d.open) bMore.add(d.dataset.more); else bMore.delete(d.dataset.more); }));
     const edit = (fn) => { if (ro) return; const nt = bClean(JSON.parse(JSON.stringify(TT.get(bSel)))); fn(nt); bClean(nt); TT.upsert(nt); clearTimeout(bTimer); bTimer = setTimeout(() => { bList(); bResults(TT.get(bSel)); bFarm(); }, 300); };
     fdnWire(host, edit, ro);
     host.querySelectorAll("[data-k]").forEach((x) => x.addEventListener("change", () => edit((nt) => {
       const k = x.dataset.k; if (k === "name") { nt.name = x.value.trim() || "Unnamed type"; return; }
       if (k === "bolt_d") { nt.bolt_d = +x.value; return; }
       const f = BF.flatMap(([, fs]) => fs).find((q) => q[0] === k); nt[k] = +x.value * f[3]; })));
+    host.querySelectorAll("[data-sv]").forEach((x) => x.addEventListener("change", () => edit((nt) => { const [arr, i, key] = x.dataset.sv.split(":"), st = nt[arr][i === "L" ? nt[arr].length - 1 : +i]; st[key] = key === "t" ? +x.value / 1e3 : +x.value; })));
+    host.querySelectorAll("[data-taper]").forEach((x) => x.addEventListener("change", () => { const k = x.dataset.taper; bTaper[k] = x.checked;
+      if (!x.checked) edit((nt) => { nt[k] = k === "mp" ? nt.mp.slice(0, 1) : [nt.tw[0], nt.tw[nt.tw.length - 1]]; });
+      else if (k === "mp" && ty.mp.length === 1) edit((nt) => { nt.mp.push({ z: Math.min(nt.z_interface - 15, 0), D: nt.mp[0].D, t: nt.mp[0].t }); });
+      setTimeout(bForm, 0); }));
     host.querySelectorAll("[data-sk]").forEach((x) => x.addEventListener("change", () => edit((nt) => { const i = +x.closest("[data-i]").dataset.i, k = x.dataset.sk; nt.soil[i][k] = k === "kind" ? x.value : +x.value; if (k === "kind") setTimeout(bForm, 0); })));
     host.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => { edit((nt) => { nt.soil.splice(+b.dataset.del, 1); }); setTimeout(bForm, 0); }));
     host.querySelectorAll("[data-sf]").forEach((x) => x.addEventListener("change", () => { const tr2 = x.closest("[data-st]"); edit((nt) => { const st = nt[tr2.dataset.st][+tr2.dataset.i]; st[x.dataset.sf] = x.dataset.sf === "t" ? +x.value / 1e3 : +x.value; }); setTimeout(bForm, 350); }));
