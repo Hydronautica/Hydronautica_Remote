@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>URI Flume Breather</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -105,7 +106,7 @@ canvas { width: 100%; display: block; background: var(--panel); border: 1px soli
 
   <div class="readouts" aria-live="off">
     <div><span class="label">Carrier</span><span class="v" id="r-car">–</span></div>
-    <div><span class="label">Background a₀</span><span class="v" id="r-a0">–</span></div>
+    <div><span class="label">Background a<sub>0</sub></span><span class="v" id="r-a0">–</span></div>
     <div><span class="label">Breather position</span><span class="v" id="r-pos">–</span></div>
     <div><span class="label">Highest crest now</span><span class="v" id="r-crest">–</span></div>
     <div><span class="label">Crest steepness kη</span><span class="v" id="r-kh">–</span></div>
@@ -260,7 +261,7 @@ canvas { width: 100%; display: block; background: var(--panel); border: 1px soli
     g.stroke();
     // 3 a0 reference and focus line
     g.strokeStyle = theme.warn; g.setLineDash([2, 4]); g.beginPath(); g.moveTo(0, y0 - 3 * C.a0 * s); g.lineTo(w, y0 - 3 * C.a0 * s); g.stroke(); g.setLineDash([]);
-    g.font = "11px " + css("--font-data"); g.fillStyle = theme.warn; g.textAlign = "left"; g.fillText("3a₀ = " + (3e3 * C.a0).toFixed(1) + " mm", 6, y0 - 3 * C.a0 * s - 4);
+    g.font = "11px " + css("--font-data"); g.fillStyle = theme.warn; g.textAlign = "left"; g.fillText("3 a0 = " + (3e3 * C.a0).toFixed(1) + " mm", 6, y0 - 3 * C.a0 * s - 4);
     if (XF > x0 && XF < x0 + DET_W) { const fx = (XF - x0) * s; g.strokeStyle = theme.warn; g.beginPath(); g.moveTo(fx, 0); g.lineTo(fx, h); g.stroke(); }
     // scale bar: 10 cm
     g.fillStyle = theme.ink; g.fillRect(w - 12 - 0.1 * s, h - 14, 0.1 * s, 2); g.textAlign = "right"; g.fillStyle = theme.ink; g.fillText("10 cm", w - 12, h - 18);
@@ -299,7 +300,7 @@ canvas { width: 100%; display: block; background: var(--panel); border: 1px soli
   let t = 0, playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches, speed = 1, exag = 1, last = performance.now(), peak = 0;
   const casesEl = document.getElementById("cases");
   CASES.forEach((c, i) => {
-    const b = document.createElement("button"); b.type = "button"; b.textContent = c.id; b.title = `T₀ ${c.T0} s, ε = k₀a₀ ${c.eps} (${c.note})`;
+    const b = document.createElement("button"); b.type = "button"; b.textContent = c.id; b.title = `T0 ${c.T0} s, eps = k0 a0 ${c.eps} (${c.note})`;
     b.setAttribute("aria-pressed", i === 1 ? "true" : "false");
     b.addEventListener("click", () => { C = makeCase(c); [...casesEl.children].forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false")); t = 0; peak = 0; layout(); setVerdict(); render(); });
     casesEl.append(b);

@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>RNA Load Chain</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -458,11 +459,11 @@ aside { display: grid; gap: 12px; min-width: 0; }
     scene.updateMatrixWorld(true);
     const ink = css("--ink"), mut = css("--muted");
     const L = (t, grp, p, c = ink) => labels.add(label(t, world(grp, p), c));
-    L("① Blade roots: 3 × 6 loads from the global model", G.pivot, [-1.0, 4.9, 0]);
-    L("② Hub FE → shaft flange: 6 loads", G.pivot, [0.8, -3.4, 2.6]);
-    L("③ Drivetrain FE (shaft + gearbox)", G.dt, [-1.6, 4.2, 0]);
-    L("④ Main bearing: 6   ⑤ Torque arms: 3 + 3", G.dt, [-1.2, 0.6, 2.6]);
-    L("⑥ Bedplate FE → yaw bearing: 6 → tower top", G.bed, [0.8, -1.4, 2.8]);
+    L("1. Blade roots: 3 × 6 loads from the global model", G.pivot, [-1.0, 4.9, 0]);
+    L("2. Hub FE → shaft flange: 6 loads", G.pivot, [0.8, -3.4, 2.6]);
+    L("3. Drivetrain FE (shaft + gearbox)", G.dt, [-1.6, 4.2, 0]);
+    L("4. Main bearing: 6   5. Torque arms: 3 + 3", G.dt, [-1.2, 0.6, 2.6]);
+    L("6. Bedplate FE → yaw bearing: 6 → tower top", G.bed, [0.8, -1.4, 2.8]);
     L("force", G.bed, [-6.4, -1.0, 2.6], css("--fx")); L("moment", G.bed, [-6.4, -1.6, 2.6], css("--fz"));
   }
 
@@ -476,17 +477,17 @@ aside { display: grid; gap: 12px; min-width: 0; }
   function renderChain() {
     const el = document.getElementById("side"), i = ti;
     const row = (name, F, Mv, cls = "") => `<span class="${cls}">${name}</span><span class="v ${cls}">${f3(F, 2)}</span><span class="v ${cls}">${Mv ? f3(Mv) : ""}</span>`;
-    const blades = [0, 1, 2].map((k) => { const b = (j) => R.blade[(6 * k + j) * R.n + i]; return row(`① Blade ${"ABC"[k]} root (blade frame)`, [b(0), b(1), b(2)], [b(3), b(4), b(5)]); }).join("");
+    const blades = [0, 1, 2].map((k) => { const b = (j) => R.blade[(6 * k + j) * R.n + i]; return row(`1. Blade ${"ABC"[k]} root (blade frame)`, [b(0), b(1), b(2)], [b(3), b(4), b(5)]); }).join("");
     el.innerHTML = `<h2>The load chain · ${R.kind === "op" ? "operating" : "parked storm"}</h2>
       <p>Loads each part passes to the next at t = ${R.t[i].toFixed(1)} s. Forces in MN (x, y, z), moments in MN·m. Grey rows: the same link from rigid-body statics of the global loads.</p>
       <div class="chain"><span class="h">Link</span><span class="h v">Force</span><span class="h v">Moment</span>
       ${blades}<span class="sep"></span>
-      ${row("② Shaft flange (from hub FE)", vec(R.link.fl, i), vec(R.link.fl, i, 3))}
+      ${row("2. Shaft flange (from hub FE)", vec(R.link.fl, i), vec(R.link.fl, i, 3))}
       ${row("statics", vec(R.hubS, i), vec(R.hubS, i, 3), "chk")}<span class="sep"></span>
-      ${row("④ Main bearing (drivetrain FE)", vec(R.link.mb, i), vec(R.link.mb, i, 3))}
-      ${row("⑤ Torque arm, left", vec(R.link.aL, i), null)}
-      ${row("⑤ Torque arm, right", vec(R.link.aR, i), null)}<span class="sep"></span>
-      ${row("⑥ Tower top (bedplate FE)", vec(R.link.yaw, i), vec(R.link.yaw, i, 3))}
+      ${row("4. Main bearing (drivetrain FE)", vec(R.link.mb, i), vec(R.link.mb, i, 3))}
+      ${row("5. Torque arm, left", vec(R.link.aL, i), null)}
+      ${row("5. Torque arm, right", vec(R.link.aR, i), null)}<span class="sep"></span>
+      ${row("6. Tower top (bedplate FE)", vec(R.link.yaw, i), vec(R.link.yaw, i, 3))}
       ${row("statics", vec(R.ttS, i), vec(R.ttS, i, 3), "chk")}</div>
       <p>Largest difference from statics over the record: hub <span class="ok">${(100 * R.closure.hub).toFixed(1)} %</span>, tower top <span class="ok">${(100 * R.closure.tower).toFixed(1)} %</span>.</p>`;
   }
