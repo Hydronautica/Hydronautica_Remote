@@ -504,6 +504,12 @@ details.sec > * + * { margin-top: 8px; }
 .bl-pyc { margin-top: 6px; }
 .bl-lt .panel-b { display: flex; flex-direction: column; gap: 10px; }
 .bl-ltt td, .bl-ltt th { font-size: 0.78rem; }
+.bl-mline { font-size: 0.7rem; color: var(--muted); margin: -2px 0 6px; font-family: var(--font-data); }
+.bl-lib td, .bl-lib th { font-size: 0.74rem; }
+.bl-lib td.mono { white-space: nowrap; }
+.bl-lib .lib-s { display: block; font-size: 0.66rem; color: var(--muted); }
+.bl-lib { margin-bottom: 6px; }
+.bl-l select[data-sp] { color: var(--accent); }
 .bl-ta { width: 100%; font: 0.78rem var(--font-data); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px; resize: vertical; }
 .wi-fh, .wi-fr { display: grid; grid-template-columns: 3.2rem 3.4rem minmax(0, 1fr); gap: 6px; align-items: center; font-size: 0.72rem; }
 .wi-fh { color: var(--muted); font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.04em; margin: 8px 0 2px; }
@@ -2010,6 +2016,50 @@ details.sec > * + * { margin-top: 8px; }
       `Fatigue stress concentration: door frame ${D.meta.scf.door_frame}, mudline weld ${D.meta.scf.mudline_weld}. Deep-water NLS dynamics are applied at intermediate depth (kd above 1.36, where modulational instability exists); the production chain uses finite-depth evolution.` +
       (D.history && D.history.demo_scale ? ` Between-storm fatigue rates are scaled by ${D.history.demo_scale.toPrecision(2)} for this demonstration, because the demo base runs leave out load-reducing effects such as diffraction and directional spreading.` : "");
   }
+  // ---------- material library: standard grades for offshore wind turbines ----------
+  // Structural steel yield strength falls with plate thickness (EN 10025-2/-4, EN 10225 nominal values, MPa by maximum
+  // thickness in mm). Welded-detail S-N curves do not depend on the grade (DNV-RP-C203); castings and forgings carry
+  // their own reference fatigue strength (detail category at 2 million cycles for castings, 1 million for shafts).
+  const MATS = {
+    steel: [
+      { id: "S355", name: "S355J2+N", std: "EN 10025-2", E: 210, rho: 7850, fu: 470, fy: [[16, 355], [40, 345], [63, 335], [80, 325], [100, 315], [150, 295], [250, 275]], use: "Towers, secondary steel" },
+      { id: "S355ML", name: "S355ML / S355NL", std: "EN 10025-4 / -3", E: 210, rho: 7850, fu: 470, fy: [[16, 355], [40, 345], [63, 335], [80, 325], [100, 325], [120, 320], [150, 310]], use: "Monopiles, transition pieces (thick plate)" },
+      { id: "S355G10", name: "S355G10+M", std: "EN 10225-1", E: 210, rho: 7850, fu: 470, fy: [[16, 355], [25, 355], [40, 345], [63, 335], [100, 325], [150, 320]], use: "Offshore structures, through-thickness quality" },
+      { id: "S420ML", name: "S420ML / S420NL", std: "EN 10025-4 / -3", E: 210, rho: 7850, fu: 520, fy: [[16, 420], [40, 400], [63, 390], [80, 380], [100, 370], [120, 365], [150, 350]], use: "Lighter XL monopiles" },
+      { id: "S460ML", name: "S460ML / S460NL", std: "EN 10025-4 / -3", E: 210, rho: 7850, fu: 540, fy: [[16, 460], [40, 440], [63, 430], [80, 410], [100, 400], [120, 385], [150, 370]], use: "High-strength towers and piles" },
+    ],
+    bolt: [
+      { id: "8.8", name: "Property class 8.8", std: "ISO 898-1", fub: 800, fyb: 640, use: "Secondary connections" },
+      { id: "10.9", name: "Property class 10.9 (HV)", std: "EN 14399-4", fub: 1000, fyb: 900, use: "Preloaded ring-flange bolts" },
+    ],
+    cast: [
+      { id: "GJS-400-18-LT", name: "EN-GJS-400-18-LT", std: "EN 1563", E: 169, rho: 7100, fy: 240, fu: 400, dsr: 80, use: "Hubs, bedplates (low-temperature toughness)" },
+      { id: "GJS-350-22-LT", name: "EN-GJS-350-22-LT", std: "EN 1563", E: 169, rho: 7100, fy: 220, fu: 350, dsr: 75, use: "Thick-walled hubs, very low temperatures" },
+      { id: "GJS-500-14", name: "EN-GJS-500-14", std: "EN 1563 (solution strengthened)", E: 170, rho: 7100, fy: 400, fu: 500, dsr: 92, use: "Lighter hubs and frames" },
+      { id: "GJS-700-2", name: "EN-GJS-700-2", std: "EN 1563", E: 176, rho: 7200, fy: 420, fu: 700, dsr: 98, use: "Planet carriers (less ductile)" },
+    ],
+    shaft: [
+      { id: "34CrNiMo6", name: "34CrNiMo6 +QT", std: "EN 10083-3", E: 210, rho: 7850, fy: 700, fu: 900, dsr: 320, use: "Main shafts" },
+      { id: "42CrMo4", name: "42CrMo4 +QT", std: "EN 10083-3", E: 210, rho: 7850, fy: 550, fu: 750, dsr: 280, use: "Smaller shafts" },
+      { id: "30CrNiMo8", name: "30CrNiMo8 +QT", std: "EN 10083-3", E: 210, rho: 7850, fy: 750, fu: 950, dsr: 340, use: "Large-diameter main shafts" },
+    ],
+  };
+  const matOf = (kind, id) => MATS[kind].find((m) => m.id === id) || MATS[kind][kind === "steel" ? 0 : kind === "bolt" ? 1 : 0];
+  const fyOf = (m, tMm) => { for (const [tm, f] of m.fy) if (tMm <= tm) return f; return m.fy[m.fy.length - 1][1]; };
+  // soil presets: typical values for a quick start (sand: API p-y; clay: Matlock)
+  const SOIL_PRESETS = {
+    sand: [["vloose", "Very loose", { phi: 28, gamma: 8.5, k: 5 }], ["loose", "Loose", { phi: 30, gamma: 9, k: 10 }], ["medium", "Medium dense", { phi: 33, gamma: 10, k: 20 }], ["dense", "Dense", { phi: 36, gamma: 10.5, k: 33 }], ["vdense", "Very dense", { phi: 40, gamma: 11, k: 45 }]],
+    clay: [["vsoft", "Very soft", { su: 8, su_grad: 1.2, gamma: 5.5, eps50: 0.02 }], ["soft", "Soft", { su: 18, su_grad: 1.5, gamma: 6.5, eps50: 0.02 }], ["firm", "Firm", { su: 40, su_grad: 2, gamma: 7.5, eps50: 0.01 }], ["stiff", "Stiff", { su: 80, su_grad: 3, gamma: 8.5, eps50: 0.007 }], ["vstiff", "Very stiff (till)", { su: 160, su_grad: 4, gamma: 10, eps50: 0.005 }], ["hard", "Hard", { su: 300, su_grad: 5, gamma: 11, eps50: 0.004 }]],
+  };
+  const mkLayer = (to, kind, preset) => Object.assign({ to, kind, phi: 33, gamma: 10, k: 20, su: 40, su_grad: 2, eps50: 0.01 }, SOIL_PRESETS[kind].find((p) => p[0] === preset)[2]);
+  const SOIL_PROFILES = [
+    ["Uniform medium-dense sand", () => [mkLayer(200, "sand", "medium")]],
+    ["Dense sand under a loose top layer (southern North Sea)", () => [mkLayer(3, "sand", "loose"), mkLayer(200, "sand", "dense")]],
+    ["Sand over stiff clay over dense sand", () => [mkLayer(8, "sand", "medium"), mkLayer(25, "clay", "stiff"), mkLayer(200, "sand", "dense")]],
+    ["Soft clay over dense sand", () => [mkLayer(10, "clay", "soft"), mkLayer(20, "clay", "firm"), mkLayer(200, "sand", "dense")]],
+    ["Glacial till (boulder clay)", () => [mkLayer(4, "sand", "medium"), mkLayer(30, "clay", "vstiff"), mkLayer(200, "clay", "hard")]],
+    ["Normally consolidated soft clay", () => [mkLayer(15, "clay", "vsoft"), mkLayer(200, "clay", "soft")]],
+  ];
   // ---------- turbine types: beam + linear p-y model, built in the page ----------
   // Port of structure.Model (Euler-Bernoulli beam from the pile toe to the hub, consistent mass,
   // RNA lumped at the top, Winkler springs at the initial p-y stiffness below the seabed), so a
@@ -2052,9 +2102,9 @@ details.sec > * + * { margin-top: 8px; }
                       : [].concat(lin(toe, mud, 22), lin(mud, -12, 17), lin(-12, 20, 33), lin(20, ty.z_hub, 26), [ty.z_hub]);
       const n = z.length, nd = 2 * n, K = new Float64Array(nd * nd), M = new Float64Array(nd * nd), EI = [];
       for (let e = 0; e < n - 1; e++) {
-        const L = z[e + 1] - z[e], zm = 0.5 * (z[e] + z[e + 1]), D = gm.D(zm), t = gm.t(zm, mud), [A, I] = sec(D, t), ei = E_ST * I;
+        const L = z[e + 1] - z[e], zm = 0.5 * (z[e] + z[e + 1]), D = gm.D(zm), t = gm.t(zm, mud), [A, I] = sec(D, t), mt = matOf("steel", zm > zi ? ty.mat_tw : ty.mat_mp), ei = mt.E * 1e9 * I;
         EI.push(ei);
-        let ml = RHO_ST * A * (zm > zi ? 1.1 : 1.0);
+        let ml = mt.rho * A * (zm > zi ? 1.1 : 1.0);
         if (mud < zm && zm < 0) ml += RHO_W * Math.PI * (D - 2 * t) ** 2 / 4 + RHO_W * Math.PI * D * D / 4;
         const ke = [12, 6 * L, -12, 6 * L, 6 * L, 4 * L * L, -6 * L, 2 * L * L, -12, -6 * L, 12, -6 * L, 6 * L, 2 * L * L, -6 * L, 4 * L * L].map((v) => v * ei / L ** 3);
         const me = [156, 22 * L, 54, -13 * L, 22 * L, 4 * L * L, 13 * L, -3 * L * L, 54, 13 * L, 156, -22 * L, -13 * L, -3 * L * L, -22 * L, 4 * L * L].map((v) => v * ml * L / 420);
@@ -2192,7 +2242,7 @@ details.sec > * + * { margin-top: 8px; }
     }
     function weightAbove(ty, B, zt) {
       let m = rnaMass(ty) + (zt < ty.z_interface ? ty.tp_mass : 0);
-      for (let e = 0; e < B.n - 1; e++) { const zm = 0.5 * (B.z[e] + B.z[e + 1]); if (zm > zt) { const [A] = sec(B.gm.D(zm), B.gm.t(zm, B.mud)); m += RHO_ST * A * 1.1 * (B.z[e + 1] - B.z[e]); } }
+      for (let e = 0; e < B.n - 1; e++) { const zm = 0.5 * (B.z[e] + B.z[e + 1]); if (zm > zt) { const [A] = sec(B.gm.D(zm), B.gm.t(zm, B.mud)); m += matOf("steel", zm > ty.z_interface ? ty.mat_tw : ty.mat_mp).rho * A * 1.1 * (B.z[e + 1] - B.z[e]); } }
       return m * G0;
     }
     function hotSpots(ty, B, depth) {
@@ -2203,7 +2253,7 @@ details.sec > * + * { margin-top: 8px; }
       for (const [k, [z, scf, curve, nm]] of Object.entries(spots)) {
         const D = B.gm.D(z), t = B.gm.t(z, B.mud), [A, , W] = sec(D, t);
         out[k] = { z_rel_mud: z < 0 ? z + depth : null, z, scf, curve, name: nm, W, A, t, N: weightAbove(ty, B, z), n_bolts: ty.n_bolts,
-          Dbc: ty.D_tower_base - 0.2, As, FV: 0.7 * 1000e6 * As, d_bolt: ty.bolt_d / 1000 };
+          Dbc: ty.D_tower_base - 0.2, As, FV: 0.7 * matOf("bolt", ty.bolt_grade).fub * 1e6 * As, d_bolt: ty.bolt_d / 1000 };
       }
       return out;
     }
@@ -2241,6 +2291,7 @@ details.sec > * + * { margin-top: 8px; }
     function norm(ty) {
       const zi = ty.z_interface, zt = ty.z_hub - 5;
       if (!ty.fdn) ty.fdn = { mode: "soil", py: [], macro: null };
+      ty.mat_mp = ty.mat_mp || "S355ML"; ty.mat_tw = ty.mat_tw || "S355"; ty.bolt_grade = ty.bolt_grade || "10.9"; ty.mat_cast = ty.mat_cast || "GJS-400-18-LT"; ty.mat_shaft = ty.mat_shaft || "34CrNiMo6";
       if (!Array.isArray(ty.mp) || !ty.mp.length) ty.mp = [{ z: zi, D: ty.D_pile, t: ty.t_mp || ty.t_pile }];
       if (!Array.isArray(ty.tw) || ty.tw.length < 2) ty.tw = [{ z: zi, D: ty.D_tower_base || ty.D_pile, t: ty.t_tower_base }, { z: zt, D: ty.D_tower_top, t: ty.t_tower_top }];
       ty.mp.sort((a, b) => b.z - a.z); ty.mp[0].z = zi; ty.mp = ty.mp.filter((st, i) => i === 0 || (st.z < zi - 0.4 && st.z > -150));
@@ -2271,7 +2322,7 @@ details.sec > * + * { margin-top: 8px; }
       const d = derived(ty);
       return Object.assign({}, base, shape, { D_pile: g.D(-5), t_pile: ty.t_pile, embedment: ty.embedment, z_interface: ty.z_interface, z_hub: ty.z_hub,
         D_tower_base: ty.D_tower_base, D_tower_top: ty.D_tower_top, t_tower_base: ty.t_tower_base, t_tower_top: ty.t_tower_top, m_rna: d.m_rna, J_rna: ty.J_rna,
-        n_bolts: ty.n_bolts, bolt: "M" + ty.bolt_d, D_bolt_circle: ty.D_tower_base - 0.2, z_door: ty.z_interface + 6, z_platform: ty.z_interface + 5,
+        n_bolts: ty.n_bolts, bolt: "M" + ty.bolt_d + " " + ty.bolt_grade, D_bolt_circle: ty.D_tower_base - 0.2, z_door: ty.z_interface + 6, z_platform: ty.z_interface + 5,
         rated_thrust: d.rated_thrust, rated_U: d.rated_U, rotor_D: ty.rotor_D, idle_thrust: base.idle_thrust * (ty.rotor_D / base.rotor_D) ** 2,
         label: ty.name, rated_P: ty.rated_P, rated_rpm: ty.rated_rpm, blade_mass: ty.blade_mass, cut_in: ty.cut_in, cut_out: ty.cut_out, type: ty });
     }
@@ -4003,11 +4054,11 @@ details.sec > * + * { margin-top: 8px; }
           const loc = o.breaking ? 0.18 * pSlam * (D / 2 / tw) * Math.exp(-(((z - zSl) / (0.45 * D)) ** 2)) * Math.max(0, Math.cos(th - thW)) ** 3 / 1e6 : 0;
           const vm = Math.sqrt(sx * sx + loc * loc - sx * loc); row.push(vm); if (vm > smax) { smax = vm; crit = { z, th, sx, loc }; } sxmax = Math.max(sxmax, Math.abs(sx)); }
         field.push(row); }
-      const zc0 = crit ? crit.z : z1, Dc = B.gm.D(zc0), tc = B.gm.t(zc0, B.mud), alpha = 0.62 / (1 + 1.91 * 1.0 ** 1.44), scr = 0.605 * 210e3 * tc / (Dc / 2) * alpha;
+      const zc0 = crit ? crit.z : z1, Dc = B.gm.D(zc0), tc = B.gm.t(zc0, B.mud), matC = matOf("steel", zc0 > ty.z_interface ? ty.mat_tw : ty.mat_mp), alpha = 0.62 / (1 + 1.91 * 1.0 ** 1.44), scr = 0.605 * matC.E * 1e3 * tc / (Dc / 2) * alpha;
       const imud = B.z.reduce((b2, v, i) => (Math.abs(v + t.spec.depth) < Math.abs(B.z[b2] + t.spec.depth) ? i : b2), 0);
       const Fpk = new Float64Array(B.nd); // pseudo-static mudline rotation from the peak moment profile: base shear and moment at the top
       Fpk[B.nd - 2] = peak.m / Math.max(ty.z_hub + t.spec.depth, 1) * 0.5; const rot = Math.abs(TFE.statics(B, md, Fpk).u[2 * imud + 1]) * 180 / Math.PI * 2;
-      return { hist, env: Array.from(env), zc: md.zc, peak, field, zs, nth, smax, sxmax, crit, scr, fy: 355 / 1.1, rot, crest, Hmax, Fslam, slamT, c, elements: nz * nth, z1, z2, B, md, depth: t.spec.depth };
+      return { hist, env: Array.from(env), zc: md.zc, peak, field, zs, nth, smax, sxmax, crit, scr, fy: fyOf(matC, tc * 1e3) / 1.1, fyMat: matC.id + ", " + fmt(tc * 1e3, 0) + " mm", rot, crest, Hmax, Fslam, slamT, c, elements: nz * nth, z1, z2, B, md, depth: t.spec.depth };
     },
     // Fatigue lookup: damage per hour for every bin combination at the chosen locations, from 6 seeds each.
     // Placeholder: frequency-domain modal response to JONSWAP waves and Kaimal turbulence (aero damping and
@@ -4307,6 +4358,9 @@ details.sec > * + * { margin-top: 8px; }
     }
     if (o.layout !== "geared3") { ["hub", "housing", "bedplate", "main_shaft"].forEach((k) => { out[k] = NaN; }); if (o.layout === "dd") { out.gears = NaN; out.gear_bearings = NaN; } else { out.gears *= 0.6; out.gear_bearings *= 0.7; } }
     out.main_bearing *= Math.pow(48 / o.mbC, 10 / 3);
+    const cm = matOf("cast", ty.mat_cast), sm = matOf("shaft", ty.mat_shaft);            // FE hot spots were assessed for GJS-400-18-LT and 34CrNiMo6
+    ["hub", "housing", "bedplate"].forEach((k) => { if (isFinite(out[k])) out[k] *= Math.pow(80 / cm.dsr, 7); });
+    if (isFinite(out.main_shaft)) out.main_shaft *= Math.pow(320 / sm.dsr, 5);
     return { out, perBin, bins, lam, paint: paintX, layout: o.layout, years: o.life };
   };
   function dtView() {
@@ -4464,7 +4518,7 @@ details.sec > * + * { margin-top: 8px; }
     const r = RUNS.get(bSel + ":uls"), res = r.result, box = host.querySelector("[data-res]"), uy = res.smax / res.fy, ub = res.sxmax * 1.1 / res.scr;
     const pill = (u) => `<span class="pill ${u < 0.8 ? "green" : u < 1 ? "amber" : "red"}">${fmt(u, 2)}</span>`;
     box.innerHTML = stale(r) + `<div class="live-now">${[["Max wave", fmt(res.Hmax, 1) + " m", "crest " + fmt(res.crest, 1) + " m"], ["Peak slam force", fmt(res.Fslam / 1e6, 1) + " MN", res.Fslam ? "over " + fmt(res.slamT * 1000, 0) + " ms" : "no breaking"], ["Mudline moment", fmt(Math.max(...res.hist.mmud), 0) + " MN·m", "peak"],
-      ["Von Mises, max", fmt(res.smax, 0) + " MPa", "at " + fmt(res.crit.z, 1) + " m"], ["Yield utilisation", pill(uy), "f<sub>y</sub>/γ<sub>M</sub> " + fmt(res.fy, 0) + " MPa"], ["Buckling utilisation", pill(ub), "σ<sub>cr</sub> " + fmt(res.scr, 0) + " MPa"]].map(([k, v, s2]) => `<div><span class="k">${k}</span><span class="v mono">${v}</span><span class="muted" style="font-size:0.72rem">${s2}</span></div>`).join("")}</div>` +
+      ["Von Mises, max", fmt(res.smax, 0) + " MPa", "at " + fmt(res.crit.z, 1) + " m"], ["Yield utilisation", pill(uy), (res.fyMat || "") + " · f<sub>y</sub>/γ<sub>M</sub> " + fmt(res.fy, 0) + " MPa"], ["Buckling utilisation", pill(ub), "σ<sub>cr</sub> " + fmt(res.scr, 0) + " MPa"]].map(([k, v, s2]) => `<div><span class="k">${k}</span><span class="v mono">${v}</span><span class="muted" style="font-size:0.72rem">${s2}</span></div>`).join("")}</div>` +
       `<div class="bl-split"><div><div class="bl-3dp" data-v></div>${cbar(0, res.smax, "MPa")}<p class="cap">Shell submodel at the peak: von Mises stress, deformation exaggerated. ${res.elements.toLocaleString()} shell elements between ${fmt(res.z1, 1)} and ${fmt(res.z2, 1)} m.</p></div><div data-env></div></div>` +
       `<div data-h1></div><div class="grid2"><div data-h2></div><div data-h3></div></div>` +
       `<div class="tbl-wrap"><table class="list bl-chk"><tbody>${[["Yield (von Mises, γ<sub>f</sub> " + r.input.gf + ")", fmt(res.smax, 0) + " MPa of " + fmt(res.fy, 0), uy], ["Shell buckling, axial (α " + fmt(0.62 / 2.91, 2) + ", quality class B)", fmt(res.sxmax, 0) + " MPa × 1.1 of " + fmt(res.scr, 0), ub], ["Mudline rotation", fmt(res.rot, 3) + "° of 0.25°", res.rot / 0.25]].map(([a, b, u]) => `<tr><td>${a}</td><td class="mono">${b}</td><td class="r">${pill(u)}</td></tr>`).join("")}</tbody></table></div>`;
@@ -4617,6 +4671,7 @@ details.sec > * + * { margin-top: 8px; }
   function bClean(ty) {               // keep the inputs physical so the model always builds
     BF.forEach(([, fs]) => fs.forEach(([k, , , sc, , lo, hi]) => { const v = +ty[k]; ty[k] = Math.min(hi * sc, Math.max(lo * sc, isFinite(v) ? v : lo * sc)); }));
     ty.n_bolts = Math.round(ty.n_bolts); if (!TFE.BOLT_AS[ty.bolt_d]) ty.bolt_d = 72;
+    [["mat_mp", "steel"], ["mat_tw", "steel"], ["bolt_grade", "bolt"], ["mat_cast", "cast"], ["mat_shaft", "shaft"]].forEach(([k, kind]) => { ty[k] = matOf(kind, ty[k]).id; });
     ty.z_hub = Math.max(ty.z_hub, ty.z_interface + 40); ty.rated_rpm = Math.max(ty.rated_rpm, ty.min_rpm + 0.1); ty.cut_out = Math.max(ty.cut_out, ty.cut_in + 8);
     for (const k of ["mp", "tw"]) ty[k] = (Array.isArray(ty[k]) ? ty[k] : []).slice(0, 10).map((st) => ({ z: isFinite(+st.z) ? +st.z : 0, D: Math.min(15, Math.max(2, +st.D || 6)), t: Math.min(0.2, Math.max(0.01, +st.t || 0.04)) }));
     TT.norm(ty);
@@ -4685,14 +4740,16 @@ details.sec > * + * { margin-top: 8px; }
     return s + `<line x1="${L}" x2="${W - R}" y1="54" y2="54" stroke="${css("--line")}"/></svg>`;
   }
   function bVerdicts(ty, r) {
-    const p1 = ty.rated_rpm / 60 * 1.1, p3 = 3 * ty.min_rpm / 60 * 0.9, f = r.mod.f1, fy = 355 / 1.1;
+    const p1 = ty.rated_rpm / 60 * 1.1, p3 = 3 * ty.min_rpm / 60 * 0.9, f = r.mod.f1, mMp = matOf("steel", ty.mat_mp), mTw = matOf("steel", ty.mat_tw);
+    const tMud = r.B.gm.t(r.B.mud + 1, r.B.mud) * 1e3, fyTb = fyOf(mTw, ty.t_tower_base * 1e3) / 1.1, fyMud = fyOf(mMp, tMud) / 1.1, fyPile = fyOf(mMp, ty.t_pile * 1e3) / 1.1;
+    const of = (fy2, m, t) => `${fmt(fy2, 0)} (${m.id}, ${fmt(t, 0)} mm)`;
     const ok = (c) => `<span class="pill ${c ? "green" : "red"}">${c ? "ok" : "check"}</span>`, amb = (v, a, b) => `<span class="pill ${v < a ? "green" : v < b ? "amber" : "red"}">${v < a ? "ok" : v < b ? "close" : "check"}</span>`;
     return [
       ["First mode in the soft-stiff window", `${fmt(f, 3)} Hz; window ${fmt(p1, 3)}–${fmt(p3, 3)} Hz (1P and 3P with 10 % margin)`, ok(f > p1 && f < p3 && r.lo.f1 > p1 * 0.98)],
       ["Soil uncertainty (stiffness ½× to 2×)", `f<sub>1</sub> ${fmt(r.lo.f1, 3)}–${fmt(r.hi.f1, 3)} Hz`, ok(r.lo.f1 > p1 && r.hi.f1 < p3)],
-      ["Tower-base stress, ultimate", `${fmt(r.sTb, 0)} MPa of ${fmt(fy, 0)}`, amb(r.sTb / fy, 0.8, 1)],
-      ["Mudline stress, ultimate", `${fmt(r.sMud, 0)} MPa of ${fmt(fy, 0)}`, amb(r.sMud / fy, 0.8, 1)],
-      r.B.base ? ["Pile stress in the soil, ultimate", "not modelled with this foundation model", `<span class="pill">n/a</span>`] : ["Pile stress in the soil, ultimate", `${fmt(r.sPile, 0)} MPa at ${fmt(-r.zPile, 1)} m below the seabed`, amb(r.sPile / fy, 0.8, 1)],
+      ["Tower-base stress, ultimate", `${fmt(r.sTb, 0)} MPa of ${of(fyTb, mTw, ty.t_tower_base * 1e3)}`, amb(r.sTb / fyTb, 0.8, 1)],
+      ["Mudline stress, ultimate", `${fmt(r.sMud, 0)} MPa of ${of(fyMud, mMp, tMud)}`, amb(r.sMud / fyMud, 0.8, 1)],
+      r.B.base ? ["Pile stress in the soil, ultimate", "not modelled with this foundation model", `<span class="pill">n/a</span>`] : ["Pile stress in the soil, ultimate", `${fmt(r.sPile, 0)} MPa at ${fmt(-r.zPile, 1)} m below the seabed`, amb(r.sPile / fyPile, 0.8, 1)],
       ["Mudline rotation, ultimate (linear soil)", `${fmt(r.rot, 3)}° of 0.25° (0.5° less 0.25° installation tolerance)`, amb(r.rot / 0.25, 0.8, 1)],
       r.B.fm === "macro" && ty.fdn.macro ? ["Lateral capacity (macro-element)", `load ${fmt(r.Htot / 1e6, 1)} MN, H<sub>ult</sub> ${fmt(ty.fdn.macro.Hult, 1)} MN`, amb(r.Htot / 1e6 / ty.fdn.macro.Hult, 0.8, 1)] :
       r.B.base || r.B.fm === "py_lin" ? ["Lateral soil resistance", "no capacity in this foundation model", `<span class="pill">n/a</span>`] :
@@ -4715,11 +4772,11 @@ details.sec > * + * { margin-top: 8px; }
         ["Natural frequencies", f.slice(0, 3).map((v) => fmt(v, 3)).join(" · ") + " Hz"], ["Rated wind · thrust", `${fmt(d.rated_U, 1)} m/s · ${fmt(d.rated_thrust / 1e6, 2)} MN`],
         ["Tip speed at rated", fmt(d.tip, 0) + " m/s"], ["RNA mass", fmt(d.m_rna / 1e3, 0) + " t"], ["Tower (with secondary steel)", fmt(r.mTow / 1e3, 0) + " t"],
         ["Monopile above the seabed", fmt(r.mMp / 1e3, 0) + " t"], ["Pile in the soil", fmt(r.mPile / 1e3, 0) + " t"], ["Total steel", fmt(steel / 1e3, 0) + " t"],
-        ["Flange", `${ty.n_bolts} × M${ty.bolt_d} on Ø${fmt(ty.D_tower_base - 0.2, 2)} m`]])}</div></div>` +
+        ["Flange", `${ty.n_bolts} × M${ty.bolt_d} ${ty.bolt_grade} on Ø${fmt(ty.D_tower_base - 0.2, 2)} m`]])}</div></div>` +
       `<h4 class="bl-h">First natural frequency and the rotor bands</h4>${bFreq(ty, r)}<p class="cap">Band: f<sub>1</sub> with the soil ½× to 2× as stiff as designed. Shaded red: 1P and 3P over the operating speed range, lighter with a 10 % margin.</p>` +
       `<div class="grid2"><div data-pc></div><div data-tc></div></div>` +
       `<h4 class="bl-h">Simple checks</h4><div class="tbl-wrap"><table class="list bl-chk"><tbody>${bVerdicts(ty, r).map(([a, b, c]) => `<tr><td>${a}</td><td class="mono">${b}</td><td class="r">${c}</td></tr>`).join("")}</tbody></table></div>` +
-      `<p class="cap">Ultimate load: 1.35 × rated thrust at the hub plus the inertia load of a ${fmt(r.Hd, 1)} m, ${fmt(r.Td, 0)} s design wave (1.86 × the farm's storm-peak H<sub>s</sub>), linear p-y springs at their initial stiffness, material factor 1.1 on 355 MPa. Screening only: no buckling, fatigue design, cyclic soil degradation or load-case combinations.</p>`;
+      `<p class="cap">Ultimate load: 1.35 × rated thrust at the hub plus the inertia load of a ${fmt(r.Hd, 1)} m, ${fmt(r.Td, 0)} s design wave (1.86 × the farm's storm-peak H<sub>s</sub>), linear p-y springs at their initial stiffness, material factor 1.1 on the thickness-dependent yield strength of the chosen steels. Screening only: no buckling, fatigue design, cyclic soil degradation or load-case combinations.</p>`;
     const v3 = host.querySelector("[data-v3]");
     if (bView === "3d") { BV.mount(v3); if (!BV.set(ty, r)) { bView = "el"; v3.hidden = true; host.querySelector("[data-el]").hidden = false; } }
     host.querySelectorAll("[data-vw]").forEach((b) => b.addEventListener("click", () => { bView = b.dataset.vw; bResults(TT.get(bSel)); }));
@@ -4748,7 +4805,9 @@ details.sec > * + * { margin-top: 8px; }
     };
     const shape = (g) => g === "Pile and monopile" ? (bTaper.mp ? table("mp") : sv("mp", 0, "D", "Diameter", "m") + sv("mp", 0, "t", "Wall, seabed to interface", "mm")) + toggle("mp", "Tapered or conical (diameter stations)") :
       g === "Tower" ? (bTaper.tw ? table("tw") : sv("tw", 0, "D", "Base diameter", "m") + sv("tw", "L", "D", "Top diameter", "m") + sv("tw", 0, "t", "Base wall", "mm") + sv("tw", "L", "t", "Top wall", "mm")) + toggle("tw", "More stations (multi-taper, straight sections)") : "";
-    const soilBody = `<div class="bl-soil">${ty.soil.map((l, i) => `<div class="bl-l" data-i="${i}"><select data-sk="kind"${dis}><option value="sand"${l.kind === "sand" ? " selected" : ""}>Sand</option><option value="clay"${l.kind === "clay" ? " selected" : ""}>Clay</option></select>` +
+    const soilBody = (ro ? "" : `<label class="bl-f"><span>Start from a profile</span><span class="bl-in"><select data-sprof><option value="">Choose a template…</option>${SOIL_PROFILES.map(([nm], i) => `<option value="${i}">${nm}</option>`).join("")}</select></span></label>`) +
+      `<div class="bl-soil">${ty.soil.map((l, i) => `<div class="bl-l" data-i="${i}"><select data-sk="kind"${dis}><option value="sand"${l.kind === "sand" ? " selected" : ""}>Sand</option><option value="clay"${l.kind === "clay" ? " selected" : ""}>Clay</option></select>` +
+        (ro ? "" : `<select data-sp aria-label="Preset for this layer"><option value="">preset…</option>${SOIL_PRESETS[l.kind].map(([k, nm, v]) => `<option value="${k}"${Object.entries(v).every(([a, b]) => l[a] === b) ? " selected" : ""}>${nm}</option>`).join("")}</select>`) +
         `<label>to <input type="number" data-sk="to" step="0.5" value="${i === ty.soil.length - 1 ? "" : l.to}" placeholder="toe"${ro || i === ty.soil.length - 1 ? " disabled" : ""}> m</label>` +
         SOILF[l.kind].map(([k, lb, u, , , st]) => `<label>${lb} <input type="number" data-sk="${k}" step="${st}" value="${l[k]}"${dis}>${u ? " " + u : ""}</label>`).join("") +
         (ro || ty.soil.length === 1 ? "" : `<button class="btn icon" type="button" data-del="${i}" aria-label="Remove layer">×</button>`) + `</div>`).join("")}</div>` +
@@ -4757,13 +4816,30 @@ details.sec > * + * { margin-top: 8px; }
       (ro ? `<p class="hint bl-ro">Built-in types are read-only. <button class="btn" type="button" data-dup>Duplicate to edit</button></p>` : "") +
       fdnHTML(ty, ro) +
       (ty.fdn.mode === "soil" ? `<fieldset class="bl-g"><legend>Soil layers (from the seabed down)</legend>${soilBody}</fieldset>` : `<fieldset class="bl-g bl-g0">${more("soil", "Soil layers (used by the 3D soil-pile analysis)", soilBody)}</fieldset>`) +
-      BF.map(([g, fs]) => { const basic = fs.filter((f) => !f[7]), adv = fs.filter((f) => f[7]);
+      matsHTML() + BF.map(([g, fs]) => { const basic = fs.filter((f) => !f[7]), adv = fs.filter((f) => f[7]);
         const extra = (g === "Tower-base flange" ? `<label class="bl-f"><span>Bolt size</span><span class="bl-in"><select data-k="bolt_d"${dis}>${Object.keys(TFE.BOLT_AS).map((b) => `<option value="${b}"${+b === ty.bolt_d ? " selected" : ""}>M${b} 10.9</option>`).join("")}</select></span></label>` : "") +
           (g === "Rotor and nacelle" && !ro ? `<button class="btn" type="button" data-jest>Estimate inertia from the masses</button>` : "");
         return `<fieldset class="bl-g"><legend>${g}</legend>${shape(g)}${basic.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("")}${more(g, "More settings", adv.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("") + extra)}</fieldset>`; }).join("");
     host.querySelectorAll("details[data-more]").forEach((d) => d.addEventListener("toggle", () => { if (d.open) bMore.add(d.dataset.more); else bMore.delete(d.dataset.more); }));
+    function matsHTML() {
+      const line = (kind, id, t) => { const m = matOf(kind, id); return kind === "steel" ? `E ${m.E} GPa · ρ ${m.rho} kg/m³ · f<sub>y</sub> ${fyOf(m, t)} MPa at ${fmt(t, 0)} mm · f<sub>u</sub> ${m.fu} MPa · ${m.std}` :
+        kind === "bolt" ? `f<sub>ub</sub> ${m.fub} MPa · f<sub>yb</sub> ${m.fyb} MPa · preload 0.7 f<sub>ub</sub> A<sub>s</sub> · ${m.std}` : `E ${m.E} GPa · f<sub>y</sub> ${m.fy} MPa · f<sub>u</sub> ${m.fu} MPa · fatigue strength ${m.dsr} MPa at ${kind === "cast" ? 2 : 1}·10<sup>6</sup> cycles`; };
+      const sel = (key, kind, lab, t) => `<label class="bl-f"><span>${lab}</span><span class="bl-in"><select data-mat="${key}"${dis}>${MATS[kind].map((m) => `<option value="${m.id}"${m.id === ty[key] ? " selected" : ""}>${m.name}</option>`).join("")}</select></span></label><p class="bl-mline">${line(kind, ty[key], t)}</p>`;
+      const lib = `<div class="tbl-wrap"><table class="list bl-lib"><thead><tr><th>Steel</th><th class="r">f<sub>y</sub> at 16/40/63/100 mm</th><th class="r">f<sub>u</sub></th></tr></thead><tbody>` +
+        MATS.steel.map((m) => `<tr><td>${m.name}<span class="lib-s">${m.std} · ${m.use}</span></td><td class="r mono">${[16, 40, 63, 100].map((t) => fyOf(m, t)).join("/")}</td><td class="r mono">${m.fu}</td></tr>`).join("") +
+        `</tbody></table></div><div class="tbl-wrap"><table class="list bl-lib"><thead><tr><th>Casting or forging</th><th class="r">E</th><th class="r">f<sub>y</sub>/f<sub>u</sub></th><th class="r">Fatigue</th></tr></thead><tbody>` +
+        MATS.cast.concat(MATS.shaft).map((m) => `<tr><td>${m.name}<span class="lib-s">${m.std} · ${m.use}</span></td><td class="r mono">${m.E}</td><td class="r mono">${m.fy}/${m.fu}</td><td class="r mono">${m.dsr}</td></tr>`).join("") +
+        `</tbody></table></div><div class="tbl-wrap"><table class="list bl-lib"><thead><tr><th>Bolts</th><th class="r">f<sub>ub</sub></th><th class="r">f<sub>yb</sub></th></tr></thead><tbody>` +
+        MATS.bolt.map((m) => `<tr><td>${m.name}<span class="lib-s">${m.std} · ${m.use}</span></td><td class="r mono">${m.fub}</td><td class="r mono">${m.fyb}</td></tr>`).join("") +
+        `</tbody></table></div><p class="cap">Nominal values in MPa. Welded details use the DNV-RP-C203 S-N curves whatever the steel grade; castings use their reference strength at 2·10<sup>6</sup> cycles, shafts at 10<sup>6</sup>.</p>`;
+      return `<fieldset class="bl-g"><legend>Materials</legend>${sel("mat_mp", "steel", "Monopile and transition piece", ty.t_mp * 1e3)}${sel("mat_tw", "steel", "Tower", ty.t_tower_base * 1e3)}${sel("bolt_grade", "bolt", "Flange bolts")}` +
+        more("mats2", "Drivetrain materials", sel("mat_cast", "cast", "Castings: hub, bedplate, gearbox housing") + sel("mat_shaft", "shaft", "Main shaft")) + more("matlib", "Material library", lib) + `</fieldset>`;
+    }
     const edit = (fn) => { if (ro) return; const nt = bClean(JSON.parse(JSON.stringify(TT.get(bSel)))); fn(nt); bClean(nt); TT.upsert(nt); clearTimeout(bTimer); bTimer = setTimeout(() => { bList(); bResults(TT.get(bSel)); bFarm(); }, 300); };
     fdnWire(host, edit, ro);
+    host.querySelectorAll("[data-mat]").forEach((x) => x.addEventListener("change", () => { edit((nt) => { nt[x.dataset.mat] = x.value; }); setTimeout(bForm, 0); }));
+    host.querySelectorAll("[data-sp]").forEach((x) => x.addEventListener("change", () => { if (!x.value) return; const i = +x.closest("[data-i]").dataset.i; edit((nt) => { const l = nt.soil[i]; Object.assign(l, SOIL_PRESETS[l.kind].find((q2) => q2[0] === x.value)[2]); }); setTimeout(bForm, 0); }));
+    const spf = host.querySelector("[data-sprof]"); if (spf) spf.addEventListener("change", () => { if (spf.value === "") return; edit((nt) => { nt.soil = SOIL_PROFILES[+spf.value][1](); }); setTimeout(bForm, 0); });
     host.querySelectorAll("[data-k]").forEach((x) => x.addEventListener("change", () => edit((nt) => {
       const k = x.dataset.k; if (k === "name") { nt.name = x.value.trim() || "Unnamed type"; return; }
       if (k === "bolt_d") { nt.bolt_d = +x.value; return; }
