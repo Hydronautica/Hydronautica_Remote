@@ -504,6 +504,13 @@ details.sec > * + * { margin-top: 8px; }
 .bl-pyc { margin-top: 6px; }
 .bl-lt .panel-b { display: flex; flex-direction: column; gap: 10px; }
 .bl-ltt td, .bl-ltt th { font-size: 0.78rem; }
+.wi-fh, .wi-fr { display: grid; grid-template-columns: 3.2rem 3.4rem minmax(0, 1fr); gap: 6px; align-items: center; font-size: 0.72rem; }
+.wi-fh { color: var(--muted); font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.04em; margin: 8px 0 2px; }
+.wi-fr { width: 100%; font: inherit; font-size: 0.74rem; background: none; border: 0; padding: 2px 0; color: var(--ink); cursor: pointer; text-align: left; }
+.wi-fr:hover { background: var(--accent-soft); }
+.wi-fb { position: relative; height: 14px; background: var(--grid); border-radius: 3px; overflow: hidden; }
+.wi-fb i { position: absolute; left: 0; top: 0; bottom: 0; opacity: 0.75; }
+.wi-fb b { position: relative; font-size: 0.66rem; font-weight: 500; padding-left: 4px; line-height: 14px; }
 .bl-wkmap { width: 100%; display: block; border-radius: 8px; background: var(--grid); }
 .bl-lt .sel input { font: inherit; font-size: 0.8rem; border: 0; background: transparent; color: var(--ink); padding: 2px; }
 .bl-ltt td.mono { white-space: nowrap; }
@@ -1381,8 +1388,22 @@ details.sec > * + * { margin-top: 8px; }
     return snDamage(ranges, probs, key === "door_frame" ? "D_air" : "D_seawater_cp", sp.t);
   }
   const SEC = { flange_bolts: "flange", door_frame: "door", mudline_weld: "mudline" };
+  // wake at a turbine for wind from `dir` at free-stream U: added turbulence factor (same models as the builder) and speed deficit
+  const WAKECFG = { model: "frandsen", k: 0.04 }, wakeTIMemo = new Map();
+  function wakeAt(ti, dir, U) {
+    const key = FI + ":" + WAKECFG.model + ":" + WAKECFG.k + ":" + Math.round(dir) + ":" + U.toFixed(1);
+    if (!wakeTIMemo.has(key)) {
+      const I0 = 0.05 + 0.4 / Math.max(U, 2), Ct = operating(U) ? ctOf(U) : 0.05, F = wakeTIField(WAKECFG, dir, Math.max(U, 0.5), I0, Ct, D.meta.turbine.rotor_D, T.map((t) => [t.spec.x * 1000, t.spec.y * 1000]));
+      const W = wakeField(U, dir); if (wakeTIMemo.size > 600) wakeTIMemo.clear();
+      wakeTIMemo.set(key, T.map((_, i) => ({ F: F[i], def: W.P[i].def })));
+    }
+    return wakeTIMemo.get(key)[ti];
+  }
   function whatif(t, inp) {
     const w = t.whatif, Hh = D.history, bins = Hh.hs_bins, z0 = 0.015;
+    // wakes: inp.u is the free stream unless the caller already applied the deficit (and then passes ufree)
+    const ti = T.indexOf(t), ufree = inp.ufree ?? inp.u, wk = ti >= 0 ? wakeAt(ti, inp.udir, ufree) : { F: 1, def: 0 };
+    inp = Object.assign({}, inp, { u: inp.ufree !== undefined ? inp.u : ufree * (1 - wk.def) });
     const op = operating(inp.u);
     const zfa = z0 + (op ? 0.035 : 0.003), zss = z0 + 0.003;
     const zb = lin(bins, Hh.base.zeta, inp.hs);           // damping of the base run at this Hs
@@ -1390,14 +1411,15 @@ details.sec > * + * { margin-top: 8px; }
     const rfa = specResp(inp.tp, zfa, w.f1) / R0, rss = specResp(inp.tp, zss, w.f1) / R0;
     const dl = rad(inp.wdir - inp.udir);
     const waveFac = Math.sqrt(Math.cos(dl) ** 2 * rfa * rfa + Math.sin(dl) ** 2 * rss * rss);
-    const T = thrust(inp.u), TI = 0.05 + 0.4 / Math.max(inp.u, 2), g = op ? (inp.u < D.meta.turbine.rated_U ? 1 : 0.35) : 1;
-    const sT = T * 2 * TI * g;
+    // thrust turbulence: ambient TI of the free stream raised by the upstream wakes, through the local thrust slope
+    const Th = thrust(inp.u), TI = (0.05 + 0.4 / Math.max(ufree, 2)) * wk.F * ufree / Math.max(inp.u, 0.5), g = op ? (inp.u < D.meta.turbine.rated_U ? 1 : 0.35) : 1;
+    const sT = Th * 2 * TI * g;
     const out = {}; let gap = "closed";
     HOTS.forEach((k) => {
       const sc = w.sections[SEC[k]], arm = w.z.hub - w.z[SEC[k]];
       const s0 = Math.max(lin(bins, sc.std, inp.hs), 0), n0 = Math.max(lin(bins, sc.nu, inp.hs), 0.02), m0 = lin(bins, sc.mean, inp.hs);
       const sw = s0 * waveFac, nw = n0 * tp0 / inp.tp;
-      const mbar = T * arm, swd = sT * arm * 1.15, nwd = w.f1;
+      const mbar = Th * arm, swd = sT * arm * 1.15, nwd = w.f1;
       const at = (phi) => {
         const cw = Math.cos(rad(phi - inp.wdir)), cu = Math.cos(rad(phi - inp.udir));
         const sig = Math.sqrt((sw * cw) ** 2 + (swd * cu) ** 2);
@@ -1428,7 +1450,7 @@ details.sec > * + * { margin-top: 8px; }
         out.Mmax = worst;
       }
     });
-    out.gap = gap; out.op = op; out.T = T;
+    out.gap = gap; out.op = op; out.T = Th; out.wakeF = wk.F; out.def = wk.def; out.u = inp.u;
     return out;
   }
   function climateMult(t, k, c) {
@@ -1478,7 +1500,16 @@ details.sec > * + * { margin-top: 8px; }
       const v = document.getElementById("vwi-" + k); if (v) { v.value = WI[k]; document.getElementById(`vwi-${k}-v`).textContent = units[k](WI[k]); }
     });
   }
-  function wiChanged() { readWI(); drawWhatif(); if (S3) { if (SEA !== "whatif") S3.setSea("whatif"); else S3.sea(); } farmChip(); }
+  function wiFarm() {                       // every turbine under the what-if conditions: wake turbulence and tower-base damage rate
+    const host = document.getElementById("vwi-farm"); if (!host || !D.history) return;
+    const yrs = D.history.years_in_service, rows = T.map((t, i) => { if (!t.whatif) return null; const r = whatif(t, WI), k = "door_frame";
+      const avg = (t.history.hot[k].total / 100 / D.meta.dff[k]) / (yrs * 8766); return { n: t.spec.name, F: r.wakeF, def: r.def, x: r[k].rate / avg, i }; }).filter(Boolean);
+    const xmax = Math.max(...rows.map((r) => r.x), 1e-9);
+    host.innerHTML = `<div class="wi-fh"><span>Turbine</span><span>Wake TI</span><span>Door-frame damage rate</span></div>` + rows.map((r) => `<button type="button" class="wi-fr" data-i="${r.i}"><span>${r.n}</span><span class="mono" style="color:var(${r.F > 1.15 ? "--warn" : "--muted"})">${r.F > 1.005 ? fmt(r.F, 2) + "×" : "free"}</span><span class="wi-fb"><i style="width:${Math.max(2, 100 * r.x / xmax)}%;background:var(${r.x >= 10 ? "--crit" : r.x >= 2 ? "--warn" : "--ok"})"></i><b class="mono">${fmt(r.x, r.x < 10 ? 2 : 0)}×</b></span></button>`).join("") +
+      `<p class="cap">Relative to each turbine's average since commissioning. Turbulence from upstream wakes (Frandsen, IEC 61400-1) and the wake deficit follow the wind direction.</p>`;
+    host.querySelectorAll("[data-i]").forEach((b) => b.addEventListener("click", () => go({ type: "turbine", farm: FI, t: +b.dataset.i, tab: "whatif" })));
+  }
+  function wiChanged() { readWI(); drawWhatif(); wiFarm(); if (S3) { if (SEA !== "whatif") S3.setSea("whatif"); else S3.sea(); } farmChip(); }
   function setWI(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); wiChanged(); }
 
   function compass(host, t, res) {
@@ -1526,7 +1557,8 @@ details.sec > * + * { margin-top: 8px; }
     const toDays = (k, Dh) => Dh * D.meta.dff[k] * life * 365;            // design-life days per hour
     const avgPerHour = (k) => (h.hot[k].total / 100 / D.meta.dff[k]) / (yrs * 8766);
     document.getElementById("wi-state").textContent =
-      `${res.op ? "operating" : WI.u > 25 ? "idling (above cut-out)" : "idling (below cut-in)"} · thrust ${fmt(res.T / 1e6, 2)} MN · flange joint ${res.gap}`;
+      `${res.op ? "operating" : WI.u > 25 ? "idling (above cut-out)" : "idling (below cut-in)"} · thrust ${fmt(res.T / 1e6, 2)} MN · flange joint ${res.gap}` +
+      (res.wakeF > 1.005 || res.def > 0.005 ? ` · in the wake: turbulence ${fmt(res.wakeF, 2)}× ambient, wind ${fmt(res.u, 1)} m/s (${fmt(100 * res.def, 0)} % deficit)` : " · free stream, no upstream wakes");
     compass(document.getElementById("wi-compass"), t, res);
     let tb = `<table class="hstable"><thead><tr><th>Hot spot</th><th class="r">Design-life days per hour</th><th class="r">× average rate</th><th class="r">Over ${WI.dur} h</th></tr></thead><tbody>`;
     HOTS.forEach((k) => {
@@ -1948,7 +1980,7 @@ details.sec > * + * { margin-top: 8px; }
     new ResizeObserver(placeWI).observe(document.getElementById("viewport"));
     function setSea(mode) {
       SEA = mode; document.getElementById("vp-sea").value = mode;
-      document.getElementById("vp-wi").hidden = mode !== "whatif"; placeWI();
+      document.getElementById("vp-wi").hidden = mode !== "whatif"; placeWI(); if (mode === "whatif") wiFarm();
       sea(); farmChip();
     }
     document.getElementById("vp-sea").addEventListener("change", (e) => setSea(e.target.value));
@@ -2411,7 +2443,7 @@ details.sec > * + * { margin-top: 8px; }
       // rotor
       const rpm = op ? Math.max(m.type.min_rpm, Math.min(1, c.U / m.rated_U) * m.rated_rpm) : 0.3, Om = rpm * 2 * Math.PI / 60;
       const harm = [[3 * Om, 0.03 * T0], [Om, 0.012 * T0]].map(([w, F]) => { const [h, p] = Hresp(w, w1, zfa); return { w, X: F / K * h, c: Math.cos(p), s: Math.sin(p) }; });
-      const res = t.whatif && D.history ? whatif(t, { hs: c.Hs, tp: c.Tp, wdir: c.wdir, u: c.U, udir: c.udir }) : null, yrs = D.history ? D.history.years_in_service : 1;
+      const res = t.whatif && D.history ? whatif(t, { hs: c.Hs, tp: c.Tp, wdir: c.wdir, u: c.U, ufree: c.Ufree ?? c.U, udir: c.udir }) : null, yrs = D.history ? D.history.years_in_service : 1;
       const rate = res ? Object.fromEntries(HOTS.map((k) => [k, res[k].rate / ((t.history.hot[k].total / 100 / D.meta.dff[k]) / (yrs * 8766))])) : null;
       const M = { t, m, c, K, zh, zm, zf, phi, dphi, comps, turb, harm, T0, dTdU, x0: T0 / K, Om, rpm, op, rate, ti,
         fl: t.whatif ? t.whatif.flange : null, mb: m.blade_mass, R: m.rotor_D / 2,
@@ -3693,6 +3725,7 @@ details.sec > * + * { margin-top: 8px; }
     setWIsilent({ hs: hs.toFixed(1), tp: tpTyp(hs).toFixed(1) });
     farmChip();
     if (S3) { S3.setFarm(); S3.theme(); }
+    if (SEA === "whatif") wiFarm();
   }
   function setWIsilent(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); readWI(); }
 
@@ -4228,7 +4261,7 @@ details.sec > * + * { margin-top: 8px; }
         T.map((t, i) => { const ratio = Dwake[i] / Math.max(Dfree[i], 1e-300), lf = life(Dwake[i]), l0 = life(Dfree[i]); return `<tr><td>${t.spec.name}</td><td class="r mono">${fmt(Fsum[i] / Math.max(nOp, 1), 2)}×</td><td class="r mono" style="color:var(${ratio > 1.5 ? "--crit" : ratio > 1.15 ? "--warn" : "--ink"})">${fmt(ratio, 2)}×</td><td class="r mono">${fy3(lf)} <span class="muted">free ${fy3(l0)}</span></td></tr>`; }).join("") +
         `</tbody></table></div><p class="cap">${step > 1 ? "One hour in " + step + " of the record" : "Every hour of the record"}, at each turbine's position with the actual wind direction. All turbines use this type's lookup (computed at ${res.site}); depth differences between positions are not included.</p>`;
     };
-    host.querySelector("[data-wm]").addEventListener("change", (e) => { wo.model = e.target.value; draw(); });
+    host.querySelector("[data-wm]").addEventListener("change", (e) => { wo.model = e.target.value; WAKECFG.model = wo.model; draw(); });
     host.querySelector("[data-wd]").addEventListener("change", (e) => { wo.dir = +e.target.value; draw(); });
     host.querySelector("[data-wu]").addEventListener("change", (e) => { wo.U = Math.max(1, +e.target.value); draw(); });
     host.querySelector("[data-wk]").addEventListener("change", (e) => { wo.k = Math.max(0.005, +e.target.value); draw(); });
