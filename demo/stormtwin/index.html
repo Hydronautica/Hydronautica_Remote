@@ -25,6 +25,8 @@
   --ocean-deep: #0d3b52;
   --ocean-shallow: #2f7d99;
   --foam: #eef5f8;
+  --wake-lo: #9ed8ee;
+  --wake-hi: #08304a;
   --font-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -35,7 +37,7 @@
     --grid: #182531; --accent: #43b3d5; --accent-soft: #11313d; --sea: #4fa3c8;
     --ok: #4cc47e; --warn: #e3a33c; --crit: #f0705f;
     --ok-soft: #12301f; --warn-soft: #33270f; --crit-soft: #3a1915; color-scheme: dark;
-    --sky: #0c1822; --ocean-deep: #05202d; --ocean-shallow: #175a73; --foam: #b9cdd6;
+    --sky: #0c1822; --ocean-deep: #05202d; --ocean-shallow: #175a73; --foam: #b9cdd6; --wake-lo: #1d5a75; --wake-hi: #c9f1ff;
   }
 }
 :root[data-theme="dark"] {
@@ -43,7 +45,7 @@
   --grid: #182531; --accent: #43b3d5; --accent-soft: #11313d; --sea: #4fa3c8;
   --ok: #4cc47e; --warn: #e3a33c; --crit: #f0705f;
   --ok-soft: #12301f; --warn-soft: #33270f; --crit-soft: #3a1915; color-scheme: dark;
-  --sky: #0c1822; --ocean-deep: #05202d; --ocean-shallow: #175a73; --foam: #b9cdd6;
+  --sky: #0c1822; --ocean-deep: #05202d; --ocean-shallow: #175a73; --foam: #b9cdd6; --wake-lo: #1d5a75; --wake-hi: #c9f1ff;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -366,6 +368,15 @@ details.sec > * + * { margin-top: 8px; }
 #farm-live .list tbody tr { cursor: pointer; }
 #farm-live .list td.r, #farm-live .list th.r { text-align: right; }
 .vp-farm .live-dot { margin-left: 2px; }
+.vp-wi { position: absolute; left: 12px; top: 58px; width: 236px; display: grid; gap: 4px; padding: 8px 10px 10px; background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--line); border-radius: 8px; font-size: 0.78rem; backdrop-filter: blur(4px); }
+.vp-wi-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+.vp-wi-h .btn { font-size: 0.72rem; padding: 2px 7px; }
+.vp-wi label { display: grid; grid-template-columns: 1fr auto; column-gap: 6px; }
+.vp-wi label .v { font-family: var(--font-data); color: var(--accent); }
+.vp-wi input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 0; }
+.vp-legend .wk { display: inline-flex; align-items: center; gap: 5px; }
+.wgrad { display: inline-block; width: 44px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, var(--wake-lo), var(--wake-hi)); }
+@media (max-width: 860px) { .vp-wi { top: auto; bottom: 96px; width: min(236px, calc(100% - 24px)); } }
 </style>
 
 <div class="app" id="app">
@@ -389,10 +400,20 @@ details.sec > * + * { margin-top: 8px; }
         <div class="vp-chip vp-farm" id="vp-farm"></div>
         <div class="vp-tools">
           <label class="sel">Colour<select id="vp-color" aria-label="Colour turbines by"><option value="verdict">Verdict</option><option value="life">Life used</option><option value="alarms">Frequency alarms</option></select></label>
+          <label class="sel">Wakes<select id="vp-wake" aria-label="Wake display"><option value="both">Rings + map</option><option value="rings">Rings</option><option value="map">Map</option><option value="off">Off</option></select></label>
           <label class="sel">Sea<select id="vp-sea" aria-label="Sea state shown"><option value="live">Live</option><option value="storm">Storm replay</option><option value="whatif">What-if</option></select></label>
         </div>
       </div>
       <div class="vp-msg" id="vp-msg" hidden></div>
+      <div class="vp-wi" id="vp-wi" hidden>
+        <div class="vp-wi-h"><b>What-if conditions</b><button class="btn icon" type="button" id="vwi-live" title="Back to live">Live ↺</button></div>
+        <label><span class="lb">H<sub>s</sub></span><span class="v" id="vwi-hs-v"></span><input type="range" id="vwi-hs" min="0.5" max="12" step="0.1"></label>
+        <label><span class="lb">T<sub>p</sub></span><span class="v" id="vwi-tp-v"></span><input type="range" id="vwi-tp" min="4" max="16" step="0.1"></label>
+        <label><span class="lb">Waves from</span><span class="v" id="vwi-wdir-v"></span><input type="range" id="vwi-wdir" min="0" max="355" step="5"></label>
+        <label><span class="lb">Wind at hub</span><span class="v" id="vwi-u-v"></span><input type="range" id="vwi-u" min="0" max="40" step="0.5"></label>
+        <label><span class="lb">Wind from</span><span class="v" id="vwi-udir-v"></span><input type="range" id="vwi-udir" min="0" max="355" step="5"></label>
+        <div class="vp-wi-f" id="vwi-farm"></div>
+      </div>
       <div class="vp-ui bot">
         <div class="vp-chip vp-legend" id="vp-legend"></div>
         <div class="vp-btns">
@@ -1202,10 +1223,48 @@ details.sec > * + * { margin-top: 8px; }
   }
 
   const WI = { hs: 4, tp: 7.2, wdir: 240, u: 12, udir: 240, dur: 12, clim: 0 };
+  let SEA = "live";                                // sea and wind shown and fed to the live channels: live | storm | whatif
+
+  // ---------- wakes: Bastankhah & Porte-Agel (2014) Gaussian deficit, sum-of-squares superposition ----------
+  const WAKE_TI = 0.1, WAKE_K = 0.38 * WAKE_TI + 0.004, WAKE_ROTOR = 0.7;   // ambient + added turbulence; rotor-averaged / centreline deficit
+  function ctOf(U) {
+    const m = D.meta.turbine, A = Math.PI * (m.rotor_D / 2) ** 2;
+    if (U < 3) return 0.02;
+    return Math.max(0.02, Math.min(0.92, thrust(U) / (0.5 * 1.225 * A * U * U)));
+  }
+  function wakeDeficit(ct, x, r, Dr) {              // fractional deficit at x downstream, r off the axis (m)
+    if (x <= 0) return 0;
+    const b = 0.5 * (1 + Math.sqrt(1 - ct)) / Math.sqrt(1 - ct), sd = WAKE_K * x / Dr + 0.2 * Math.sqrt(b);
+    const C = 1 - Math.sqrt(Math.max(0, 1 - ct / (8 * sd * sd)));
+    return C * Math.exp(-(r * r) / (2 * (sd * Dr) ** 2));
+  }
+  const wakeMemo = new Map();
+  function wakeField(U, from) {                     // effective hub wind per turbine for free stream U from `from`
+    const key = FI + ":" + U.toFixed(2) + ":" + from;
+    if (wakeMemo.has(key)) return wakeMemo.get(key);
+    const Dr = D.meta.turbine.rotor_D, to = rad(from + 180), fx = Math.sin(to), fz = -Math.cos(to);
+    const P = T.map((t, i) => ({ i, x: t.spec.x * 1000, z: t.spec.y * 1000 }));
+    P.forEach((p) => { p.s = p.x * fx + p.z * fz; });
+    [...P].sort((a, b) => a.s - b.s).forEach((p) => {
+      let sum = 0;
+      P.forEach((q) => { if (q.ct === undefined || q.s >= p.s - 1) return; sum += (WAKE_ROTOR * wakeDeficit(q.ct, p.s - q.s, Math.abs((p.x - q.x) * fz - (p.z - q.z) * fx), Dr)) ** 2; });
+      p.def = Math.min(0.9, Math.sqrt(sum)); p.u = U * (1 - p.def); p.ct = ctOf(p.u);
+    });
+    const out = { P, fx, fz, Dr, U, from };
+    if (wakeMemo.size > 400) wakeMemo.clear();
+    wakeMemo.set(key, out);
+    return out;
+  }
   const wiIds = ["hs", "tp", "wdir", "u", "udir", "dur", "clim"];
   const units = { hs: (v) => v.toFixed(1) + " m", tp: (v) => v.toFixed(1) + " s", wdir: (v) => v + "°", u: (v) => v.toFixed(1) + " m/s", udir: (v) => v + "°", dur: (v) => v + " h", clim: (v) => (v > 0 ? "+" : "") + v + "% Hₛ" };
-  function readWI() { wiIds.forEach((k) => { WI[k] = +document.getElementById("wi-" + k).value; document.getElementById(`wi-${k}-v`).textContent = units[k](WI[k]); }); }
-  function setWI(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); readWI(); drawWhatif(); if (S3) S3.sea(); }
+  function readWI() {
+    wiIds.forEach((k) => {
+      WI[k] = +document.getElementById("wi-" + k).value; document.getElementById(`wi-${k}-v`).textContent = units[k](WI[k]);
+      const v = document.getElementById("vwi-" + k); if (v) { v.value = WI[k]; document.getElementById(`vwi-${k}-v`).textContent = units[k](WI[k]); }
+    });
+  }
+  function wiChanged() { readWI(); drawWhatif(); if (S3) { if (SEA !== "whatif") S3.setSea("whatif"); else S3.sea(); } farmChip(); }
+  function setWI(o) { Object.entries(o).forEach(([k, v]) => { document.getElementById("wi-" + k).value = v; }); wiChanged(); }
 
   function compass(host, t, res) {
     const W = 220, c = 110, R = 82;
@@ -1288,7 +1347,8 @@ details.sec > * + * { margin-top: 8px; }
       lifeRows.map(([k, b, st, l0, l1]) => `<tr><td>${HOTNAME[k]}</td><td class="num" style="text-align:right">${fmt(b, 1)}%</td><td class="num" style="text-align:right">+${st < 0.01 ? st.toExponential(1) : fmt(st, 2)}%</td>` +
         `<td class="num" style="text-align:right">${fy(yrs + (100 - b) / (h.hot[k].total / yrs))}</td><td class="num" style="text-align:right;color:${l1 < life ? "var(--crit)" : "inherit"}">${fy(l1)}</td></tr>`).join("") + `</tbody></table>`;
   }
-  wiIds.forEach((k) => document.getElementById("wi-" + k).addEventListener("input", () => { readWI(); drawWhatif(); if (S3) S3.sea(); }));
+  wiIds.forEach((k) => document.getElementById("wi-" + k).addEventListener("input", wiChanged));
+  ["hs", "tp", "wdir", "u", "udir"].forEach((k) => document.getElementById("vwi-" + k).addEventListener("input", (e) => setWI({ [k]: e.target.value })));
   document.getElementById("wi-tptyp").addEventListener("click", () => setWI({ tp: tpTyp(WI.hs).toFixed(1) }));
   document.getElementById("wi-calm").addEventListener("click", () => setWI({ hs: 1.5, tp: 5.5, u: 11, udir: 240, wdir: 240 }));
   document.getElementById("wi-storm").addEventListener("click", () => setWI({ hs: 9, tp: 10.8, u: 32, udir: 250, wdir: 250 }));
@@ -1383,8 +1443,8 @@ details.sec > * + * { margin-top: 8px; }
     for (let i = 0; i < NS; i++) streakSeed.push([Math.random(), Math.random(), 4 + Math.random() * 26]);
     // turbines
     const farmGroup = new THREE.Group(); scene.add(farmGroup);
-    let turbines = [], center = new THREE.Vector3(), extent = 400, sel = 0, colorMode = "verdict", seaMode = "live";
-    let wind = { U: 30, from: 260 }, rpm = 0.3, playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let turbines = [], center = new THREE.Vector3(), extent = 400, sel = 0, colorMode = "verdict", wakeMode = "both";
+    let wind = { U: 30, from: 260 }, playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const white = new THREE.MeshStandardMaterial({ color: 0xe9edf0, roughness: 0.55, metalness: 0.1 });
     const yellow = new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.6 });
     const grey = new THREE.MeshStandardMaterial({ color: 0x8b98a3, roughness: 0.7 });
@@ -1446,7 +1506,8 @@ details.sec > * + * { margin-top: 8px; }
       const it = colorMode === "life" ? [["--ok", "below design pace"], ["--warn", "up to 25% ahead"], ["--crit", "more than 25% ahead"]]
         : colorMode === "alarms" ? [["--ok", "no frequency alarm"], ["--crit", "frequency alarm"]]
         : [["--crit", "act now"], ["--warn", "inspect"], ["--ok", "no action"]];
-      L.innerHTML = it.map(([c, l]) => `<span><i class="dot" style="background:var(${c})"></i>${l}</span>`).join("");
+      L.innerHTML = it.map(([c, l]) => `<span><i class="dot" style="background:var(${c})"></i>${l}</span>`).join("") +
+        (SEA !== "storm" && wakeMode !== "off" ? `<span class="wk">wake deficit <i class="wgrad"></i> 0–35%</span>` : "");
     }
     function recolour() {
       turbines.forEach((o, i) => {
@@ -1481,10 +1542,68 @@ details.sec > * + * { margin-top: 8px; }
       });
     }
     function seaParams() {
-      if (seaMode === "whatif") return { Hs: WI.hs, Tp: WI.tp, wdir: WI.wdir, U: WI.u, udir: WI.udir };
-      if (seaMode === "live") { const c = LIVE.cond(); return { Hs: c.Hs, Tp: c.Tp, wdir: c.wdir, U: c.U, udir: c.udir }; }
+      if (SEA === "whatif") return { Hs: WI.hs, Tp: WI.tp, wdir: WI.wdir, U: WI.u, udir: WI.udir };
+      if (SEA === "live") { const c = LIVE.cond(); return { Hs: c.Hs, Tp: c.Tp, wdir: c.wdir, U: c.U, udir: c.udir }; }
       const Hs = T.reduce((a, t) => a + t.Hs, 0) / T.length;
       return { Hs, Tp: D.meta.Tp, wdir: 270, U: 32, udir: 260 };
+    }
+    // wake rings (per turbine, every 1.5 D downstream) and a hub-height deficit map
+    const ringGroup = new THREE.Group(); scene.add(ringGroup);
+    const NT = 16, wuni = { uP: { value: Array.from({ length: NT }, () => new THREE.Vector4()) }, uFlow: { value: new THREE.Vector2(1, 0) },
+      uDr: { value: 240 }, uK: { value: WAKE_K }, uTS: { value: TS }, uC0: { value: new THREE.Color() }, uC1: { value: new THREE.Color() } };
+    const wakeMat = new THREE.ShaderMaterial({ uniforms: wuni, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+      vertexShader: `varying vec2 vXZ; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vXZ = w.xz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+      fragmentShader: `
+        uniform vec4 uP[${NT}]; uniform vec2 uFlow; uniform float uDr, uK, uTS; uniform vec3 uC0, uC1; varying vec2 vXZ;
+        void main() {
+          float s = 0.0;
+          for (int j = 0; j < ${NT}; j++) {
+            vec4 p = uP[j]; if (p.w < 0.5) continue;
+            vec2 rel = vXZ - p.xy; float x = dot(rel, uFlow) * ${U.toFixed(1)};
+            if (x <= 0.0) continue;
+            float r = abs(rel.x * uFlow.y - rel.y * uFlow.x) * ${U.toFixed(1)} / uTS;
+            float ct = p.z, b = 0.5 * (1.0 + sqrt(1.0 - ct)) / sqrt(1.0 - ct), sd = uK * x / uDr + 0.2 * sqrt(b);
+            float C = 1.0 - sqrt(max(0.0, 1.0 - ct / (8.0 * sd * sd)));
+            float d = C * exp(-(r * r) / (2.0 * sd * sd * uDr * uDr));
+            s += d * d;
+          }
+          float d = sqrt(s);
+          float a = smoothstep(0.015, 0.3, d) * 0.62;
+          if (a < 0.01) discard;
+          gl_FragColor = vec4(mix(uC0, uC1, clamp(d / 0.35, 0.0, 1.0)), a);
+        }`,
+    });
+    const wakeMap = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wakeMat); wakeMap.rotation.x = -Math.PI / 2; wakeMap.renderOrder = 5; scene.add(wakeMap);
+    function wakes(q) {
+      while (ringGroup.children.length) { const c = ringGroup.children.pop(); c.geometry.dispose(); c.material.dispose(); }
+      const m = D.meta.turbine, hub = m.z_hub / U * TS, show = SEA !== "storm" && wakeMode !== "off";
+      wakeMap.visible = show && wakeMode !== "rings"; ringGroup.visible = show && wakeMode !== "map";
+      document.getElementById("vp-wake").closest(".sel").hidden = SEA === "storm";
+      if (!show || !turbines.length) { legend(); return null; }
+      const W = wakeField(q.U, q.udir), Dr = W.Dr;
+      wuni.uFlow.value.set(W.fx, W.fz); wuni.uDr.value = Dr;
+      wuni.uP.value.forEach((v, j) => { const o = turbines[j], p = W.P[j]; if (o && p) v.set(o.g.position.x, o.g.position.z, p.ct, 1); else v.set(0, 0, 0, 0); });
+      const size = extent * 2.6 + 600; wakeMap.scale.set(size, size, 1); wakeMap.position.y = hub;
+      const c0 = new THREE.Color(css("--wake-lo")), c1 = new THREE.Color(css("--wake-hi"));
+      wuni.uC0.value = c0; wuni.uC1.value = c1;
+      const circle = [];
+      for (let k = 0; k <= 48; k++) circle.push(new THREE.Vector3(Math.cos(k / 48 * 2 * Math.PI), Math.sin(k / 48 * 2 * Math.PI), 0));
+      W.P.forEach((p, j) => {
+        const o = turbines[j]; if (!o || p.ct < 0.05) return;
+        const b = 0.5 * (1 + Math.sqrt(1 - p.ct)) / Math.sqrt(1 - p.ct);
+        [2, 4, 6.5, 9, 12].forEach((xd) => {
+          const sd = WAKE_K * xd + 0.2 * Math.sqrt(b), C = 1 - Math.sqrt(Math.max(0, 1 - p.ct / (8 * sd * sd)));
+          const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(circle),
+            new THREE.LineBasicMaterial({ color: c1.clone().lerp(c0, 1 - Math.min(1, C / 0.35)), transparent: true, opacity: Math.min(0.85, 0.1 + 2.0 * C), depthWrite: false }));
+          const rr = 2 * sd * Dr / U * TS;
+          ring.scale.set(rr, rr, 1);
+          ring.position.set(o.g.position.x + W.fx * xd * Dr / U, hub, o.g.position.z + W.fz * xd * Dr / U);
+          ring.rotation.y = Math.atan2(W.fx, W.fz);
+          ringGroup.add(ring);
+        });
+      });
+      legend();
+      return W;
     }
     function sea() {
       const q = seaParams(); seed = 7 + FI * 13;
@@ -1492,11 +1611,11 @@ details.sec > * + * { margin-top: 8px; }
       uni.uHs.value = q.Hs / U * VE;
       wind = { U: q.U, from: q.udir };
       const m = D.meta.turbine, op = q.U >= 3 && q.U <= 25;
-      rpm = op ? Math.min(1, q.U / m.rated_U) * (m.rotor_D > 220 ? 7.5 : 9.0) : 0.3;
+      const W = wakes(q), rpmOf = (u) => (u >= 3 && u <= 25 ? Math.min(1, u / m.rated_U) * (m.rotor_D > 220 ? 7.5 : 9.0) : 0.3);
       const yawA = (wind.from) * Math.PI / 180;
-      turbines.forEach((o) => { o.yaw.rotation.y = Math.PI - yawA; });
+      turbines.forEach((o, j) => { o.yaw.rotation.y = Math.PI - yawA; o.rpm = rpmOf(W ? W.P[j].u : q.U); });
       const cap = document.getElementById("vp-cap");
-      cap.textContent = `${{ live: "Live", storm: "Storm replay", whatif: "What-if sea" }[seaMode]}: Hs ${fmt(q.Hs, 1)} m, Tp ${fmt(q.Tp, 1)} s, waves from ${q.wdir}°, wind ${fmt(q.U, 0)} m/s from ${q.udir}° (rotors ${op ? "operating" : "idling"}). Waves drawn ${VE}× taller, turbines ${TS}× larger. Drag to orbit, scroll to zoom, right-drag to pan. Click a turbine to analyse it; click it again on a part (blade, nacelle, tower, flange, platform) to open that component.`;
+      cap.textContent = `${{ live: "Live", storm: "Storm replay", whatif: "What-if sea" }[SEA]}: Hs ${fmt(q.Hs, 1)} m, Tp ${fmt(q.Tp, 1)} s, waves from ${q.wdir}°, wind ${fmt(q.U, 0)} m/s from ${q.udir}° (rotors ${op ? "operating" : "idling"}). Waves drawn ${VE}× taller, turbines ${TS}× larger; wakes from a Gaussian wake model, widths drawn at turbine scale. Drag to orbit, scroll to zoom, right-drag to pan. Click a turbine to analyse it; click it again on a part (blade, nacelle, tower, flange, platform) to open that component.`;
     }
     // camera
     let fly = null;
@@ -1572,7 +1691,7 @@ details.sec > * + * { margin-top: 8px; }
       if (!visible) return;
       if (playing) {
         uni.uTime.value += dt;
-        turbines.forEach((o) => { o.rotor.rotation.z -= rpm / 60 * 2 * Math.PI * dt; });
+        turbines.forEach((o) => { o.rotor.rotation.z -= (o.rpm || 0.3) / 60 * 2 * Math.PI * dt; });
         // focus group fade
         const tt = uni.uTime.value;
         uni.uFon.value = tt < uni.uFt0.value - 40 ? 0 : tt > rogueEnd ? Math.max(0, uni.uFon.value - dt / 4) : Math.min(1, uni.uFon.value + dt / 3);
@@ -1602,6 +1721,7 @@ details.sec > * + * { margin-top: 8px; }
       scene.background = sky; uni.uSky.value = sky;
       uni.uDeep.value = new THREE.Color(css("--ocean-deep")); uni.uShallow.value = new THREE.Color(css("--ocean-shallow")); uni.uFoam.value = new THREE.Color(css("--foam"));
       streaks.material.color = new THREE.Color(css("--foam"));
+      if (turbines.length) sea();
       if (turbines.length) recolour();
     }
     function toggle() { playing = !playing; document.getElementById("vp-play").textContent = playing ? "Pause" : "Play"; }
@@ -1610,13 +1730,22 @@ details.sec > * + * { margin-top: 8px; }
     document.getElementById("vp-reset").addEventListener("click", () => { highlight(-1); resetView(true); });
     document.getElementById("vp-rogue").addEventListener("click", rogue);
     document.getElementById("vp-color").addEventListener("change", (e) => { colorMode = e.target.value; recolour(); });
-    document.getElementById("vp-sea").addEventListener("change", (e) => {
-      seaMode = e.target.value; sea();
-      if (seaMode === "whatif" && current >= 0) go({ type: "turbine", farm: FI, t: current, tab: "whatif" });
-    });
+    function placeWI() {               // keep the what-if panel below the (possibly wrapped) toolbar
+      const bar = document.querySelector(".vp-ui.top"), wi = document.getElementById("vp-wi");
+      if (window.innerWidth > 860) wi.style.top = bar.offsetTop + bar.offsetHeight + 8 + "px"; else wi.style.top = "";
+    }
+    new ResizeObserver(placeWI).observe(document.getElementById("viewport"));
+    function setSea(mode) {
+      SEA = mode; document.getElementById("vp-sea").value = mode;
+      document.getElementById("vp-wi").hidden = mode !== "whatif"; placeWI();
+      sea(); farmChip();
+    }
+    document.getElementById("vp-sea").addEventListener("change", (e) => setSea(e.target.value));
+    document.getElementById("vwi-live").addEventListener("click", () => setSea("live"));
+    document.getElementById("vp-wake").addEventListener("change", (e) => { wakeMode = e.target.value; sea(); });
     theme(); resize(); requestAnimationFrame(frame);
     return {
-      setFarm, theme, sea: () => { if (seaMode === "whatif") sea(); }, reset: () => { highlight(-1); resetView(true); },
+      setFarm, theme, setSea, sea: () => { if (SEA === "whatif") sea(); }, reset: () => { highlight(-1); resetView(true); },
       select: (i) => { sel = i; recolour(); const b = document.getElementById("vp-rogue"); b.hidden = i < 0; if (i >= 0) b.textContent = `Replay largest wave at ${T[i].spec.name}`; },
       focus: (i, part) => { highlight(i, part); flyTo(i, part); },
       marker: (i, z) => {
@@ -1647,9 +1776,13 @@ details.sec > * + * { margin-top: 8px; }
     const now = () => (paused !== null ? paused : Date.now() / 1000);
     const rng = (seed) => { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
     const noise = (t, k) => { const x = Math.sin(Math.floor(t * 25) * 12.9898 + k * 78.233) * 43758.5453; return (x - Math.floor(x)) * 2 - 1; };
-    function cond() {
-      const hs = Math.min(3.2, Math.max(1.2, (D.history ? D.history.hs_mean : 1.5) * 1.5));
-      return { Hs: +hs.toFixed(1), Tp: +(tpTyp(hs) + 0.6).toFixed(1), wdir: 245, U: [13.4, 11.2, 9.6][FI] || 12, udir: 232, dur: 1, clim: 0 };
+    function cond(ti) {
+      let c;
+      if (SEA === "whatif") c = { Hs: WI.hs, Tp: WI.tp, wdir: WI.wdir, U: WI.u, udir: WI.udir, dur: 1, clim: 0 };
+      else { const hs = Math.min(3.2, Math.max(1.2, (D.history ? D.history.hs_mean : 1.5) * 1.5)); c = { Hs: +hs.toFixed(1), Tp: +(tpTyp(hs) + 0.6).toFixed(1), wdir: 245, U: [13.4, 11.2, 9.6][FI] || 12, udir: 232, dur: 1, clim: 0 }; }
+      if (ti === undefined) return c;
+      const p = wakeField(c.U, c.udir).P[ti];
+      return Object.assign({}, c, { Ufree: c.U, U: p.u, def: p.def });
     }
     const Hresp = (w, w1, z) => { const r = w / w1, den = (1 - r * r) ** 2 + (2 * z * r) ** 2; return [1 / Math.sqrt(den), Math.atan2(2 * z * r, 1 - r * r)]; };
     function geomAt(m, z) {               // outer diameter and wall at elevation z
@@ -1661,8 +1794,10 @@ details.sec > * + * { margin-top: 8px; }
       return U < 3 || U > 25 ? 0 : Pr * Math.min(1, ((U - 3) / (m.rated_U - 3)) ** 3);
     }
     function model(ti) {
-      const key = FI + ":" + ti; if (cache.has(key)) return cache.get(key);
-      const t = T[ti], m = D.meta.turbine, c = cond(), r = rng(1000 + FI * 97);
+      const c = cond(ti), key = FI + ":" + ti + ":" + [c.Hs, c.Tp, c.wdir, c.U.toFixed(2), c.udir].join(",");
+      if (cache.has(key)) return cache.get(key);
+      if (cache.size > 300) cache.clear();
+      const t = T[ti], m = D.meta.turbine, r = rng(1000 + FI * 97);
       const d = t.spec.depth, g = 9.81, rho = 1025, Dp = m.D_pile;
       const w1 = 2 * Math.PI * t.f1, op = c.U >= 3 && c.U <= 25;
       const zfa = 0.015 + (op ? 0.035 : 0.003), zss = 0.018;
@@ -1832,14 +1967,15 @@ details.sec > * + * { margin-top: 8px; }
   // mount a live view: part = "turbine" (segment picker + sensors) or a component id
   function liveView(host, ti, part) {
     stopLive();
-    const M = LIVE.model(ti), t = T[ti], m = M.m, segs = LIVE.segments(M);
+    let M = LIVE.model(ti);
+    const t = T[ti], m = M.m, segs = LIVE.segments(M);
     const range = { turbine: [-1e9, 1e9], tower: [m.z_interface + 1, 1e9], splash: [-t.spec.depth, m.z_interface + 1], soil: [-1e9, -t.spec.depth] }[part];
     const pick = range ? segs.filter((g) => g.zc >= range[0] && g.zc <= range[1]) : null;
     let seg = pick ? (part === "soil" ? pick[pick.length - 1] : part === "splash" ? pick[0] : pick.find((g) => g.region === "T") || pick[0]) : null;
     let win = 30, stopped = false, raf = 0, last = 0, lastPick = 0;
-    const fixed = liveChannels(M, part);
+    let fixed = liveChannels(M, part);
     host.innerHTML =
-      `<div class="live-h"><span class="live-dot"></span><b>LIVE</b><span class="mono muted" data-clock></span>` +
+      `<div class="live-h"><span class="live-dot"></span><b data-mode>LIVE</b><span class="mono muted" data-clock></span>` +
       `<span class="seg win">${[30, 120, 600].map((w) => `<button type="button" data-w="${w}" class="${w === win ? "on" : ""}">${w < 60 ? w + " s" : w / 60 + " min"}</button>`).join("")}</span>` +
       `<button class="btn" type="button" data-pause>${LIVE.paused() ? "Resume" : "Pause"}</button></div>` +
       (part === "turbine" ? `<div class="live-now" data-now></div>` : "") +
@@ -1905,10 +2041,13 @@ details.sec > * + * { margin-top: 8px; }
       });
     }
     function draw(force) {
+      const M2 = LIVE.model(ti);
+      if (M2 !== M) { M = M2; fixed = liveChannels(M, part); if (pick) segCh = liveChannels(M, "segment", seg.zc); force = true; }
       const tn = LIVE.now(), cv = host.querySelector("canvas");
       const px = Math.max(120, Math.min(600, cv ? cv.clientWidth - 52 : 360)), spp = win <= 30 ? 1 : win <= 120 ? 2 : 4, n = px * spp;
       const states = new Array(n);
       for (let i = 0; i < n; i++) states[i] = LIVE.state(M, tn - win + win * i / (n - 1));
+      q("[data-mode]").textContent = SEA === "whatif" ? "WHAT-IF" : "LIVE";
       q("[data-clock]").textContent = new Date(tn * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + (LIVE.paused() ? " · paused" : "");
       fill(q("[data-fixed]"), fixed, states, spp);
       fill(q("[data-segch]"), segCh, states, spp);
@@ -1917,7 +2056,7 @@ details.sec > * + * { margin-top: 8px; }
         const s = states[n - 1], c = M.c, eta = states.map((x) => x.eta), mu = eta.reduce((a, b) => a + b, 0) / n;
         const hsEst = 4 * Math.sqrt(eta.reduce((a, b) => a + (b - mu) ** 2, 0) / n);
         const worst = M.rate ? HOTS.reduce((a, k) => (M.rate[k] > M.rate[a] ? k : a), HOTS[0]) : null;
-        nowEl.innerHTML = [["H<sub>s</sub> (radar, window)", fmt(hsEst, 1) + " m"], ["T<sub>p</sub>", fmt(c.Tp, 1) + " s"], ["Wind at hub", fmt(s.U, 1) + " m/s"],
+        nowEl.innerHTML = [["H<sub>s</sub> (radar, window)", fmt(hsEst, 1) + " m"], ["T<sub>p</sub>", fmt(c.Tp, 1) + " s"], ["Wind at hub" + (c.def > 0.005 ? ` (wake −${fmt(100 * c.def, 0)}%)` : ""), fmt(s.U, 1) + " m/s"],
           ["Power", fmt(LIVE.power(s.U, m), 1) + " MW"], ["Rotor", fmt(M.rpm, 1) + " rpm"],
           ["Damage rate now", worst ? `${fmt(M.rate[worst], M.rate[worst] < 10 ? 2 : 0)}× avg` : "–"]]
           .map(([k, v]) => `<div><span class="k">${k}</span><span class="v mono">${v}</span></div>`).join("");
@@ -1925,7 +2064,7 @@ details.sec > * + * { margin-top: 8px; }
       const rt = q("[data-rate]");
       if (rt && force) {
         const k = { flange: "flange_bolts", door: "door_frame", weld: "mudline_weld" }[part], x = M.rate[k];
-        rt.innerHTML = `Fatigue damage rate now: <b class="mono" style="color:var(${x >= 10 ? "--crit" : x >= 2 ? "--warn" : "--ok"})">${fmt(x, x < 10 ? 2 : 0)}×</b> the average since commissioning, in today's sea (H<sub>s</sub> ${fmt(M.c.Hs, 1)} m, wind ${fmt(M.c.U, 1)} m/s).`;
+        rt.innerHTML = `Fatigue damage rate now: <b class="mono" style="color:var(${x >= 10 ? "--crit" : x >= 2 ? "--warn" : "--ok"})">${fmt(x, x < 10 ? 2 : 0)}×</b> the average since commissioning, in ${SEA === "whatif" ? "the what-if" : "today's"} sea (H<sub>s</sub> ${fmt(M.c.Hs, 1)} m, wind ${fmt(M.c.U, 1)} m/s).`;
       }
       if (pick && tn - lastPick > 0.5) { lastPick = tn; drawPick(); }
     }
@@ -1951,14 +2090,14 @@ details.sec > * + * { margin-top: 8px; }
     const draw = () => {
       if (stopped || !host.isConnected) return;
       const tn = LIVE.now(), c = LIVE.cond();
-      let tot = 0;
+      let tot = 0, free = 0;
       const rows = T.map((t, i) => {
-        const M = LIVE.model(i), s = LIVE.state(M, tn), P = LIVE.power(s.U, M.m); tot += P;
+        const M = LIVE.model(i), s = LIVE.state(M, tn), P = LIVE.power(s.U, M.m); tot += P; free += LIVE.power(s.U + (M.c.Ufree - M.c.U), M.m);
         const mb = LIVE.sec(M, s, M.m.z_interface + 3).mfa / 1e6;
         return `<tr data-i="${i}"><td>${t.spec.name}</td><td class="r">${fmt(P, 1)}</td><td class="r">${fmt(s.U, 1)}</td><td class="r">${fmt(mb, 0)}</td><td class="r">${fmt(M.phi(M.zh - 3) * s.af, 3)}</td></tr>`;
       }).join("");
-      host.innerHTML = `<div class="live-h"><span class="live-dot"></span><b>LIVE</b><span class="mono muted">${new Date(tn * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div>` +
-        `<div class="live-now"><div><span class="k">H<sub>s</sub> · T<sub>p</sub></span><span class="v mono">${fmt(c.Hs, 1)} m · ${fmt(c.Tp, 1)} s</span></div><div><span class="k">Wind</span><span class="v mono">${fmt(c.U, 1)} m/s from ${c.udir}°</span></div><div><span class="k">Farm output</span><span class="v mono">${fmt(tot, 0)} MW</span></div></div>` +
+      host.innerHTML = `<div class="live-h"><span class="live-dot"></span><b>${SEA === "whatif" ? "WHAT-IF" : "LIVE"}</b><span class="mono muted">${new Date(tn * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div>` +
+        `<div class="live-now"><div><span class="k">H<sub>s</sub> · T<sub>p</sub></span><span class="v mono">${fmt(c.Hs, 1)} m · ${fmt(c.Tp, 1)} s</span></div><div><span class="k">Wind</span><span class="v mono">${fmt(c.U, 1)} m/s from ${c.udir}°</span></div><div><span class="k">Farm output · wake loss</span><span class="v mono">${fmt(tot, 0)} MW · ${free > 0 ? fmt(100 * Math.max(0, 1 - tot / free), 1) + "%" : "idle"}</span></div></div>` +
         `<div class="tbl-wrap"><table class="list"><thead><tr><th>Turbine</th><th class="r">Power MW</th><th class="r">Wind m/s</th><th class="r">Tower-base MN·m</th><th class="r">Top acc. m/s²</th></tr></thead><tbody>${rows}</tbody></table></div>`;
       host.querySelectorAll("tr[data-i]").forEach((r) => r.addEventListener("click", () => go({ type: "turbine", farm: FI, t: +r.dataset.i, tab: "live" })));
     };
@@ -2138,8 +2277,10 @@ details.sec > * + * { margin-top: 8px; }
 
   function farmChip() {
     const F = D.meta.farm, c = { red: 0, amber: 0, green: 0 }; T.forEach((t) => c[t.status]++);
-    const lc = LIVE.cond();
-    document.getElementById("vp-farm").innerHTML = `<b>${F.name}</b><span class="live-dot"></span><span class="muted">Live · H<sub>s</sub> ${fmt(lc.Hs, 1)} m · wind ${fmt(lc.U, 1)} m/s</span>` +
+    const lc = LIVE.cond(), md = { live: "Live", whatif: "What-if", storm: "Storm replay" }[SEA];
+    let wl = "";
+    if (SEA !== "storm") { const W = wakeField(lc.U, lc.udir); let a = 0, b = 0; W.P.forEach((p) => { a += LIVE.power(p.u, D.meta.turbine); b += LIVE.power(lc.U, D.meta.turbine); }); wl = b > 0 ? ` · wake loss ${fmt(100 * Math.max(0, 1 - a / b), 1)}%` : " · turbines idling"; }
+    document.getElementById("vp-farm").innerHTML = `<b>${F.name}</b>${SEA === "live" ? '<span class="live-dot"></span>' : ""}<span class="muted">${md} · H<sub>s</sub> ${fmt(SEA === "storm" ? Math.max(...T.map((t) => t.Hs)) : lc.Hs, 1)} m · wind ${fmt(SEA === "storm" ? 32 : lc.U, 1)} m/s from ${SEA === "storm" ? 260 : lc.udir}°${wl}</span>` +
       (c.red ? `<span class="pill red">${c.red} act now</span>` : "") + (c.amber ? `<span class="pill amber">${c.amber} inspect</span>` : "") + `<span class="pill green">${c.green} ok</span>`;
   }
   function renderAll() {
