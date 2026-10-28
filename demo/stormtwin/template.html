@@ -504,6 +504,7 @@ details.sec > * + * { margin-top: 8px; }
 .bl-pyc { margin-top: 6px; }
 .bl-lt .panel-b { display: flex; flex-direction: column; gap: 10px; }
 .bl-ltt td, .bl-ltt th { font-size: 0.78rem; }
+.bl-ta { width: 100%; font: 0.78rem var(--font-data); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px; resize: vertical; }
 .wi-fh, .wi-fr { display: grid; grid-template-columns: 3.2rem 3.4rem minmax(0, 1fr); gap: 6px; align-items: center; font-size: 0.72rem; }
 .wi-fh { color: var(--muted); font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.04em; margin: 8px 0 2px; }
 .wi-fr { width: 100%; font: inherit; font-size: 0.74rem; background: none; border: 0; padding: 2px 0; color: var(--ink); cursor: pointer; text-align: left; }
@@ -4027,7 +4028,7 @@ details.sec > * + * { margin-top: 8px; }
       const H = (w, wn, z) => { const re = wn * wn - w * w, im = 2 * z * wn * w, dd = re * re + im * im; return [re / dd, -im / dd]; };
       const Tm = (zset) => locs.map((L) => om.map((w, f) => { let rw = 0, iw = 0, rt = 0, it = 0; for (let j = 0; j < nm; j++) { const [a, b] = H(w, md.w[j], zset[j]), r = md.rows[L.j * nm + j]; rw += r * a * Gw[f][j]; iw += r * b * Gw[f][j]; rt += r * a * Gt[j]; it += r * b * Gt[j]; } return [rw * rw + iw * iw, rt * rt + it * it]; }));
       const T_op = Tm([0.055, 0.02, 0.02]), T_ss = Tm([0.012, 0.012, 0.015]);
-      const der = TT.derived(ty), m = TT.meta(ty), ci = ty.cut_in, co = ty.cut_out, hubF = Math.pow(ty.z_hub / 10, 0.11);
+      const der = TT.derived(ty), m = TT.meta(ty), ci = ty.cut_in, co = ty.cut_out, hubF = Math.pow(ty.z_hub / 10, 0.11), tiF = tiFun(o.ti || { model: "iecC" }, ty.z_hub);
       const combos = []; o.bins.Hs.forEach((Hs) => o.bins.Tp.forEach((Tp) => o.bins.gamma.forEach((ga) => o.bins.U10.forEach((U10) => o.bins.wdir.forEach((wd) => o.bins.vdir.forEach((vd) => combos.push([Hs, Tp, ga, U10, wd, vd])))))));
       const nL = locs.length, out = new Float32Array(combos.length * nL * 3), az = new Uint8Array(combos.length * nL), tq = 2.571, nS = 6;
       const TIF = [1, 1.25, 1.5, 1.75, 2, 2.5, 3], nHot = o.locs.length, gt = new Float32Array(combos.length * nHot * TIF.length);   // damage ratio at raised turbulence
@@ -4037,7 +4038,7 @@ details.sec > * + * { margin-top: 8px; }
         const Sw = om.map((w) => { const sg = w < wp ? 0.07 : 0.09; return w ** -5 * Math.exp(-1.25 * (wp / w) ** 4) * ga ** Math.exp(-((w - wp) ** 2) / (2 * sg * sg * wp * wp)); });
         let m0 = 0; Sw.forEach((v, i) => { m0 += v * dw[i]; }); const sc = (Hs / 4) ** 2 / Math.max(m0, 1e-12); for (let i = 0; i < NWf; i++) Sw[i] *= sc;
         // thrust turbulence: quasi-steady thrust slope, Kaimal spectrum, 0.5 on amplitude for averaging over the rotor disc
-        const T0 = thrust(Uh, m), TI = 0.12 * (0.75 * Uh + 5.6) / Math.max(Uh, 1), su = TI * Uh, dTdU = op ? (Uh < der.rated_U ? 2 * T0 / Math.max(Uh, 1) : -0.6 * T0 / Uh) : 2 * T0 / Math.max(Uh, 1), Lk = 340;
+        const T0 = thrust(Uh, m), TI = tiF(U10), su = TI * Uh, dTdU = op ? (Uh < der.rated_U ? 2 * T0 / Math.max(Uh, 1) : -0.6 * T0 / Uh) : 2 * T0 / Math.max(Uh, 1), Lk = 340;
         const St = om.map((w) => { const f = w / (2 * Math.PI); return 0.25 * (dTdU * su) ** 2 * 4 * Lk / Math.max(Uh, 1) / Math.pow(1 + 6 * f * Lk / Math.max(Uh, 1), 5 / 3) / (2 * Math.PI) * (op ? 1 : 0.3); });
         const rel = (vd - wd) * Math.PI / 180, cf = Math.cos(rel) ** 2, cs = Math.sin(rel) ** 2, Tfa = op ? T_op : T_ss;
         for (let l = 0; l < nL; l++) {
@@ -4066,7 +4067,7 @@ details.sec > * + * { margin-top: 8px; }
         if (c % 200 === 199) { progress((c + 1) / combos.length); await new Promise((r) => setTimeout(r, 0)); }
       }
       progress(1);
-      return { combos, locs, out, az, nL, bins: o.bins, depth: d, site: t.spec.name, gt, TIF, nHot, ti0: (U) => 0.12 * (0.75 * U + 5.6) / Math.max(U, 1), hubF };
+      return { combos, locs, out, az, nL, bins: o.bins, depth: d, site: t.spec.name, gt, TIF, nHot, ti0: (U) => tiF(U / hubF), hubF, ti: o.ti };
     },
   };
 
@@ -4200,7 +4201,7 @@ details.sec > * + * { margin-top: 8px; }
       `<div class="bl-row"><label class="sel">Wake model<select data-wm>${WAKE_MODELS.map(([k, l]) => `<option value="${k}"${wo.model === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>` +
       `<label class="sel">Wind from<input type="number" data-wd value="${wo.dir}" step="5" style="width:4.5rem"></label><label class="sel">Hub wind<input type="number" data-wu value="${wo.U}" step="0.5" style="width:4rem"></label></div>` +
       `<details class="bl-more"><summary>More settings</summary><label class="bl-f"><span>Wake growth rate k*</span><span class="bl-in"><input type="number" data-wk value="${wo.k}" step="0.005"><i></i></span></label>` +
-      `<label class="bl-tg"><input type="checkbox" data-wdef${wo.deficit ? " checked" : ""}> Also lower the wind speed by the wake deficit (Gaussian wake)</label><p class="cap">Ambient TI follows the turbulence model the lookup used: I0 = 0.12 (0.75 U + 5.6) / U at hub height.</p></details>` +
+      `<label class="bl-tg"><input type="checkbox" data-wdef${wo.deficit ? " checked" : ""}> Also lower the wind speed by the wake deficit (Gaussian wake)</label><p class="cap">Ambient TI follows the turbulence model the lookup used (${TI_MODELS.find((m2) => m2[0] === ((res.ti && res.ti.model) || "iecC"))[1]}).</p></details>` +
       `<div class="grid2"><div><canvas class="bl-wkmap" data-wmap></canvas><p class="cap" data-wcap></p></div><div data-wti></div></div>` +
       `<div class="grid2"><div data-wtf></div><div data-wlt></div></div></div>`;
     const draw = () => {
@@ -4488,15 +4489,36 @@ details.sec > * + * { margin-top: 8px; }
   }
 
   // ----- fatigue lookup -----
+  // ambient turbulence intensity at hub height as a function of the 10 m wind speed
+  const TI_MODELS = [["iecA", "IEC 61400-1 NTM, class A (I_ref 0.16)"], ["iecB", "IEC 61400-1 NTM, class B (I_ref 0.14)"], ["iecC", "IEC 61400-1 NTM, class C (I_ref 0.12)"], ["charnock", "Offshore, Charnock sea roughness"], ["const", "Constant"], ["table", "Table: U10 against TI"]];
+  const TI_TABLE0 = "2, 14\n4, 10\n6, 8\n8, 7\n10, 6.5\n12, 6.5\n15, 7\n20, 8\n25, 9\n30, 10";
+  const parseTITable = (txt) => txt.split(/[\n;]+/).map((l) => l.trim().split(/[,\s\t]+/).map(Number)).filter((r) => r.length >= 2 && isFinite(r[0]) && isFinite(r[1])).sort((a, b) => a[0] - b[0]);
+  function tiFun(ti, zHub) {                 // returns U10 (m/s) -> TI at hub height (fraction)
+    const hubF = Math.pow(zHub / 10, 0.11), floor = (v) => Math.min(0.6, Math.max(0.02, v));
+    if (/^iec/.test(ti.model)) { const Iref = { iecA: 0.16, iecB: 0.14, iecC: 0.12 }[ti.model]; return (u) => { const Uh = Math.max(u * hubF, 1); return floor(Iref * (0.75 * Uh + 5.6) / Uh); }; }
+    if (ti.model === "const") return () => floor((+ti.c || 8) / 100);
+    if (ti.model === "table") { const tb = parseTITable(ti.table || TI_TABLE0); if (tb.length < 1) return () => 0.08;
+      return (u) => { if (u <= tb[0][0]) return floor(tb[0][1] / 100); for (let i = 1; i < tb.length; i++) if (u <= tb[i][0]) { const a = (u - tb[i - 1][0]) / (tb[i][0] - tb[i - 1][0]); return floor((tb[i - 1][1] + a * (tb[i][1] - tb[i - 1][1])) / 100); } return floor(tb[tb.length - 1][1] / 100); }; }
+    // Charnock: z0 = Ac u*² / g with u* = kappa U10 / ln(10 / z0); neutral sigma_u = 2.5 u*, divided by the log-law hub wind
+    const Ac = +ti.Ac || 0.011, k = 0.4;
+    return (u) => { const U = Math.max(u, 0.5); let z0 = 2e-4; for (let it = 0; it < 30; it++) { const us = k * U / Math.log(10 / z0); z0 = Math.max(1e-6, Ac * us * us / 9.81); }
+      const us = k * U / Math.log(10 / z0); return floor(2.5 * us / (us / k * Math.log(zHub / z0))); };
+  }
   const FBINS = [["Hs", "H<sub>s</sub>", "m", "0.5, 1.5, 2.5, 3.5, 4.5, 5.5"], ["Tp", "T<sub>p</sub>", "s", "4, 6, 8, 10, 12"], ["gamma", "JONSWAP γ", "", "1.0, 3.3"], ["U10", "U<sub>10</sub>", "m/s", "2, 6, 10, 14, 18, 22, 26"], ["wdir", "Wind from", "°", "0, 90, 180, 270"], ["vdir", "Waves from", "°", "0, 90, 180, 270"]];
   const FLOCS = [["tower_base", "Tower base weld"], ["door", "Door frame"], ["flange", "Flange bolts"], ["mudline", "Mudline weld"], ["pile", "Pile −6 m"]];
   let fatJob = 0;
   function fatView() {
     const host = document.getElementById("bl-pane-fat"), ty = TT.get(bSel), r = RUNS.get(bSel + ":fat"), t = T[bSite] || T[0];
     const o = (r && r.input) || { bins: Object.fromEntries(FBINS.map(([k, , , v]) => [k, v])), locs: ["tower_base", "door", "flange", "mudline", "pile"], all: true, calib: 0.7 };
+    const ti0 = o.ti || { model: "iecC", c: 8, table: TI_TABLE0, Ac: 0.011 };
     const parse = (s2) => s2.split(/[,\s]+/).map(Number).filter((x) => isFinite(x)).slice(0, 24);
     host.innerHTML = `<div class="bl-an"><div class="bl-g bl-in-p"><div class="bl-hd2"><h3>Fatigue lookup table</h3>${PLACEHOLDER}</div><p class="cap">Six time-domain runs (wave and turbulence seeds) per combination of the bins below: turbulent wind with blade-element momentum aerodynamics inside cut-in to cut-out, idling otherwise. Damage per hour at each location, with a 95 % interval from the six seeds. Site: ${t.spec.name}.</p>` +
       FBINS.map(([k, lab, u]) => `<label class="bl-f bl-fb"><span>${lab}${u ? ` <span class="muted">(${u})</span>` : ""}</span><input type="text" data-b="${k}" value="${o.bins[k]}"></label>`).join("") +
+      `<div class="bl-sub">Turbulence intensity</div><label class="bl-f"><span>Model</span><span class="bl-in"><select data-tim>${TI_MODELS.map(([k, l]) => `<option value="${k}"${ti0.model === k ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>` +
+      `<div data-tid="const"${ti0.model === "const" ? "" : " hidden"}><label class="bl-f"><span>TI</span><span class="bl-in"><input type="number" data-tic value="${ti0.c ?? 8}" step="0.5"><i>%</i></span></label></div>` +
+      `<div data-tid="table"${ti0.model === "table" ? "" : " hidden"}><p class="cap" style="margin:2px 0">One row per line: U<sub>10</sub> (m/s), TI (%). Linear between rows, constant beyond the ends. Paste from a spreadsheet or a met-mast analysis.</p><textarea class="bl-ta" data-tit rows="6">${ti0.table || TI_TABLE0}</textarea></div>` +
+      `<div data-tid="charnock"${ti0.model === "charnock" ? "" : " hidden"}><details class="bl-more"><summary>More settings</summary><label class="bl-f"><span>Charnock constant</span><span class="bl-in"><input type="number" data-tia value="${ti0.Ac ?? 0.011}" step="0.001"><i></i></span></label><p class="cap">Neutral log profile over a sea surface of roughness z<sub>0</sub> = A<sub>c</sub> u*²/g, σ<sub>u</sub> = 2.5 u*. Gives the mean offshore TI; add margin for the IEC 90 % quantile.</p></details></div>` +
+      `<div data-tichart></div>` +
       `<div class="bl-sub">Locations</div><div class="bl-locs">${FLOCS.map(([k, l]) => `<label><input type="checkbox" data-l="${k}"${o.locs.includes(k) ? " checked" : ""}> ${l}</label>`).join("")}<label><input type="checkbox" data-l="all"${o.all ? " checked" : ""}> All elevations, 8 azimuths</label></div>` +
       `<details class="bl-more"><summary>More settings</summary><label class="bl-f"><span>Stress calibration to monitored data</span><span class="bl-in"><input type="number" data-cal value="${o.calib ?? 0.7}" step="0.05"><i>×</i></span></label><p class="cap">Multiplies all fatigue stresses. 0.7 matches the farm's monitored fatigue history for the as-built design; 1 uses the raw model.</p></details>` +
       `<p class="mono bl-count" data-count></p><div class="bl-row"><button class="btn bl-go" type="button" data-run>Run all combinations</button><button class="btn" type="button" data-stop hidden>Stop</button></div><div class="bl-run"><div class="bl-prog"><i data-bar></i></div><p class="muted" data-pmsg></p></div></div>` +
@@ -4504,14 +4526,20 @@ details.sec > * + * { margin-top: 8px; }
     const count = () => { const b = {}; FBINS.forEach(([k]) => { b[k] = parse(host.querySelector(`[data-b="${k}"]`).value); }); const n = FBINS.reduce((p, [k]) => p * Math.max(1, b[k].length), 1);
       host.querySelector("[data-count]").textContent = `${n.toLocaleString()} combinations × 6 seeds = ${(6 * n).toLocaleString()} one-hour runs · about ${fmt(6 * n * 0.25 / 24, 0)} CPU-days with the full solver (15 min each)`; return b; };
     host.querySelectorAll("[data-b]").forEach((x) => x.addEventListener("input", count)); count();
+    function readTI() { return { model: host.querySelector("[data-tim]").value, c: +host.querySelector("[data-tic]").value, table: host.querySelector("[data-tit]").value, Ac: +host.querySelector("[data-tia]").value }; }
+    const tiChart = () => { const ti = readTI(), us = Array.from({ length: 59 }, (_, i) => 1 + i * 0.5), f = tiFun(ti, ty.z_hub), ref = tiFun({ model: "iecC" }, ty.z_hub);
+      host.querySelectorAll("[data-tid]").forEach((d) => { d.hidden = d.dataset.tid !== ti.model; });
+      chart(host.querySelector("[data-tichart]"), { series: [{ x: us, y: us.map((u) => 100 * f(u)), color: "--accent", width: 2.2 }].concat(ti.model === "iecC" ? [] : [{ x: us, y: us.map((u) => 100 * ref(u)), color: "--muted", width: 1.2, dash: "4 3" }]),
+        xl: "U10 (m/s)", yl: "TI at hub (%)", w: 320, h: 170, yd: [0, Math.max(30, ...us.map((u) => 100 * f(u))) * 1.05], legend: ti.model === "iecC" ? null : [{ label: "chosen", color: "--accent" }, { label: "IEC class C", color: "--muted", dash: "4 3" }], label: "Turbulence intensity against wind speed" }); };
+    host.querySelectorAll("[data-tim], [data-tic], [data-tit], [data-tia]").forEach((x) => x.addEventListener("input", tiChart)); tiChart();
     host.querySelector("[data-run]").addEventListener("click", async (e) => {
       const bins = count(); if (FBINS.some(([k]) => !bins[k].length)) { host.querySelector("[data-pmsg]").textContent = "Every variable needs at least one value."; return; }
       const locs = FLOCS.map(([k]) => k).filter((k) => host.querySelector(`[data-l="${k}"]`).checked), all = host.querySelector('[data-l="all"]').checked;
       if (!locs.length && !all) { host.querySelector("[data-pmsg]").textContent = "Choose at least one location."; return; }
       const job = ++fatJob, stop = host.querySelector("[data-stop]"); e.target.disabled = true; stop.hidden = false;
       stop.onclick = () => { fatJob++; };
-      const calib = +host.querySelector("[data-cal]").value || 1, t0 = performance.now(), inp = { bins: Object.fromEntries(FBINS.map(([k]) => [k, host.querySelector(`[data-b="${k}"]`).value])), locs, all, calib };
-      const res = await SOLVERS.fatigue(TT.get(bSel), { bins, locs, all, calib }, (f) => { if (!host.isConnected) return; host.querySelector("[data-bar]").style.width = (100 * f) + "%"; host.querySelector("[data-pmsg]").textContent = `${fmt(100 * f, 0)} % · ${((performance.now() - t0) / 1000).toFixed(1)} s`; }, () => job !== fatJob);
+      const calib = +host.querySelector("[data-cal]").value || 1, t0 = performance.now(), inp = { bins: Object.fromEntries(FBINS.map(([k]) => [k, host.querySelector(`[data-b="${k}"]`).value])), locs, all, calib, ti: readTI() };
+      const ti = readTI(), res = await SOLVERS.fatigue(TT.get(bSel), { bins, locs, all, calib, ti }, (f) => { if (!host.isConnected) return; host.querySelector("[data-bar]").style.width = (100 * f) + "%"; host.querySelector("[data-pmsg]").textContent = `${fmt(100 * f, 0)} % · ${((performance.now() - t0) / 1000).toFixed(1)} s`; }, () => job !== fatJob);
       e.target.disabled = false; stop.hidden = true;
       if (!res) { host.querySelector("[data-pmsg]").textContent = "Stopped."; return; }
       RUNS.set(bSel + ":fat", { key: runKey(), input: inp, result: res, ui: { loc: 0, filt: {}, sortBy: "d" } }); fatResults(host);
