@@ -288,6 +288,25 @@ button.tab { font: inherit; }
 .dr-h h2 { font-size: 1.5rem; }
 .drawer .tabs { display: flex; gap: 0; padding: 0 10px; background: var(--surface); border-bottom: 1px solid var(--line); overflow-x: auto; }
 .drawer .tabs button { font: inherit; font-size: 0.86rem; padding: 8px 10px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.dr-sub { display: flex; gap: 4px; padding: 6px 14px 0; flex-wrap: wrap; }
+.dr-sub button { font: inherit; font-size: 0.78rem; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); cursor: pointer; }
+.dr-sub button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+.tcard { position: absolute; right: 16px; top: 112px; width: 340px; min-width: 260px; min-height: 180px; max-width: calc(100% - 24px); max-height: calc(100% - 124px); resize: both; overflow: hidden; display: flex; flex-direction: column;
+  background: color-mix(in srgb, var(--surface) 96%, transparent); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22); z-index: 7; }
+.tc-h { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-bottom: 1px solid var(--line); cursor: move; user-select: none; touch-action: none; }
+.tc-h b { font-family: var(--font-head, inherit); font-size: 1.02rem; } .tc-type { font-size: 0.76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; } .tc-h .btn.icon { flex: none; }
+.tc-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.tc-b { flex: 1; overflow: auto; padding: 10px 12px 12px; font-size: 0.8rem; display: grid; gap: 10px; align-content: start; }
+.tc-st { padding: 8px 10px; border-radius: 8px; border-left: 3px solid var(--ok); background: color-mix(in srgb, var(--ok) 8%, var(--surface)); }
+.tc-st.red { border-color: var(--crit); background: color-mix(in srgb, var(--crit) 9%, var(--surface)); } .tc-st.amber { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 9%, var(--surface)); }
+.tc-st .a { margin-top: 4px; color: var(--muted); }
+.tc-live { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.tc-live div { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; } .tc-live .k { display: block; font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; } .tc-live .v { font-family: var(--font-mono, monospace); font-size: 0.95rem; }
+.tc-spark { width: 100%; height: 54px; display: block; }
+.tc-sec { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 3px; display: flex; justify-content: space-between; }
+.tc-hs { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+details.cap-more { margin: 4px 0 0; } details.cap-more > summary { cursor: pointer; font-size: 0.74rem; color: var(--muted); list-style: none; } details.cap-more > summary::before { content: "▸ "; } details.cap-more[open] > summary::before { content: "▾ "; } .tc-hs td { padding: 3px 0; border-bottom: 1px solid var(--line); } .tc-hs td:last-child { text-align: right; }
+.tc-acts { display: flex; flex-wrap: wrap; gap: 6px; } .tc-acts .btn { font-size: 0.76rem; padding: 4px 9px; } .tc-acts .sb-go { flex-basis: 100%; }
 .drawer .tabs button.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
 .dr-b { flex: 1; overflow-y: auto; padding: 14px 16px 32px; }
 .pane { display: flex; flex-direction: column; gap: 12px; }
@@ -649,6 +668,10 @@ details.sec > * + * { margin-top: 8px; }
         </div>
       </div>
       <div class="vp-msg" id="vp-msg" hidden></div>
+      <section class="tcard" id="tcard" role="dialog" aria-labelledby="tc-name" hidden>
+        <header class="tc-h" id="tc-h"><span class="tc-dot" id="tc-dot"></span><b id="tc-name"></b><span class="tc-type muted" id="tc-type"></span><button class="btn icon" type="button" id="tc-close" aria-label="Close the turbine card">×</button></header>
+        <div class="tc-b" id="tc-b"></div>
+      </section>
       <div class="vp-wi" id="vp-wi" hidden>
         <div class="vp-wi-h"><b>What-if conditions</b><button class="btn icon" type="button" id="vwi-live" title="Back to live">Back to live</button></div>
         <label><span class="lb">H<sub>s</sub></span><span class="v" id="vwi-hs-v"></span><input type="range" id="vwi-hs" min="0.5" max="12" step="0.1"></label>
@@ -680,6 +703,7 @@ details.sec > * + * { margin-top: 8px; }
       <button class="btn icon" type="button" id="dr-close" aria-label="Close panel">×</button>
     </div>
     <div class="tabs" id="dr-tabs" role="tablist" hidden></div>
+    <div class="dr-sub" id="dr-sub" hidden></div>
     <div class="dr-b" id="dr-body">
 
       <!-- portfolio -->
@@ -1095,9 +1119,6 @@ details.sec > * + * { margin-top: 8px; }
     vd.innerHTML = `<div class="panel-b verdict" style="padding-top:14px"><div><h3>Why</h3><ul>${reasons}</ul></div>` +
       `<div><h3>Recommended action</h3><table class="actions">${t.actions.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</table></div></div>`;
     host.append(vd);
-    const goto = el("div", { class: "row", style: "display:flex;gap:8px;flex-wrap:wrap" },
-      ["fatigue:Fatigue history", "frequency:Natural frequencies", "event:Storm event", "whatif:What-if"].map((x) => `<button class="btn" type="button" data-goto="${x.split(":")[0]}">${x.split(":")[1]} →</button>`).join(""));
-    goto.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
 
     // hot spots
     const hs = el("div", { class: "panel" });
@@ -1126,7 +1147,6 @@ details.sec > * + * { margin-top: 8px; }
     body.append(el("p", { class: "cap" }, "ULS: utilisation (review 0.7, act 0.9). Fatigue d: design-life days used by this storm (inspect from 60; RBI update from 90 where not inspectable)."));
     hs.append(body);
     P.ov.append(hs);
-    host.append(goto);
 
     // sea record
     const sea = el("div", { class: "panel chart" });
@@ -3853,17 +3873,29 @@ details.sec > * + * { margin-top: 8px; }
   }
 
   const PANES = ["portfolio", "farm", "live", "drivetrain", "whole", "overview", "fatigue", "frequency", "event", "whatif", "component"];
-  const TTABS = [["live", "Live"], ["whole", "Whole turbine"], ["drivetrain", "Drivetrain"], ["overview", "Overview"], ["fatigue", "Fatigue"], ["frequency", "Frequencies"], ["event", "Storm event"], ["whatif", "What-if"]];
+  // turbine tabs: five groups; Live and Health have sub-views. Pane names stay as they were, so links into any view still work.
+  const TGROUPS = [["overview", "Summary"], ["live", "Live", [["live", "Sensors"], ["whole", "Whole structure"], ["drivetrain", "Drivetrain"]]],
+    ["fatigue", "Health", [["fatigue", "Fatigue life"], ["frequency", "Natural frequencies"]]], ["event", "Storm event"], ["whatif", "What-if"]];
+  const groupOf = (pane) => TGROUPS.find((g) => g[0] === pane || (g[2] || []).some((x) => x[0] === pane)) || TGROUPS[0];
+  const TSUB = {};
   function showPane(name) { PANES.forEach((n) => { document.getElementById("pane-" + n).hidden = n !== name; }); }
+  function foldCaps(root) {           // long method notes collapse to one line; the numbers and charts stay in view
+    root.querySelectorAll("p.cap").forEach((p) => { if (p.closest("details") || p.textContent.length < 150) return;
+      const d = document.createElement("details"); d.className = "cap-more"; d.innerHTML = "<summary>How this is calculated</summary>"; p.replaceWith(d); d.append(p); });
+  }
   function showTab(name) {
     NAV.tab = name;
-    document.querySelectorAll("#dr-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+    const grp = groupOf(name), sub = document.getElementById("dr-sub"); TSUB[grp[0]] = name;
+    document.querySelectorAll("#dr-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === grp[0]));
+    sub.hidden = !grp[2]; sub.innerHTML = grp[2] ? grp[2].map(([k, l]) => `<button type="button" data-sub="${k}" class="${k === name ? "on" : ""}">${l}</button>`).join("") : "";
+    sub.querySelectorAll("[data-sub]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.sub)));
     showPane(name);
     if (name === "live") liveView(document.getElementById("pane-live"), NAV.t, "turbine");
     else if (name === "drivetrain") rnaView(document.getElementById("pane-drivetrain"), NAV.t);
     else if (name === "whole") wholeView(document.getElementById("pane-whole"), NAV.t);
     else stopLive();
     if (name === "whatif") drawWhatif();
+    const pn = document.getElementById("pane-" + name); if (pn) { foldCaps(pn); setTimeout(() => foldCaps(pn), 400); setTimeout(() => foldCaps(pn), 1500); }
   }
   function drawDrawer() {
     const dr = document.getElementById("drawer"), tabs = document.getElementById("dr-tabs");
@@ -3871,7 +3903,7 @@ details.sec > * + * { margin-top: 8px; }
     dr.hidden = !drawerOpen || NAV.type === "none";
     document.getElementById("split-r").hidden = dr.hidden;
     stopLive(); if (FLV) { FLV.stop(); FLV = null; }
-    tabs.hidden = NAV.type !== "turbine"; tabs.innerHTML = "";
+    tabs.hidden = NAV.type !== "turbine"; tabs.innerHTML = ""; document.getElementById("dr-sub").hidden = true;
     if (dr.hidden) return;
     const F = D.meta.farm, pill = (st) => st && st !== "green" ? ` <span class="pill ${st === "alarm" ? "red" : st}">${st === "alarm" ? "frequency alarm" : statusText[st]}</span>` : "";
     if (NAV.type === "portfolio") {
@@ -3888,8 +3920,8 @@ details.sec > * + * { margin-top: 8px; }
     } else if (NAV.type === "turbine") {
       const t = T[NAV.t];
       ey.innerHTML = `${F.name} · <button type="button" class="ey-type" title="Change this turbine's type">${TT.typeOf(NAV.t).name}</button>`; ey.querySelector(".ey-type").addEventListener("click", () => openBuilder(NAV.t)); ti.innerHTML = t.spec.name + ` <span class="pill ${t.status}">${statusText[t.status]}</span>`;
-      TTABS.forEach(([k, l]) => { const b = el("button", { type: "button", role: "tab", "data-tab": k }, l); b.addEventListener("click", () => showTab(k)); tabs.append(b); });
-      detail(NAV.t); showTab(NAV.tab || "live");
+      TGROUPS.forEach(([k, l]) => { const b = el("button", { type: "button", role: "tab", "data-tab": k }, l); b.addEventListener("click", () => showTab(TSUB[k] || k)); tabs.append(b); });
+      detail(NAV.t); showTab(NAV.tab || "overview");
     } else if (NAV.type === "component") {
       const t = T[NAV.t];
       ey.textContent = `${F.name} · ${t.spec.name}${PARENT[NAV.part] ? " · " + PARTNAME[PARENT[NAV.part]] : ""}`;
@@ -3940,9 +3972,61 @@ details.sec > * + * { margin-top: 8px; }
       else if (n.type === "farm" || n.type === "portfolio") S3.reset();
     }
   }
-  function onPick(i, part) {
-    if (part && current === i) go({ type: "component", farm: FI, t: i, part });
-    else go({ type: "turbine", farm: FI, t: i });
+  // ---------- turbine card: what matters about a turbine clicked in the 3D view, in a window that can be moved and resized ----------
+  const TC = (() => {
+    const box = document.getElementById("tcard"), body = document.getElementById("tc-b"), KEY = "stormtwin-tcard";
+    let ti = -1, timer = 0, hist = [];
+    try { const g = JSON.parse(localStorage.getItem(KEY) || "null"); if (g) { if (g.l) Object.assign(box.style, { left: g.l, top: g.t, right: "auto" }); if (g.h) Object.assign(box.style, { width: g.w, height: g.h }); } } catch (e) { /* storage unavailable */ }
+    const keep = () => { try { localStorage.setItem(KEY, JSON.stringify({ l: box.style.left, t: box.style.top, w: box.style.height ? box.offsetWidth + "px" : "", h: box.style.height ? box.offsetHeight + "px" : "" })); } catch (e) { /* storage unavailable */ } };
+    new ResizeObserver(() => { if (!box.hidden) keep(); }).observe(box);
+    // drag by the header, kept inside the viewport
+    const hd = document.getElementById("tc-h");
+    hd.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button")) return;
+      const vp = box.parentElement.getBoundingClientRect(), r = box.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+      hd.setPointerCapture(e.pointerId);
+      const mv = (ev) => { box.style.right = "auto"; box.style.left = Math.min(vp.width - 60, Math.max(0, ev.clientX - vp.left - dx)) + "px"; box.style.top = Math.min(vp.height - 40, Math.max(0, ev.clientY - vp.top - dy)) + "px"; };
+      const up = () => { hd.removeEventListener("pointermove", mv); hd.removeEventListener("pointerup", up); keep(); };
+      hd.addEventListener("pointermove", mv); hd.addEventListener("pointerup", up);
+    });
+    document.getElementById("tc-close").addEventListener("click", () => hide());
+    function hide() { box.hidden = true; clearInterval(timer); ti = -1; }
+    function open(i) {
+      ti = i; hist = []; const t = T[i], ty = TT.typeOf(i), hst = hotspotStatus(t), alarms = t.modal && t.modal.alarms ? t.modal.alarms.length : 0;
+      document.getElementById("tc-dot").style.background = `var(${statusVar[t.status]})`;
+      document.getElementById("tc-name").textContent = t.spec.name;
+      document.getElementById("tc-type").textContent = `${ty.name.replace(/ \(as built\)$/, "")} · ${fmt(t.spec.depth, 1)} m water`;
+      const lu = t.history ? lifeUsed(t) : null, band = lu ? lifeBand(t, lu.k) : null, pace = D.history ? 100 * D.history.years_in_service / D.meta.design_life : null;
+      const act = t.actions && t.actions[0] ? `${t.actions[0][0]}: ${t.actions[0][1]}` : "";
+      body.innerHTML = `<div class="tc-st ${t.status}"><b>${statusText[t.status]}</b> · ${t.reasons[0] || "all hot spots within limits"}${act ? `<div class="a">${act}</div>` : ""}</div>` +
+        `<div><div class="tc-sec"><span>Now</span><span data-tcm></span></div><div class="tc-live" data-tcl></div><canvas class="tc-spark" data-tcs></canvas></div>` +
+        (lu ? `<div><div class="tc-sec"><span>Fatigue life used</span><span>design pace ${fmt(pace, 1)} %</span></div><b class="mono" style="font-size:1.05rem">${fmt(lu.v, 1)} %</b> <span class="muted">${HOTNAME[lu.k] || lu.k}, 90 % band ${fmt(band.p5, 1)}–${fmt(band.p95, 1)} %</span></div>` : "") +
+        `<div><div class="tc-sec"><span>Hot spots after the storm</span></div><table class="tc-hs">${[["flange_bolts", "Tower-base flange bolts"], ["door_frame", "Door frame"], ["mudline_weld", "Mudline weld"]].map(([k, nm]) => `<tr><td>${nm}</td><td><span class="pill ${hst[k]}">${statusText[hst[k]]}</span></td></tr>`).join("")}` +
+        `<tr><td>First natural frequency</td><td>${alarms ? `<span class="pill red">${alarms} alarm${alarms > 1 ? "s" : ""}</span>` : `<span class="pill green">normal</span>`}</td></tr></table></div>` +
+        `<div class="tc-acts"><button class="btn sb-go" type="button" data-tgo="overview">Full details</button>${[["live", "Live sensors"], ["whole", "Whole structure"], ["fatigue", "Fatigue"], ["whatif", "What-if"]].map(([k, l]) => `<button class="btn" type="button" data-tgo="${k}">${l}</button>`).join("")}</div>`;
+      body.querySelectorAll("[data-tgo]").forEach((b) => b.addEventListener("click", () => { const k = b.dataset.tgo; hide(); go({ type: "turbine", farm: FI, t: i, tab: k }); }));
+      box.hidden = false; clearInterval(timer); tick(); timer = setInterval(tick, 500);
+    }
+    function tick() {
+      if (ti < 0 || box.hidden || !T[ti]) return hide();
+      const M = LIVE.model(ti), tn = LIVE.now(), st = LIVE.state(M, tn), mb = LIVE.sec(M, st, M.m.z_interface + 3).mfa / 1e6;
+      const el2 = body.querySelector("[data-tcl]"); if (!el2) return;
+      body.querySelector("[data-tcm]").textContent = (SEA === "whatif" ? "what-if · " : "") + new Date(tn * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      el2.innerHTML = [["Power", fmt(LIVE.power(st.U, M.m), 1) + " MW"], ["Hub wind", fmt(st.U, 1) + " m/s"], ["Tower-base moment", fmt(mb, 0) + " MN·m"], ["Nacelle accel.", fmt(M.phi(M.zh - 3) * st.af, 3) + " m/s²"]]
+        .map(([k, v]) => `<div><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+      hist.push(mb); if (hist.length > 120) hist.shift();
+      const cv = body.querySelector("[data-tcs]"), w = cv.clientWidth, h = cv.clientHeight, dpr = Math.min(2, window.devicePixelRatio || 1);
+      if (!w) return; cv.width = w * dpr; cv.height = h * dpr; const g = cv.getContext("2d"); g.scale(dpr, dpr);
+      const mid = hist.reduce((a, b) => a + b, 0) / hist.length, span = Math.max(40, ...hist.map((v) => Math.abs(v - mid) * 2.2)), lo = mid - span / 2, hi = mid + span / 2;
+      const X = (k) => w * k / 119, Y = (v) => h - 4 - (h - 18) * (v - lo) / (hi - lo);
+      g.strokeStyle = css("--accent"); g.lineWidth = 1.5; g.beginPath(); hist.forEach((v, k) => (k ? g.lineTo(X(k + 120 - hist.length), Y(v)) : g.moveTo(X(k + 120 - hist.length), Y(v)))); g.stroke();
+      g.fillStyle = css("--muted"); g.font = "10px IBM Plex Mono, monospace"; g.fillText(`tower-base moment, last minute · ${fmt(lo, 0)}–${fmt(hi, 0)} MN·m`, 2, 10);
+    }
+    return { open, hide, index: () => ti };
+  })();
+  function onPick(i) {
+    current = i; if (S3) S3.select(i);
+    TC.open(i);
   }
 
   function farmChip() {
@@ -3972,7 +4056,7 @@ details.sec > * + * { margin-top: 8px; }
     return changed;
   }
   function loadFarm(i) {
-    FI = i; D = ALL[i]; T = D.turbines; current = -1;
+    FI = i; D = ALL[i]; T = D.turbines; current = -1; TC.hide();
     syncDepths();
     const hs = Math.min(4, Math.max(1.5, (D.history ? D.history.hs_mean : 2) * 2));
     setWIsilent({ hs: hs.toFixed(1), tp: tpTyp(hs).toFixed(1) });
