@@ -520,6 +520,12 @@ details.sec > * + * { margin-top: 8px; }
 .mb-canvas canvas { width: 100%; display: block; border-radius: 8px; cursor: crosshair; touch-action: none; }
 .mb-canvas .bl-3dp { height: 460px; }
 .mb-side { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.wv-res { margin-top: 12px; }
+.wv-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 6px 0; }
+.wv-sum > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; font-size: 0.8rem; }
+.wv-sum b { font-size: 0.95rem; }
+.wv-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; }
+.wv-charts svg, .wv-res [data-wc="eta"] svg { width: 100%; height: auto; }
 .mb-pal { display: flex; flex-direction: column; gap: 3px; margin: 6px 0 10px; }
 .mb-pal button { font: inherit; font-size: 0.78rem; text-align: left; display: flex; gap: 8px; align-items: center; padding: 4px 6px; border: 1px solid transparent; border-radius: 5px; background: none; color: var(--ink); cursor: pointer; }
 .mb-pal button.on { border-color: var(--accent); background: var(--accent-soft); }
@@ -6049,7 +6055,7 @@ details.sec > * + * { margin-top: 8px; }
   document.querySelectorAll("#bl-modes [data-mode]").forEach((b) => b.addEventListener("click", () => bShowMode(b.dataset.mode)));
 
   // ----- map builder -----
-  const MB_LAYERS = [["depth", "Bathymetry"], ["soil", "Soil zones"], ["excl", "Exclusion zones"], ["meta", "Metocean and datum"]];
+  const MB_LAYERS = [["depth", "Bathymetry"], ["soil", "Soil zones"], ["excl", "Exclusion zones"], ["meta", "Metocean and datum"], ["waves", "Storm waves"]];
   function mbList() {
     const host = document.getElementById("mb-list");
     host.innerHTML = MB.maps().map((m) => { const on = m.id === mbSel;
@@ -6071,7 +6077,7 @@ details.sec > * + * { margin-top: 8px; }
     const ds = m.depth, dmin = Math.min(...ds), dmax = Math.max(...ds);
     const tools = mbLayer === "depth" ? [["raise", "Shallower"], ["lower", "Deeper"], ["smooth", "Smooth"], ["set", "Set depth"]] : mbLayer === "soil" ? [["soil", "Paint"], ["soilerase", "Erase"]] : mbLayer === "excl" ? [["excl", "Paint"], ["exclerase", "Erase"]] : [];
     if (tools.length && !tools.some(([k]) => k === mbTool)) mbTool = tools[0][0];
-    const side = mbLayer === "meta" ? mbMetaForm(m, false) : mbLayer === "depth" ? mbDepthPanel(m) : mbLayer === "soil" ? mbSoilPanel(m) : `<p class="cap">Paint areas turbines must avoid: export cables, pipelines, wrecks, shipping lanes, unexploded ordnance. The site builder flags turbines placed inside them.</p>`;
+    const side = mbLayer === "meta" ? mbMetaForm(m, false) : mbLayer === "waves" ? mbWavePanel(m) : mbLayer === "depth" ? mbDepthPanel(m) : mbLayer === "soil" ? mbSoilPanel(m) : `<p class="cap">Paint areas turbines must avoid: export cables, pipelines, wrecks, shipping lanes, unexploded ordnance. The site builder flags turbines placed inside them.</p>`;
     host.innerHTML = `<div class="mb-top"><label class="bl-f bl-name"><span>Name</span><input type="text" data-mn value="${m.name.replace(/"/g, "&quot;")}"${ro ? " disabled" : ""}></label>` +
       (ro ? `<p class="hint bl-ro">${m.edited ? "Edited survey of the farm. The farm's turbines and the 3D viewer use this seabed." : "The farm's surveyed seabed. Edits change the depths the farm's turbines and the 3D viewer use."}${m.edited ? ` <button class="btn" type="button" data-mreset>Reset to the survey</button>` : ""}</p>` : "") + `</div>` +
       `<div class="mb-grid"><div><div class="bl-row mb-bar">${tools.length ? `<span class="seg">${tools.map(([k, l]) => `<button type="button" data-tool="${k}" class="${mbTool === k ? "on" : ""}">${l}</button>`).join("")}</span>` : ""}` +
@@ -6080,9 +6086,9 @@ details.sec > * + * { margin-top: 8px; }
       `<span class="seg" style="margin-left:auto">${[["2d", "Map"], ["3d", "3D"]].map(([k, l]) => `<button type="button" data-mv="${k}" class="${mbView === k ? "on" : ""}">${l}</button>`).join("")}</span></div>` +
       `<div class="mb-canvas"><canvas data-mc${mbView === "3d" ? " hidden" : ""}></canvas><div class="bl-3dp" data-m3${mbView === "3d" ? "" : " hidden"}></div></div>` +
       `<div class="bl-row"><span class="mono muted" data-mread>Move over the map to read depth and soil.</span><span class="muted" style="margin-left:auto">depth ${fmt(dmin, 1)}–${fmt(dmax, 1)} m · contours every 5 m</span></div></div>` +
-      `<div class="mb-side">${side}</div></div>`;
+      `<div class="mb-side">${side}</div></div>` + (mbLayer === "waves" ? `<div class="wv-res" data-wres></div>` : "");
     const cv = host.querySelector("[data-mc]");
-    let tf = null; const render = () => { if (mbView === "2d") tf = drawMapCanvas(cv, MB.map(mbSel), { layer: mbLayer }); };
+    let tf = null; const render = () => { if (mbView === "2d") { tf = drawMapCanvas(cv, MB.map(mbSel), { layer: mbLayer }); if (mbLayer === "waves") wvOverlay(cv, tf, MB.map(mbSel)); } };
     render();
     host.querySelectorAll("[data-tool]").forEach((b) => b.addEventListener("click", () => { mbTool = b.dataset.tool; mbMain(); }));
     host.querySelectorAll("[data-mv]").forEach((b) => b.addEventListener("click", () => { mbView = b.dataset.mv; mbMain(); }));
@@ -6092,6 +6098,7 @@ details.sec > * + * { margin-top: 8px; }
     const mr = host.querySelector("[data-mreset]"); if (mr) mr.addEventListener("click", () => { MB.resetMap(m.id); mbOpen(); });
     host.querySelector("[data-mn]").addEventListener("change", (e) => { const mm = mbEditable(); mm.name = e.target.value.trim() || "Unnamed map"; MB.saveMap(mm); mbList(); });
     mbWireSide(host, render);
+    if (mbLayer === "waves") { wvWire(host, m, cv, () => tf, render); wvResults(host, m); }
     // painting
     let painting = false, dirty = false, raf = 0;
     const apply = (ev) => {
@@ -6119,6 +6126,159 @@ details.sec > * + * { margin-top: 8px; }
     const end = () => { if (painting && dirty) { MB.saveMap(MB.map(mbSel)); dirty = false; } painting = false; };
     cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
     if (mbView === "3d") mb3d(host.querySelector("[data-m3]"), m);
+  }
+  // ----- storm waves along a line: spatial NLS over the map's seabed (the same model as nls/variable_depth.py) -----
+  const WG = 9.81, WV = { Hs: null, Tp: null, gamma: 3.3, dur: 1200, seed: 1, nl: true, line: {}, res: {}, st: null };
+  function wvK(w, h) { let k = w * w / WG; if (k * h < 1) k = w / Math.sqrt(WG * h);
+    for (let i = 0; i < 40; i++) { const th = Math.tanh(k * h), kn = k - (WG * k * th - w * w) / (WG * th + WG * k * h * (1 - th * th)); if (Math.abs(kn - k) < 1e-12 * k) return kn; k = kn; } return k; }
+  function wvCg(k, h) { const kh = k * h; return Math.sqrt(WG * k * Math.tanh(kh)) / k / 2 * (1 + (kh > 20 ? 0 : 2 * kh / Math.sinh(2 * kh))); }
+  function wvNu(k, h) {                   // finite-depth NLS coefficient with the mean flow; changes sign at kh = 1.363
+    const kh = k * h; if (kh > 30) return Math.sqrt(WG * k) * k * k / 2;
+    const s = Math.tanh(kh), w = Math.sqrt(WG * k * s), cp = w / k, cg = wvCg(k, h);
+    return w * k * k / (16 * s ** 4) * (9 - 10 * s * s + 9 * s ** 4 - 2 * s * s / (WG * h - cg * cg) * (4 * cp * cp + 4 * cp * cg * (1 - s * s) + WG * h * (1 - s * s) ** 2));
+  }
+  function fftC(re, im, inv) {            // in-place radix-2, forward exp(-i), inverse scaled by 1/n
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    for (let len = 2; len <= n; len <<= 1) { const a = (inv ? 2 : -2) * Math.PI / len, wr = Math.cos(a), wi = Math.sin(a), hl = len >> 1;
+      for (let i = 0; i < n; i += len) { let cr = 1, ci = 0; for (let k = 0; k < hl; k++) { const p = i + k, q = p + hl, tr = re[q] * cr - im[q] * ci, ti = re[q] * ci + im[q] * cr; re[q] = re[p] - tr; im[q] = im[p] - ti; re[p] += tr; im[p] += ti; const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr; } } }
+    if (inv) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+  }
+  function wvRun(prof, o) {               // prof {s, h} along the line (m); o {Hs, Tp, gamma, dur, seed, nl}
+    const wp = 2 * Math.PI / o.Tp; let n = 256; while (n < o.dur / (o.Tp / 16)) n <<= 1;
+    const dt = o.dur / n, dw = 2 * Math.PI / o.dur, W = new Float64Array(n), wa = new Float64Array(n);
+    for (let m = 0; m < n; m++) { W[m] = dw * (m < n / 2 ? m : m - n); wa[m] = wp - W[m]; }   // FFT bin m carries frequency wp - W[m]
+    const valid = Array.from(wa, (w) => w > 0.05 * wp), jon = (w) => { const sg = w <= wp ? 0.07 : 0.09; return w ** -5 * Math.exp(-1.25 * (wp / w) ** 4) * o.gamma ** Math.exp(-((w - wp) ** 2) / (2 * sg * sg * wp * wp)); };
+    const S = Array.from(wa, (w) => (w > 0.5 * wp && w < 2.5 * wp ? jon(w) : 0)), m0 = S.reduce((a, b) => a + b, 0) * dw;
+    let rs = (o.seed >>> 0) || 1; const uni = () => { rs = (rs * 1664525 + 1013904223) >>> 0; return (rs + 0.5) / 4294967296; };
+    let re = new Float64Array(n), im = new Float64Array(n);
+    for (let i = 0; i < n; i++) { const a = Math.sqrt(2 * S[i] * (o.Hs / 4) ** 2 / m0 * dw), p = 2 * Math.PI * uni(); re[i] = a * Math.cos(p) * n; im[i] = a * Math.sin(p) * n; }
+    fftC(re, im, true);
+    const len = prof.s[prof.s.length - 1], hAt = (x) => { const s = prof.s; let j = 1; while (j < s.length - 1 && s[j] < x) j++; const f = Math.min(1, Math.max(0, (x - s[j - 1]) / (s[j] - s[j - 1]))); return prof.h[j - 1] + f * (prof.h[j] - prof.h[j - 1]); };
+    const ns = Math.max(1, Math.ceil(len / (Math.PI / wvK(wp, prof.h[0])))), dx = len / ns, cache = new Map();
+    const coef = (h) => { const key = Math.round(h * 20); let c = cache.get(key); if (c) return c; h = key / 20;
+      const k0 = wvK(wp, h), cg0 = wvCg(k0, h), kn = new Float64Array(n), cgn = new Float64Array(n);
+      for (let i = 0; i < n; i++) if (valid[i]) { kn[i] = wvK(wa[i], h); cgn[i] = wvCg(kn[i], h); }
+      c = { h, k0, cg0, kn, cgn, nl: o.nl && k0 * h >= 0.7, Q: o.nl && k0 * h >= 0.7 ? wvNu(k0, h) / cg0 : 0 }; cache.set(key, c); return c; };
+    const lin = (ca, cm, cb) => { fftC(re, im, false);   // exact linear dispersion and shoaling of every component over half a step
+      for (let i = 0; i < n; i++) { if (!valid[i]) { re[i] = im[i] = 0; continue; } const ph = (cm.kn[i] - cm.k0 + W[i] / cm.cg0) * dx / 2, g = Math.sqrt(ca.cgn[i] / cb.cgn[i]), c = Math.cos(ph) * g, s = Math.sin(ph) * g, r = re[i]; re[i] = r * c - im[i] * s; im[i] = r * s + im[i] * c; }
+      fftC(re, im, true); };
+    const every = Math.max(1, Math.round(ns / 160)), st = [];
+    let cn = coef(prof.h[0]), phase = 0, delay = 0;
+    const keep = (j, x, c, brk) => { const A2 = new Float32Array(2 * n); for (let i = 0; i < n; i++) { A2[2 * i] = re[i]; A2[2 * i + 1] = im[i]; } st.push({ x, h: hAt(x), k0: c.k0, nl: c.nl, phase, delay, A: A2, brk }); };
+    keep(0, 0, cn, 0);
+    for (let j = 0; j < ns; j++) {
+      const x = j * dx, cm = coef(hAt(x + dx / 2)), ce = coef(hAt(x + dx));
+      lin(cn, cm, cm);
+      if (cm.Q) for (let i = 0; i < n; i++) { const p = -cm.Q * (re[i] * re[i] + im[i] * im[i]) * dx, c = Math.cos(p), s = Math.sin(p), r = re[i]; re[i] = r * c - im[i] * s; im[i] = r * s + im[i] * c; }
+      lin(cm, cm, ce);
+      const amax = 0.39 * ce.h; let nb = 0;
+      for (let i = 0; i < n; i++) { const a = Math.hypot(re[i], im[i]); if (a > amax) { re[i] *= amax / a; im[i] *= amax / a; nb++; } }
+      phase += (cn.k0 + ce.k0) / 2 * dx; delay += (1 / cn.cg0 + 1 / ce.cg0) / 2 * dx; cn = ce;
+      if ((j + 1) % every === 0 || j === ns - 1) keep(j + 1, x + dx, ce, nb / n);
+    }
+    // statistics at each kept station; the linear Hs comes straight from the shoaled spectrum
+    const c0 = coef(prof.h[0]);
+    st.forEach((q) => {
+      const eta = new Float64Array(n); let s2 = 0, s4 = 0, a2 = 0, crest = -1e9;
+      for (let i = 0; i < n; i++) { const ar = q.A[2 * i], ai = q.A[2 * i + 1], th = q.phase - wp * (i * dt + q.delay), e = ar * Math.cos(th) - ai * Math.sin(th); eta[i] = e; a2 += ar * ar + ai * ai; crest = Math.max(crest, e); }
+      const mu = eta.reduce((a, b) => a + b, 0) / n; for (let i = 0; i < n; i++) { const d = eta[i] - mu; s2 += d * d; s4 += d ** 4; }
+      let hmax = 0, lo = 0, hi = 0, up = false; for (let i = 1; i < n; i++) { if (eta[i - 1] < 0 && eta[i] >= 0) { if (up) hmax = Math.max(hmax, hi - lo); up = true; lo = hi = 0; } lo = Math.min(lo, eta[i]); hi = Math.max(hi, eta[i]); }
+      const c = coef(q.h); let ml = 0; for (let i = 0; i < n; i++) if (S[i] && c.cgn[i]) ml += S[i] * c0.cgn[i] / c.cgn[i];
+      Object.assign(q, { eta, hs: 4 * Math.sqrt(a2 / n / 2), hsLin: o.Hs * Math.sqrt(ml / S.reduce((a, b) => a + b, 0)), crest, hmax, kurt: s4 / n / (s2 / n) ** 2, kh: q.k0 * q.h });
+      delete q.A;
+    });
+    return { st, n, dt, wp, dx, o: Object.assign({}, o), len };
+  }
+  function wvDefaultLine(m) {             // through the middle along the prevailing wave direction, clipped to the map
+    const th = rad(m.meta.waveDir + 180), ux = Math.sin(th), uy = -Math.cos(th), cx = m.W / 2, cy = m.H / 2; let a = -1e9, b = 1e9;
+    [[ux, cx, m.W], [uy, cy, m.H]].forEach(([u, c, L]) => { if (Math.abs(u) < 1e-9) return; const t0 = -c / u, t1 = (L - c) / u; a = Math.max(a, Math.min(t0, t1)); b = Math.min(b, Math.max(t0, t1)); });
+    return [[cx + ux * a * 0.97, cy + uy * a * 0.97], [cx + ux * b * 0.97, cy + uy * b * 0.97]];
+  }
+  const wvLine = (m) => WV.line[m.id] || (WV.line[m.id] = wvDefaultLine(m));
+  function wvTurbines(m) {                // the farm's turbines on this map, in map km
+    let o = null; if (D.custom && D.custom.mapId === m.id) o = [0, 0]; else if (!D.custom && m.id === "map-" + D.meta.farm.id) o = farmOrigin();
+    return o ? T.map((t) => ({ name: t.spec.name, x: t.spec.x - o[0], y: t.spec.y - o[1] })) : [];
+  }
+  function wvNear(m) {                    // turbines within 600 m of the line, with their distance along it
+    const [[x0, y0], [x1, y1]] = wvLine(m), L = Math.hypot(x1 - x0, y1 - y0), ux = (x1 - x0) / L, uy = (y1 - y0) / L;
+    return wvTurbines(m).map((t) => { const s = (t.x - x0) * ux + (t.y - y0) * uy, d = Math.abs(-(t.x - x0) * uy + (t.y - y0) * ux); return Object.assign(t, { s, d }); }).filter((t) => t.d < 0.6 && t.s >= 0 && t.s <= L);
+  }
+  function wvOverlay(cv, tf, m) {
+    const g = cv.getContext("2d"), [[x0, y0], [x1, y1]] = wvLine(m), X = tf.X, Y = tf.Y, ang = Math.atan2(Y(y1) - Y(y0), X(x1) - X(x0)), r = WV.res[m.id];
+    g.lineWidth = 3; g.strokeStyle = "rgba(255,255,255,0.9)"; g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke();
+    g.lineWidth = 1.6; g.strokeStyle = "#0e1b27"; g.stroke();
+    g.fillStyle = "#0e1b27"; g.beginPath(); g.arc(X(x0), Y(y0), 4.5, 0, 2 * Math.PI); g.fill();
+    g.beginPath(); g.moveTo(X(x1), Y(y1)); g.lineTo(X(x1) - 11 * Math.cos(ang - 0.4), Y(y1) - 11 * Math.sin(ang - 0.4)); g.lineTo(X(x1) - 11 * Math.cos(ang + 0.4), Y(y1) - 11 * Math.sin(ang + 0.4)); g.closePath(); g.fill();
+    wvTurbines(m).forEach((t) => { g.beginPath(); g.arc(X(t.x), Y(t.y), 2.6, 0, 2 * Math.PI); g.fillStyle = "rgba(255,255,255,0.85)"; g.fill(); g.strokeStyle = "#0e1b27"; g.lineWidth = 1; g.stroke(); });
+    if (r && WV.st !== null && r.st[WV.st]) { const q = r.st[WV.st], f = q.x / 1000 / Math.hypot(x1 - x0, y1 - y0); g.beginPath(); g.arc(X(x0 + f * (x1 - x0)), Y(y0 + f * (y1 - y0)), 6, 0, 2 * Math.PI); g.strokeStyle = "#d1495b"; g.lineWidth = 2.2; g.stroke(); }
+    g.font = "11px IBM Plex Sans, sans-serif"; g.fillStyle = "#0e1b27"; g.fillText("waves in", X(x0) + 7, Y(y0) - 7);
+  }
+  function wvProfile(m) {
+    const [[x0, y0], [x1, y1]] = wvLine(m), L = Math.hypot(x1 - x0, y1 - y0) * 1000, N = Math.max(40, Math.ceil(L / 50)), s = [], h = [];
+    for (let i = 0; i <= N; i++) { const f = i / N; s.push(f * L); h.push(Math.max(1, depthAt(m, x0 + f * (x1 - x0), y0 + f * (y1 - y0)))); }
+    return { s, h };
+  }
+  const wvStamp = (m) => JSON.stringify(wvLine(m)) + "|" + m.depth.reduce((a, b) => a + b, 0).toFixed(2);
+  function mbWavePanel(m) {
+    if (WV.Hs === null) { WV.Hs = m.meta.hs50; WV.Tp = +tpOf(m.meta.hs50).toFixed(1); }
+    const f = (k, l, u, step) => `<label class="bl-f"><span>${l}</span><span class="bl-in"><input type="number" data-wv="${k}" value="${WV[k]}" step="${step}"><i>${u}</i></span></label>`;
+    return `<h4 class="bl-h" style="margin-top:0">Storm waves over the seabed</h4><p class="cap">Drag on the map to draw the path the waves take (start offshore). An irregular sea is sent along it and evolves with the depth: it shoals, and its groups focus into rogue waves in deeper water or spread out in shallow water.</p>` +
+      f("Hs", "Significant wave height", "m", 0.1) + f("Tp", "Peak period", "s", 0.1) +
+      `<details class="bl-more"><summary>More settings</summary>` + f("gamma", "Peak enhancement γ", "", 0.1) + f("dur", "Record length", "s", 60) + f("seed", "Random seed", "", 1) +
+      `<label class="bl-f"><span>Nonlinear evolution</span><span class="bl-in"><input type="checkbox" data-wvnl${WV.nl ? " checked" : ""}></span></label>` +
+      `<p class="cap">Spatial nonlinear Schrödinger model with exact linear dispersion and shoaling for every frequency, the finite-depth nonlinear term (switched off where kh &lt; 0.7, where it no longer applies) and a depth-limited breaking cap H &lt; 0.78 h. Normal incidence, no refraction. The Python version is nls/variable_depth.py.</p></details>` +
+      `<div class="bl-row"><button class="btn primary" type="button" data-wvrun>Run waves along the line</button><button class="btn" type="button" data-wvdef>Reset the line</button></div><p class="muted" data-wvmsg style="font-size:0.8rem"></p>`;
+  }
+  function wvResults(host, m) {
+    const r = WV.res[m.id], el = host.querySelector("[data-wres]"); if (!el) return;
+    if (!r || r.stamp !== wvStamp(m)) { el.innerHTML = ""; return; }
+    const st = r.st, km = st.map((q) => q.x / 1000), near = wvNear(m), crit = 1.363, bands = [];
+    let b0 = null; st.forEach((q, i) => { const on = q.kh >= crit; if (on && b0 === null) b0 = km[i]; if ((!on || i === st.length - 1) && b0 !== null) { bands.push({ x0: b0, x1: km[i], color: "--accent-soft", opacity: 0.6 }); b0 = null; } });
+    const vl = near.map((t) => ({ x: t.s, label: t.name, color: "--muted" })), vl0 = near.map((t) => ({ x: t.s, color: "--muted" }));
+    if (WV.st === null || !st[WV.st]) WV.st = st.reduce((b, q, i) => (q.crest > st[b].crest ? i : b), 0);
+    const q = st[WV.st], last = st[st.length - 1], kmax = st.reduce((b, x, i) => (x.kurt > st[b].kurt ? i : b), 0), brk = st.some((x) => x.brk > 0), shallow = st.some((x) => !x.nl);
+    const pill = (v, lo, hi) => (v < lo ? "green" : v < hi ? "amber" : "red");
+    el.innerHTML = `<div class="bl-hd2"><h3>Along the line</h3><span class="row" style="gap:6px"><button class="btn sm" type="button" data-wvcsv>Export CSV</button></span></div>` +
+      `<div class="wv-sum">` + [["Hs in → out", `${fmt(st[0].hs, 1)} → ${fmt(last.hs, 1)} m`], ["Largest wave", `${fmt(Math.max(...st.map((x) => x.hmax)), 1)} m`], ["Highest crest", `${fmt(Math.max(...st.map((x) => x.crest)), 1)} m`],
+        ["Peak kurtosis", `<span class="pill ${pill(st[kmax].kurt, 3.3, 4)}">${fmt(st[kmax].kurt, 2)}</span> at ${fmt(km[kmax], 1)} km`]].map(([a, b]) => `<div><span class="muted">${a}</span><b class="mono">${b}</b></div>`).join("") + `</div>` +
+      `<p class="cap">Shaded: deep enough for wave groups to focus (kh above 1.363). Kurtosis above 3 means more extreme waves than a linear sea.${shallow ? " Part of the line is too shallow for the nonlinear model; there the waves are carried linearly." : ""}${brk ? " Waves break where the depth limits them." : ""}</p>` +
+      `<div class="wv-charts"><div data-wc="h"></div><div data-wc="hs"></div><div data-wc="k"></div></div>` +
+      `<div class="bl-hd2" style="margin-top:8px"><h3>Surface at ${fmt(km[WV.st], 2)} km</h3><label class="sel">Position<input type="range" data-wvst min="0" max="${st.length - 1}" value="${WV.st}" style="width:180px"></label></div><div data-wc="eta"></div>` +
+      (near.length ? `<div class="tbl-wrap"><table class="list"><thead><tr><th>Turbine near the line</th><th class="r">Along</th><th class="r">Depth</th><th class="r">Hs</th><th class="r">Largest wave</th><th class="r">Kurtosis</th></tr></thead><tbody>${near.map((t) => { const j = st.reduce((b, x, i) => (Math.abs(km[i] - t.s) < Math.abs(km[b] - t.s) ? i : b), 0), x = st[j];
+        return `<tr><td>${t.name}</td><td class="r mono">${fmt(t.s, 2)} km</td><td class="r mono">${fmt(x.h, 1)} m</td><td class="r mono">${fmt(x.hs, 2)} m</td><td class="r mono">${fmt(x.hmax, 1)} m</td><td class="r"><span class="pill ${pill(x.kurt, 3.3, 4)}">${fmt(x.kurt, 2)}</span></td></tr>`; }).join("")}</tbody></table></div>` : "");
+    const W2 = Math.max(300, Math.min(420, (el.clientWidth || 900) / 3 - 12)), C = (k) => el.querySelector(`[data-wc="${k}"]`);
+    chart(C("h"), { series: [{ x: km, y: st.map((x) => -x.h), color: "--ink", width: 1.6 }], bands, vlines: vl, xl: "distance along the line (km)", yl: "seabed (m)", w: W2, h: 190, label: "Seabed depth along the line" });
+    chart(C("hs"), { series: [{ x: km, y: st.map((x) => x.hsLin), color: "--muted", dash: "4 3", width: 1.4 }, { x: km, y: st.map((x) => x.hs), color: "--accent", width: 1.8 }, { x: km, y: st.map((x) => x.hmax), color: "--crit", width: 1.2 }], bands, vlines: vl0,
+      xl: "distance along the line (km)", yl: "height (m)", w: W2, h: 190, label: "Wave heights along the line", legend: [{ label: "Hs", color: "--accent" }, { label: "Hs, linear", color: "--muted", dash: "4 3" }, { label: "largest wave", color: "--crit" }] });
+    chart(C("k"), { series: [{ x: km, y: st.map((x) => x.kurt), color: "--warn", width: 1.8 }], bands, vlines: vl0, hlines: [{ y: 3, label: "linear sea" }], xl: "distance along the line (km)", yl: "kurtosis", w: W2, h: 190, label: "Kurtosis along the line" });
+    const i0 = q.eta.reduce((b, v, i) => (v > q.eta[b] ? i : b), 0), span = Math.min(r.n, Math.round(300 / r.dt)), a = Math.max(0, Math.min(r.n - span, i0 - span / 2)), ts = [], es = [];
+    for (let i = a; i < a + span; i++) { ts.push(i * r.dt); es.push(q.eta[i]); }
+    chart(C("eta"), { series: [{ x: ts, y: es, color: "--accent", width: 1.2 }], hlines: [{ y: 0 }], xl: "time (s)", yl: "surface (m)", w: Math.min(900, el.clientWidth || 900), h: 200, label: "Surface elevation at the chosen position" });
+    el.querySelector("[data-wvst]").addEventListener("input", (e) => { WV.st = +e.target.value; wvResults(host, m); const cv = host.querySelector("[data-mc]"); if (cv && host._wvRender) host._wvRender(); });
+    el.querySelector("[data-wvcsv]").addEventListener("click", () => {
+      const rows = ["distance_m,depth_m,kh,hs_m,hs_linear_m,hmax_m,crest_m,kurtosis,nonlinear,breaking_fraction"].concat(st.map((x) => [x.x.toFixed(1), x.h.toFixed(2), x.kh.toFixed(3), x.hs.toFixed(3), x.hsLin.toFixed(3), x.hmax.toFixed(3), x.crest.toFixed(3), x.kurt.toFixed(3), x.nl ? 1 : 0, x.brk.toFixed(4)].join(",")));
+      const ser = ["time_s,eta_m"].concat(Array.from(q.eta, (v, i) => `${(i * r.dt).toFixed(3)},${v.toFixed(4)}`));
+      saveFile("storm_waves_along_line.csv", `# ${m.name}; Hs ${r.o.Hs} m, Tp ${r.o.Tp} s, gamma ${r.o.gamma}, ${r.o.dur} s, seed ${r.o.seed}, ${r.o.nl ? "nonlinear" : "linear"}\n` + rows.join("\n") + `\n\n# surface at ${x2(q.x)} m\n` + ser.join("\n"), "text/csv");
+    });
+    function x2(v) { return v.toFixed(0); }
+  }
+  function wvWire(host, m, cv, getTf, render) {
+    host._wvRender = render;
+    host.querySelectorAll("[data-wv]").forEach((x) => x.addEventListener("change", () => { const v = +x.value; if (isFinite(v)) WV[x.dataset.wv] = x.dataset.wv === "seed" ? Math.round(v) : Math.max(x.dataset.wv === "dur" ? 120 : 0.1, v); }));
+    const nl = host.querySelector("[data-wvnl]"); if (nl) nl.addEventListener("change", () => { WV.nl = nl.checked; });
+    host.querySelector("[data-wvdef]").addEventListener("click", () => { delete WV.line[m.id]; WV.st = null; render(); wvResults(host, m); });
+    host.querySelector("[data-wvrun]").addEventListener("click", () => {
+      const msg = host.querySelector("[data-wvmsg]"); msg.textContent = "Running…";
+      setTimeout(() => { const t0 = performance.now(), r = wvRun(wvProfile(m), { Hs: WV.Hs, Tp: WV.Tp, gamma: WV.gamma, dur: WV.dur, seed: WV.seed, nl: WV.nl }); r.stamp = wvStamp(m); WV.res[m.id] = r; WV.st = null;
+        msg.textContent = `${fmt(r.len / 1000, 1)} km in ${Math.round(r.len / r.dx)} steps, ${r.n} time points, ${((performance.now() - t0) / 1000).toFixed(1)} s.`; wvResults(host, m); render(); }, 30);
+    });
+    let drag = null;
+    cv.addEventListener("pointerdown", (e) => { const tf = getTf(); if (!tf) return; const rc = cv.getBoundingClientRect(), p = tf.inv(e.clientX - rc.left, e.clientY - rc.top); if (p[0] < 0 || p[1] < 0 || p[0] > m.W || p[1] > m.H) return; drag = { p0: p, old: WV.line[m.id] }; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener("pointermove", (e) => { if (!drag) return; const tf = getTf(), rc = cv.getBoundingClientRect(), p = tf.inv(e.clientX - rc.left, e.clientY - rc.top).map((v, i) => Math.min(i ? m.H : m.W, Math.max(0, v)));
+      if (Math.hypot(p[0] - drag.p0[0], p[1] - drag.p0[1]) > 0.1) { WV.line[m.id] = [drag.p0, p]; render(); } });
+    const end = () => { if (!drag) return; const L = WV.line[m.id]; if (!L || Math.hypot(L[1][0] - L[0][0], L[1][1] - L[0][1]) < 0.5) WV.line[m.id] = drag.old; drag = null; WV.st = null; render(); wvResults(host, m); };
+    cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
   }
   function mbDepthPanel(m) {
     return `<h4 class="bl-h" style="margin-top:0">Shape the seabed</h4><p class="cap">Drag on the map with a tool. Shallower and deeper move the seabed by up to the strength per stroke, smooth evens it out, set depth pulls it towards a value.</p>` +
