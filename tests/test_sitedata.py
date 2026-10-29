@@ -88,6 +88,25 @@ def test_climate_summary_and_daily():
     assert len(d["hs_mean"]) == 6 * 365 and d["hs_max"][0] >= d["hs_mean"][0]
 
 
+def test_fatigue_table_lumps_the_joint_climate():
+    s = _series(2)
+    n = len(s["waveHs"])
+    s["windDirection"] = np.where(np.arange(n) % 2 == 0, 230.0, 50.0)          # half the time from the SW, half from the NE
+    s["waveMeanDirection"] = np.where(np.arange(n) % 2 == 0, 260.0, 50.0)       # SW wind with waves 30 degrees off
+    ft = wis.fatigue_table(s)
+    rows = np.array(ft["rows"])
+    assert rows[:, 3].sum() == pytest.approx(1.0)
+    sw = rows[rows[:, 0] == round(230 / 30) % 12]
+    ne = rows[rows[:, 0] == round(50 / 30) % 12]
+    assert set(sw[:, 2]) == {1} and set(ne[:, 2]) == {0}                         # 30 deg class vs aligned
+    assert sw[:, 3].sum() == pytest.approx(0.5, abs=1e-6) and np.allclose(sw[:, 6], 30)
+    # the lumped Hs keeps the wave energy of each cell
+    hs = s["waveHs"]; ws = s["windSpeed"]
+    pick = (np.arange(n) % 2 == 0) & (np.floor(ws) == 7)
+    row = sw[sw[:, 1] == 7][0]
+    assert row[4] == pytest.approx(np.sqrt(np.mean(hs[pick] ** 2)), rel=1e-3)
+
+
 def test_build_site_offline(monkeypatch):
     g = LocalGrid.around(36.89, -75.49, 4, 3, 0.5)
     D = np.full((g.ny, g.nx), 25.0); land = np.zeros_like(D, bool); land[0, 0] = True; D[land] = 0

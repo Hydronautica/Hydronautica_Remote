@@ -5226,11 +5226,41 @@ details.sec > * + * { margin-top: 8px; }
     { id: "6.2", cat: "A", name: "Parked, 50-year storm, grid loss", wind: "ewm50", sea: "ess50", mode: "parked", Us: "one", seeds: 1, yaws: [-90, -30, 30, 90], note: "Yaw drive lost: any misalignment" },
     { id: "6.3", cat: "N", name: "Parked, 1-year wind, extreme misalignment", wind: "ewm1", sea: "ess1", mode: "parked", Us: "one", seeds: 1, yaws: [-20, 20], note: "Yaw misalignment ±20°" },
   ];
-  let DLCCFG = { std: "iec", cls: "I", turb: "B", fti: "site", T: 120, tTrans: 20, sel: DLC_DEFS.map((x) => x.id), hs50: 9.5, wA: 10.5, wk: 2.1, binStep: 4 };
+  let DLCCFG = { std: "iec", cls: "I", turb: "B", fti: "site", fsea: "site", T: 120, tTrans: 20, sel: DLC_DEFS.map((x) => x.id), hs50: 9.5, wA: 10.5, wk: 2.1, binStep: 4 };
   try { Object.assign(DLCCFG, JSON.parse(localStorage.getItem("stormtwin-dlc-v1") || "{}")); } catch (e) { /* storage unavailable */ }
   const dlcKeep = () => { try { localStorage.setItem("stormtwin-dlc-v1", JSON.stringify(DLCCFG)); } catch (e) { /* storage unavailable */ } };
   const hsNSS = (U) => 0.3 + 0.011 * (U / 1.36) ** 2, tpOf = (hs) => tpTyp(hs) + 0.6;     // expected Hs given the hub wind (U10 ≈ U/1.36)
+  // fatigue from the site's joint wind-wave climate: the hourly hindcast lumped into cases of hub wind speed and wind-wave
+  // misalignment, each with its share of the lifetime, damage-equivalent Hs (energy average), mean Tp and the turbulence for
+  // that speed with the wake added from each wind direction it covers. Hours below cut-in and above cut-out are parked cases.
+  function siteFatCases(ty, c) {
+    const F = c.ftab, hubF = Math.pow(ty.z_hub / 10, 0.11), siteTI = tiFun({ model: c.fti === "charnock" ? "charnock" : "table" }, ty.z_hub), step = c.binStep, cells = {}, wk = {};
+    const wakeF = (dir, U) => { if (c.fti === "class") return 1; const k = dir + "|" + Math.round(U); return wk[k] !== undefined ? wk[k] : (wk[k] = ((wakeAt(bSite, dir, Math.max(U, 3)) || {}).F || 1)); };
+    F.rows.forEach(([si, ui, mi, p, hs, tp, mm]) => {
+      const u10 = (ui + 0.5) * F.u_step, U = u10 * hubF, b = U < ty.cut_in ? -1 : U > ty.cut_out ? 999 : Math.floor((U - ty.cut_in) / step), ti = c.fti === "class" ? 0 : 100 * siteTI(u10) * wakeF(si * F.sector_deg, U);
+      const e = cells[b + "|" + mi] || (cells[b + "|" + mi] = { b, mi, parked: b < 0 || b === 999, p: 0, hs2: 0, tp: 0, mm: 0, ti: 0, u: 0 });
+      e.p += p; e.hs2 += p * hs * hs; e.tp += p * tp; e.mm += p * mm; e.ti += p * ti; e.u += p * U;
+    });
+    const add = (t, e) => ["p", "hs2", "tp", "mm", "ti", "u"].forEach((f) => { t[f] += e[f]; }), byB = {};
+    Object.values(cells).forEach((e) => (byB[e.b] = byB[e.b] || []).push(e));
+    // in each wind bin keep the misalignment classes with at least 5 % of the bin (at most three) and fold the rest into the nearest
+    let cases = [];
+    Object.values(byB).forEach((arr) => { const P = arr.reduce((a, e) => a + e.p, 0); arr.sort((a, b) => b.p - a.p);
+      const keep = arr.filter((e, i) => i === 0 || e.p >= 0.05 * P).slice(0, 3);
+      arr.forEach((e) => { if (!keep.includes(e)) add(keep.reduce((a, k) => (Math.abs(k.mi - e.mi) < Math.abs(a.mi - e.mi) ? k : a)), e); });
+      cases = cases.concat(keep); });
+    // rare cases (under 0.1 % of the time) go into the nearest wind bin's main case
+    const main = cases.filter((e) => e.p >= 1e-3), gap = (k, e) => (k.parked !== e.parked ? 1e4 : 0) + Math.abs(Math.max(-2, Math.min(k.b, 60)) - Math.max(-2, Math.min(e.b, 60))) + (k.mi !== e.mi ? 0.5 : 0);
+    const byMain = (e) => main.reduce((a, k) => (gap(k, e) < gap(a, e) ? k : a));
+    cases.filter((e) => e.p < 1e-3).forEach((e) => add(byMain(e), e));
+    return main.map((e) => ({ U: e.u / e.p, p: e.p, Hs: Math.sqrt(e.hs2 / e.p), Tp: e.tp / e.p, mis: e.mm / e.p, TI: e.ti / e.p,
+      mode: e.parked ? "parked" : "power" })).sort((a, b) => a.U - b.U || Math.abs(a.mis) - Math.abs(b.mis));
+  }
   function dlcRuns(ty, def, c) {
+    if (def.id === "1.2" && c.ftab) return siteFatCases(ty, c).map((k, i) => Object.assign({}, SIM0, { T: Math.max(c.T, 600), tTrans: c.tTrans, dt: 0.1, outDt: 0.2, nm: 3, seed: 300 + i,
+      wind: "ntm", U: +k.U.toFixed(2), cls: c.cls, turb: c.turb, yaw: 0, TI: +k.TI.toFixed(2), sea: "irregular", Hs: +k.Hs.toFixed(2), Tp: +Math.max(2.5, k.Tp).toFixed(1), gamma: 2,
+      waveDir: Math.round(k.mis), cur: 0.5, mode: k.mode, event: "none", tEvent: c.T * 0.4, tGust: c.T * 0.5, pw: k.p,
+      label: `U ${fmt(k.U, 1)} m/s, waves ${Math.round(k.mis)}° off, Hs ${fmt(k.Hs, 2)} m${k.mode === "parked" ? ", parked" : ""} (${fmt(100 * k.p, 2)} % of the time)` }));
     const der = TT.derived(ty), Vr = Math.round(der.rated_U), vin = ty.cut_in, vout = ty.cut_out;
     let Us = [];
     if (def.Us === "bins") for (let u = Math.ceil(vin + 1); u <= vout; u += c.binStep) Us.push(u);
@@ -5256,9 +5286,9 @@ details.sec > * + * { margin-top: 8px; }
     const dis = (k) => (fromMap && ["hs50", "wA", "wk"].includes(k) ? " disabled" : "");
     const numD = (k, lab, v, u, step) => numIn(k, lab, v, u, step).replace("<input ", `<input${dis(k)} `);
     host.innerHTML = `<div class="bl-hd2"><h3>Design load cases</h3>${PLACEHOLDER}</div><p class="cap">The load cases a certification body expects for a fixed-bottom offshore turbine, run on the simulation engine for ${ty.name} at ${t.spec.name} (${fmt(t.spec.depth, 1)} m). Extreme loads get the partial safety factor of their category; DLC 1.2 gives damage-equivalent loads weighted over the site's wind and a fatigue check at the hot spots.</p>` +
-      `<div class="dlc-set bl-g"><div class="dlc-sum"><span><b>${std.name.split(" with")[0]}</b> · class ${c.cls}${c.turb} · H<sub>s,50</sub> ${fmt(c.hs50, 1)} m · fatigue TI ${c.fti === "class" ? "class " + c.turb : "site + wakes"} · Weibull ${fmt(c.wA, 1)} m/s, k ${fmt(c.wk, 2)}${fromMap ? ` <span class="pill info" title="From ${sm.map}">from the map</span>` : ""} · ${c.T} s runs</span><span class="muted">at ${t.spec.name}, ${fmt(t.spec.depth, 1)} m</span></div>` +
+      `<div class="dlc-set bl-g"><div class="dlc-sum"><span><b>${std.name.split(" with")[0]}</b> · class ${c.cls}${c.turb} · H<sub>s,50</sub> ${fmt(c.hs50, 1)} m · fatigue ${c.ftab ? `<span class="pill info" title="${c.ftab.rows.length} joint wind–wave cells from ${c.ftab.hours} hourly records">site climate${sm && sm.years ? ` ${sm.years[0]}–${sm.years[1]}` : ""}</span>` : c.fsea !== "iec" ? `simplified <span class="muted">(the farm's map has no joint climate; make one from an area)</span>` : "simplified"} · TI ${c.fti === "class" ? "class " + c.turb : "site + wakes"} · Weibull ${fmt(c.wA, 1)} m/s, k ${fmt(c.wk, 2)}${fromMap ? ` <span class="pill info" title="From ${sm.map}">from the map</span>` : ""} · ${c.T} s runs</span><span class="muted">at ${t.spec.name}, ${fmt(t.spec.depth, 1)} m</span></div>` +
       `<details class="bl-more"><summary>Settings</summary><div class="dlc-grid">` + sel2("std", "Standard", c.std, Object.entries(DLC_STD).map(([k, v]) => [k, v.name])) + sel2("cls", "Turbine class", c.cls, [["I", "I (V<sub>ref</sub> 50 m/s)"], ["II", "II (42.5)"], ["III", "III (37.5)"]]) + sel2("turb", "Turbulence category", c.turb, [["A", "A"], ["B", "B"], ["C", "C"]]) +
-      sel2("src", "Site conditions", c.src || "map", [["map", "From the farm's map"], ["manual", "Enter by hand"]]) + sel2("fti", "Turbulence for fatigue (DLC 1.2)", c.fti || "site", [["site", "Site: offshore TI table, plus wakes here"], ["charnock", "Site: Charnock sea surface, plus wakes here"], ["class", "Turbine class (conservative)"]]) + numD("hs50", "50-year H<sub>s</sub>", c.hs50, "m", 0.1) + numD("wA", "Weibull A at hub", c.wA, "m/s", 0.1) + numD("wk", "Weibull k", c.wk, "", 0.05) + numIn("T", "Length of each run", c.T, "s", 10) + numIn("binStep", "Fatigue wind bins every", c.binStep, "m/s", 1) +
+      sel2("src", "Site conditions", c.src || "map", [["map", "From the farm's map"], ["manual", "Enter by hand"]]) + sel2("fsea", "Fatigue sea states (DLC 1.2)", c.fsea || "site", [["site", "Site's joint wind–wave climate (from the map)"], ["iec", "Simplified: Weibull wind, H<sub>s</sub> from the wind, 0/±30°"]]) + sel2("fti", "Turbulence for fatigue (DLC 1.2)", c.fti || "site", [["site", "Site: offshore TI table, plus wakes here"], ["charnock", "Site: Charnock sea surface, plus wakes here"], ["class", "Turbine class (conservative)"]]) + numD("hs50", "50-year H<sub>s</sub>", c.hs50, "m", 0.1) + numD("wA", "Weibull A at hub", c.wA, "m/s", 0.1) + numD("wk", "Weibull k", c.wk, "", 0.05) + numIn("T", "Length of each run", c.T, "s", 10) + numIn("binStep", "Fatigue wind bins every", c.binStep, "m/s", 1) +
       `</div><p class="cap" style="margin:4px 0 0">The standards ask for 10-minute runs (1 hour for some sea states) and six seeds per bin; shorter runs keep the placeholder engine quick. With "From the farm's map", the 50-year wave height and the wind distribution come from the Map builder's metocean settings, scaled to hub height.</p></details></div>` +
       `<div class="dlc-pos bl-g"><div class="row" style="justify-content:space-between"><span><b>Which position?</b> <span class="muted">Loads depend on water depth and wake turbulence. Screen the farm to find the worst position, then run the full set there.</span></span><button class="btn" type="button" data-screen>Screen all ${T.length} positions</button></div><div data-scr></div></div>` +
       `<div class="tbl-wrap"><table class="list bl-ltt dlc-tbl"><thead><tr><th></th><th>DLC</th><th>Design situation</th><th>Wind</th><th>Sea</th><th>Type</th><th class="r">γ<sub>f</sub></th><th class="r">Runs</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` +
@@ -5295,19 +5325,21 @@ details.sec > * + * { margin-top: 8px; }
     const B = TFE.build(ty, t.spec.depth, 0), hs = TFE.hotSpots(ty, B, t.spec.depth), chk = [["TwrBsM", hs.tower_base, ty.mat_tw, "Tower base"], ["MudM", hs.mudline, ty.mat_mp, "Mudline"]].map(([k, h, mat, lab]) => {
       const fy = fyOf(matOf("steel", mat), h.t * 1e3) / std.gm, s2 = gov[k].v * 1e6 / h.W / 1e6 + h.N / h.A / 1e6 * 1.1; return { lab, s: s2, fy, u: s2 / fy, id: gov[k].id }; });
     const pill = (u) => `<span class="pill ${u < 0.8 ? "green" : u < 1 ? "amber" : "red"}">${fmt(u, 2)}</span>`;
-    let h = stale(r) + `<h3 style="margin:12px 0 4px;font-size:1rem">Extreme loads (characteristic × γ<sub>f</sub> = design)</h3><div class="tbl-wrap"><table class="list bl-ltt"><thead><tr><th>DLC</th><th class="r">γ<sub>f</sub></th>${DLC_KEYS.map(([k, l]) => `<th class="r">${l}<div class="muted" style="font-weight:400">${SIM_UNIT[k]}</div></th>`).join("")}<th></th></tr></thead><tbody>` +
+    let h = stale(r) + (!ext.length ? "" : `<h3 style="margin:12px 0 4px;font-size:1rem">Extreme loads (characteristic × γ<sub>f</sub> = design)</h3><div class="tbl-wrap"><table class="list bl-ltt"><thead><tr><th>DLC</th><th class="r">γ<sub>f</sub></th>${DLC_KEYS.map(([k, l]) => `<th class="r">${l}<div class="muted" style="font-weight:400">${SIM_UNIT[k]}</div></th>`).join("")}<th></th></tr></thead><tbody>` +
       ext.map((d) => `<tr><td class="mono">${d.id}</td><td class="r mono">${std.psf[d.cat]}</td>${DLC_KEYS.map(([k]) => { const p = peak(d, k), dv = p.v * std.psf[d.cat], g = gov[k].id === d.id; return `<td class="r mono"${g ? ' style="font-weight:700;color:var(--crit)"' : ""} title="characteristic ${cbv(p.v)}, worst run: ${p.run ? p.run.inp.label : ""}">${cbv(dv)}</td>`; }).join("")}<td><button class="btn sm" data-open="${d.id}">Simulate worst</button></td></tr>`).join("") +
       `<tr class="dlc-gov"><td colspan="2"><b>Governing</b></td>${DLC_KEYS.map(([k]) => `<td class="r mono"><b>${cbv(gov[k].v)}</b><div class="muted">DLC ${gov[k].id || "–"}</div></td>`).join("")}<td></td></tr></tbody></table></div>` +
-      `<div class="tbl-wrap" style="margin-top:8px"><table class="list bl-chk"><tbody>${chk.map((x) => `<tr><td>${x.lab}: bending and axial stress from DLC ${x.id || "–"}</td><td class="mono">${fmt(x.s, 0)} MPa of f<sub>y</sub>/γ<sub>M</sub> ${fmt(x.fy, 0)} MPa</td><td>${pill(x.u)}</td></tr>`).join("")}</tbody></table></div>`;
+      `<div class="tbl-wrap" style="margin-top:8px"><table class="list bl-chk"><tbody>${chk.map((x) => `<tr><td>${x.lab}: bending and axial stress from DLC ${x.id || "–"}</td><td class="mono">${fmt(x.s, 0)} MPa of f<sub>y</sub>/γ<sub>M</sub> ${fmt(x.fy, 0)} MPa</td><td>${pill(x.u)}</td></tr>`).join("")}</tbody></table></div>`);
     if (out["1.2"]) {
-      const runs = out["1.2"], byU = {}; runs.forEach((x) => { (byU[x.inp.U] = byU[x.inp.U] || []).push(x); });
-      const Us = Object.keys(byU).map(Number).sort((a, b) => a - b), m = 4, wb = (u) => { const a = u - c.binStep / 2, b = u + c.binStep / 2, F = (v) => 1 - Math.exp(-((Math.max(0, v) / c.wA) ** c.wk)); return F(b) - F(a); };
-      const keysF = [["TwrBsMyt", "Tower base, fore-aft"], ["MudMy", "Mudline, fore-aft"], ["RootMflp1", "Blade root, flap"]];
-      const del = (u, k) => Math.pow(byU[u].reduce((s2, x) => s2 + x.stats[k].del ** m, 0) / byU[u].length, 1 / m);
-      const life = (k) => Math.pow(Us.reduce((s2, u) => s2 + wb(u) * del(u, k) ** m, 0) / Math.max(1e-9, Us.reduce((s2, u) => s2 + wb(u), 0)), 1 / m);
+      const runs = out["1.2"], w = fatWeights(c, runs), site = runs[0].inp.pw != null, m = 4, keysF = [["TwrBsMyt", "Tower base, fore-aft"], ["MudMy", "Mudline, fore-aft"], ["RootMflp1", "Blade root, flap"]];
+      const byU = {}; runs.forEach((x, i) => { const u = Math.round(x.inp.U); (byU[u] = byU[u] || []).push([x, w[i]]); });
+      const Us = Object.keys(byU).map(Number).sort((a, b) => a - b), del = (u, k) => Math.pow(byU[u].reduce((a, [x, wi]) => a + wi * x.stats[k].del ** m, 0) / Math.max(1e-12, byU[u].reduce((a, [, wi]) => a + wi, 0)), 1 / m);
+      const life = (k) => fatLife(runs, w, k, m), parked = runs.reduce((a, x, i) => a + (x.inp.mode === "parked" ? w[i] : 0), 0);
       h += `<h3 style="margin:14px 0 4px;font-size:1rem">Fatigue, DLC 1.2: damage-equivalent loads (1 Hz, m = ${m})</h3><div class="grid2"><div data-fch></div><div class="tbl-wrap"><table class="list bl-ltt"><thead><tr><th>Location</th><th class="r">Lifetime DEL</th></tr></thead><tbody>${keysF.map(([k, l]) => `<tr><td>${l}</td><td class="r mono">${cbv(life(k))} ${SIM_UNIT[k]}</td></tr>`).join("")}</tbody></table>` +
-        `<p class="cap">Weighted over the site's wind (Weibull A ${c.wA} m/s, k ${c.wk}); time outside the operating range is not counted.</p></div></div>` +
-        `<h3 style="margin:12px 0 4px;font-size:1rem">Fatigue check at the hot spots</h3>${dlcFatigueTable(dlcFatigue(ty, r))}<p class="cap">Rainflow cycles of every DLC 1.2 run, scaled to 25 years over the site wind, turned into stress ranges (moment range / section modulus × SCF × thickness correction) and summed with Miner's rule on DNV-RP-C203 curve D: in air for the tower, in seawater with cathodic protection at the mudline. Design fatigue factor 2 where inspectable, 3 where not; wind–wave misalignment 0° and ±30° across the seeds. Operating time only (idling and storms are in the Fatigue tab's long-term analysis). With the placeholder engine, use these numbers to compare designs and positions rather than as a final result.</p>`;
+        (site ? `<p class="cap">${runs.length} cases from the site's joint wind–wave climate covering all of the time (${fmt(100 * parked, 1)} % parked or idling), each weighted by its share.</p>` : `<p class="cap">Weighted over the site's wind (Weibull A ${c.wA} m/s, k ${c.wk}); time outside the operating range is not counted.</p>`) + `</div></div>`;
+      if (site) h += `<details class="bl-more"><summary>The ${runs.length} fatigue cases</summary><div class="tbl-wrap"><table class="list bl-ltt"><thead><tr><th class="r">Hub wind</th><th class="r">TI</th><th class="r">H<sub>s</sub></th><th class="r">T<sub>p</sub></th><th class="r">Waves off the wind</th><th></th><th class="r">Share of time</th><th class="r">Share of mudline damage</th></tr></thead><tbody>${(() => {
+        const d = runs.map((x, i) => w[i] * x.stats.MudMy.del ** m), D = d.reduce((a, b) => a + b, 0) || 1;
+        return runs.map((x, i) => `<tr><td class="r mono">${fmt(x.inp.U, 1)} m/s</td><td class="r mono">${fmt(x.inp.TI, 1)} %</td><td class="r mono">${fmt(x.inp.Hs, 2)} m</td><td class="r mono">${fmt(x.inp.Tp, 1)} s</td><td class="r mono">${x.inp.waveDir}°</td><td>${x.inp.mode === "parked" ? '<span class="pill">parked</span>' : ""}</td><td class="r mono">${fmt(100 * w[i], 2)} %</td><td class="r mono">${fmt(100 * d[i] / D, 1)} %</td></tr>`).join(""); })()}</tbody></table></div></details>`;
+      h += `<h3 style="margin:12px 0 4px;font-size:1rem">Fatigue check at the hot spots</h3>${dlcFatigueTable(dlcFatigue(ty, r))}<p class="cap">Rainflow cycles of every DLC 1.2 run, scaled to 25 years by each run's share of the time, turned into stress ranges (moment range / section modulus × SCF × thickness correction) and summed with Miner's rule on DNV-RP-C203 curve D: in air for the tower, in seawater with cathodic protection at the mudline. Design fatigue factor 2 where inspectable, 3 where not. ${site ? "Sea states, wind speeds, misalignments and turbulence come from the site's hourly hindcast, with the wake turbulence at this position for each wind direction; parked and idling hours are included." : "Wind–wave misalignment 0° and ±30° across the seeds; operating time only (idling and storms are in the Fatigue tab's long-term analysis)."} With the placeholder engine, use these numbers to compare designs.</p>`;
       box.innerHTML = h;
       chart(box.querySelector("[data-fch]"), { series: keysF.map(([k], i) => ({ x: Us, y: Us.map((u) => del(u, k)), color: ["--accent", "--warn", "--ok"][i], width: 2, points: false })), xl: "wind at hub (m/s)", yl: "DEL (MN·m)", h: 200, label: "Damage-equivalent load by wind bin", legend: keysF.map(([, l], i) => ({ label: l, color: ["--accent", "--warn", "--ok"][i] })) });
     } else box.innerHTML = h;
@@ -5317,26 +5349,35 @@ details.sec > * + * { margin-top: 8px; }
   function farmMapNow() { const m = D.custom ? (D.custom.mapId ? MB.map(D.custom.mapId) : null) : MB.map("map-" + D.meta.farm.id); return m || null; }
   function siteMetocean(ty) {             // 50-year Hs and the hub-height Weibull from the farm's map
     const m = farmMapNow(); if (!m) return null; const M = m.meta, hubF = Math.pow(ty.z_hub / 10, 0.11);
-    return { hs50: +M.hs50.toFixed(1), wA: +(M.A * hubF).toFixed(2), wk: +M.k.toFixed(2), windDir: M.windDir, map: m.name };
+    return { hs50: +M.hs50.toFixed(1), wA: +(M.A * hubF).toFixed(2), wk: +M.k.toFixed(2), windDir: M.windDir, map: m.name, ftab: (m.climate && m.climate.fatigue) || null, years: m.climate ? m.climate.years : null };
   }
   function dlcSite(ty) {                  // the settings the load cases use: from the map unless the user chose manual
     const c = Object.assign({}, DLCCFG), sm = c.src !== "manual" ? siteMetocean(ty) : null;
-    if (sm) Object.assign(c, { hs50: sm.hs50, wA: sm.wA, wk: sm.wk }); return { c, sm };
+    if (sm) Object.assign(c, { hs50: sm.hs50, wA: sm.wA, wk: sm.wk });
+    c.ftab = sm && sm.ftab && c.fsea !== "iec" ? sm.ftab : null; return { c, sm };
   }
   // fatigue from DLC 1.2: rainflow cycles of each run, scaled to the lifetime over the site wind, as stress ranges at the hot spots
   // (moment range / section modulus × SCF × thickness correction), Miner's sum on DNV-RP-C203 curve D: in air for the tower,
   // in seawater with cathodic protection at the mudline; design fatigue factor 2 (inspectable) or 3 (not inspectable)
   const SN_DLC = { air: { a1: 12.164, m1: 3, a2: 15.606, m2: 5, Nk: 1e7 }, sea: { a1: 11.764, m1: 3, a2: 15.606, m2: 5, Nk: 1e6 } };
   const snDLC = (ds, c) => { const N1 = Math.pow(10, c.a1 - c.m1 * Math.log10(ds)); return N1 <= c.Nk ? N1 : Math.pow(10, c.a2 - c.m2 * Math.log10(ds)); };
+  // the share of the lifetime each fatigue run stands for: from the joint table directly, or the Weibull probability of its
+  // wind bin split over its seeds (operating time only)
+  function fatWeights(c, runs) {
+    if (runs.length && runs[0].inp.pw != null) return runs.map((x) => x.inp.pw);
+    const n = {}; runs.forEach((x) => { n[x.inp.U] = (n[x.inp.U] || 0) + 1; });
+    const F = (v) => 1 - Math.exp(-((Math.max(0, v) / c.wA) ** c.wk)), wb = (u) => F(u + c.binStep / 2) - F(u - c.binStep / 2);
+    return runs.map((x) => wb(x.inp.U) / n[x.inp.U]);
+  }
+  const fatLife = (runs, w, k, m = 4) => Math.pow(runs.reduce((a, x, i) => a + w[i] * x.stats[k].del ** m, 0) / Math.max(1e-12, w.reduce((a, b) => a + b, 0)), 1 / m);
   function dlcFatigue(ty, r) {
     if (!r || !r.result["1.2"]) return null;
-    const c = r.input, runs = r.result["1.2"], byU = {}; runs.forEach((x) => { (byU[x.inp.U] = byU[x.inp.U] || []).push(x); });
-    const Us = Object.keys(byU).map(Number).sort((a, b) => a - b), F = (v) => 1 - Math.exp(-((Math.max(0, v) / c.wA) ** c.wk)), wb = (u) => F(u + c.binStep / 2) - F(u - c.binStep / 2);
+    const c = r.input, runs = r.result["1.2"], w = fatWeights(c, runs);
     const t = T[bSite] || T[0], B = TFE.build(ty, t.spec.depth, 0), hs = TFE.hotSpots(ty, B, t.spec.depth), L = 25, secs = L * 365.25 * 86400;
-    const life = (k) => { const m = 4; return Math.pow(Us.reduce((s2, u) => s2 + wb(u) * (byU[u].reduce((a, x) => a + x.stats[k].del ** m, 0) / byU[u].length), 0) / Math.max(1e-9, Us.reduce((s2, u) => s2 + wb(u), 0)), 1 / m); };
+    const life = (k) => fatLife(runs, w, k);
     return [["Tower base weld", "TwrBsMyt", hs.tower_base, 2, "air"], ["Door frame", "TwrBsMyt", hs.door, 2, "air"], ["Monopile weld at the mudline", "MudMy", hs.mudline, 3, "sea"]].map(([lab, k, h, dff, env]) => {
       const scf = Math.max(1, h.scf), tk = Math.pow(Math.max(1, h.t * 1e3 / 25), 0.2), curve = SN_DLC[env]; let dmg = 0, dsMax = 0;
-      Us.forEach((u) => { const w = wb(u); byU[u].forEach((x) => { const st = x.stats[k]; if (!st.cyc) return; st.cyc.forEach((n, b) => { if (!n) return; const ds = RF_BINS[b] * 1e6 / h.W / 1e6 * scf * tk; dsMax = Math.max(dsMax, ds); dmg += n / st.secs * secs * w / byU[u].length / snDLC(ds, curve); }); }); });
+      runs.forEach((x, i) => { const st = x.stats[k]; if (!st.cyc) return; st.cyc.forEach((n, b) => { if (!n) return; const ds = RF_BINS[b] * 1e6 / h.W / 1e6 * scf * tk; dsMax = Math.max(dsMax, ds); dmg += n / st.secs * secs * w[i] / snDLC(ds, curve); }); });
       dmg *= dff; return { lab, k, DEL: life(k), scf: scf * tk, ds: dsMax, dff, dmg, life: L / Math.max(dmg, 1e-9) };
     });
   }

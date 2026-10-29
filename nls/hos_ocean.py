@@ -256,7 +256,7 @@ class HOSCase:
             "  theta0: 0.0 # along x\n"
             + spread +
             "  random phases: seed\n"
-            f"  randomisation seed: {s.seed}\n\n"
+            f"  randomisation seed: {s.seed if s.seed >= 100 else 100 + s.seed} # HOS-Ocean reserves values below 100\n\n"
             "numerical parameters:\n"
             "  time:\n"
             "    integration tolerance: 1.e-7\n"

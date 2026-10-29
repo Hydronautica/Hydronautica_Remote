@@ -149,8 +149,43 @@ def climate(series, hub_heights=None):
         "wave_rose": rose(wd, hs, bins=[0, 1, 2, 3, 4, 6, 99]),
         "wind_rose": rose(wdir, ws, bins=[0, 4, 8, 12, 16, 20, 99]),
         "monthly": [{"month": m + 1, "hs": float(np.nanmean(hs[month == m])), "wind": float(np.nanmean(ws[month == m]))} for m in range(12)],
+        "fatigue": fatigue_table(series),
     }
     return out
+
+
+MIS_EDGES = [0, 15, 45, 75, 105, 180.0001]     # |wave direction - wind direction| classes
+MIS_CENTRES = [0, 30, 60, 90, 135]
+
+
+def fatigue_table(series, sector_deg=30.0, u_step=1.0, u_max=36.0):
+    """Joint wind-wave climate for fatigue, lumped from the hourly record.
+
+    Cells are (wind direction sector, 10 m wind speed bin, wind-wave misalignment class). Each keeps its share of
+    the time, the damage-equivalent significant wave height (Hs averaged with exponent 2, i.e. wave energy, which is
+    what drives the wave-load spectrum) and the mean peak period. Returned as rows
+    [sector index, speed bin index, misalignment class, probability, Hs, Tp, signed mean misalignment] for non-empty cells.
+    """
+    ws, wd, hs, tp, md = (series[k] for k in ("windSpeed", "windDirection", "waveHs", "waveTpPeak", "waveMeanDirection"))
+    ok = np.isfinite(ws) & np.isfinite(wd) & np.isfinite(hs) & np.isfinite(tp) & np.isfinite(md)
+    ws, wd, hs, tp, md = ws[ok], wd[ok], hs[ok], tp[ok], md[ok]
+    ns = int(round(360 / sector_deg))
+    si = np.floor(((wd + sector_deg / 2) % 360) / sector_deg).astype(int) % ns
+    ui = np.minimum(np.floor(ws / u_step).astype(int), int(u_max / u_step) - 1)
+    dmis = (md - wd + 180) % 360 - 180                       # signed, wave relative to wind
+    mi = np.searchsorted(MIS_EDGES, np.abs(dmis), side="right") - 1
+    key = (si * 1000 + ui) * 10 + mi
+    keys, inv = np.unique(key, return_inverse=True)
+    n = len(ws)
+    cnt = np.bincount(inv).astype(float)
+    hs2 = np.bincount(inv, weights=hs**2) / cnt
+    tpm = np.bincount(inv, weights=tp) / cnt
+    dm = np.bincount(inv, weights=dmis) / cnt
+    rows = []
+    for k, c, h, t, d in zip(keys, cnt, hs2, tpm, dm):
+        rows.append([int(k // 10000), int(k // 10 % 1000), int(k % 10), round(c / n, 7), round(float(np.sqrt(h)), 3), round(float(t), 2), round(float(d), 1)])
+    return {"sector_deg": sector_deg, "u_step": u_step, "height_m": 10.0, "mis_centres": MIS_CENTRES, "mis_edges": MIS_EDGES[:-1] + [180],
+            "fields": ["sector", "u_bin", "mis_class", "p", "hs", "tp", "mis_mean"], "rows": rows, "hours": int(n)}
 
 
 def daily_series(series):
