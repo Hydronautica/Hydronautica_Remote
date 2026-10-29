@@ -579,6 +579,13 @@ details.sec > * + * { margin-top: 8px; }
 .bl-log { margin: 6px 0 0; padding-left: 18px; font-size: 0.74rem; color: var(--muted); }
 .bl-log li::marker { color: var(--ok); }
 .bl-res { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.sim-in .bl-more > summary { font-weight: 600; } .sim-ch { display: grid; grid-template-columns: auto 1fr; gap: 0 6px; font-size: 0.78rem; padding: 1px 0; } .sim-ch .mono { grid-column: 2; font-size: 0.68rem; }
+.sim-pre { gap: 4px; margin: 4px 0; } .sim-3d { height: 440px; } .sim-ctl { display: flex; gap: 8px; align-items: center; margin-top: 6px; } .sim-ctl input[type=range] { flex: 1; accent-color: var(--accent); } .sim-ctl select { width: auto; flex: none; } .sim-ctl [data-tnow] { min-width: 4.5em; white-space: nowrap; text-align: right; }
+.sim-sty { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 0.8rem; padding: 4px 0; } .sim-sty label { display: inline-flex; gap: 6px; align-items: center; } .sim-sty input[type=range] { width: 110px; accent-color: var(--accent); }
+.sim-read { font-size: 0.74rem; color: var(--muted); margin-top: 4px; } .sim-plots { flex-wrap: wrap; gap: 2px 10px; font-size: 0.74rem; justify-content: flex-end; } .sim-pk { white-space: nowrap; }
+.sim-chart { position: relative; } .sim-cur { position: absolute; top: 12px; bottom: 34px; width: 2px; background: var(--crit); opacity: 0.7; pointer-events: none; }
+.sim-exp { margin-top: 12px; } .sim-exp .row { gap: 10px; flex-wrap: wrap; align-items: center; }
+.dlc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 0 18px; } .dlc-tbl td { vertical-align: top; } .dlc-gov td { border-top: 2px solid var(--line); }
 .bl-3dp { height: 380px; border-radius: 8px; overflow: hidden; background: linear-gradient(var(--sky, #cfe3ef), color-mix(in srgb, var(--sky, #cfe3ef) 55%, var(--bg))); cursor: grab; }
 .bl-cbar { display: flex; align-items: center; gap: 8px; font: 0.7rem var(--font-data); color: var(--muted); margin-top: 4px; }
 .bl-cbar i { flex: 1; height: 9px; border-radius: 3px; }
@@ -787,9 +794,9 @@ details.sec > * + * { margin-top: 8px; }
           <div class="bl-acts"><button class="btn" type="button" id="bl-new">New from this</button><button class="btn" type="button" id="bl-del">Delete</button><button class="btn" type="button" id="bl-export">Export</button><label class="btn" style="text-align:center">Import<input type="file" id="bl-import" accept=".json,application/json" hidden></label></div>
         </nav>
         <div class="bl-main">
-          <div class="bl-tabs" role="tablist" aria-label="Builder sections"><button type="button" role="tab" data-btab="design" class="on" aria-selected="true">Design</button><button type="button" role="tab" data-btab="pile" aria-selected="false">Soil–pile 3D</button><button type="button" role="tab" data-btab="uls" aria-selected="false">ULS</button><button type="button" role="tab" data-btab="fat" aria-selected="false">Fatigue</button><button type="button" role="tab" data-btab="dt" aria-selected="false">Drivetrain</button></div>
+          <div class="bl-tabs" role="tablist" aria-label="Builder sections"><button type="button" role="tab" data-btab="design" class="on" aria-selected="true">Design</button><button type="button" role="tab" data-btab="pile" aria-selected="false">Soil–pile 3D</button><button type="button" role="tab" data-btab="uls" aria-selected="false">ULS</button><button type="button" role="tab" data-btab="fat" aria-selected="false">Fatigue</button><button type="button" role="tab" data-btab="dt" aria-selected="false">Drivetrain</button><button type="button" role="tab" data-btab="sim" aria-selected="false">Simulate</button><button type="button" role="tab" data-btab="dlc" aria-selected="false">Load cases</button></div>
           <div class="bl-pane" id="bl-pane-design"><div class="bl-cols"><div id="bl-form"></div><div class="bl-out" id="bl-out"></div></div><div class="panel" id="bl-farm"></div></div>
-          <div class="bl-pane" id="bl-pane-pile" hidden></div><div class="bl-pane" id="bl-pane-uls" hidden></div><div class="bl-pane" id="bl-pane-fat" hidden></div><div class="bl-pane" id="bl-pane-dt" hidden></div>
+          <div class="bl-pane" id="bl-pane-pile" hidden></div><div class="bl-pane" id="bl-pane-uls" hidden></div><div class="bl-pane" id="bl-pane-fat" hidden></div><div class="bl-pane" id="bl-pane-dt" hidden></div><div class="bl-pane" id="bl-pane-sim" hidden></div><div class="bl-pane" id="bl-pane-dlc" hidden></div>
         </div>
       </div>
       <div class="bl-body" id="bl-mode-map" hidden>
@@ -4829,7 +4836,7 @@ details.sec > * + * { margin-top: 8px; }
     bTab = name;
     document.querySelectorAll("#builder [data-btab]").forEach((b) => { b.classList.toggle("on", b.dataset.btab === name); b.setAttribute("aria-selected", b.dataset.btab === name ? "true" : "false"); });
     document.querySelectorAll("#builder .bl-pane").forEach((p) => { p.hidden = p.id !== "bl-pane-" + name; });
-    if (name === "pile") pileView(); else if (name === "uls") ulsView(); else if (name === "fat") fatView(); else if (name === "dt") dtView();
+    if (name === "pile") pileView(); else if (name === "uls") ulsView(); else if (name === "fat") fatView(); else if (name === "dt") dtView(); else if (name === "sim") simView(); else if (name === "dlc") dlcView();
     if (typeof bList === "function" && TT.get(bSel)) bList();
   }
   const stale = (r) => (r && r.key !== runKey() ? `<p class="hint bl-stale">The type or site has changed since this run. Run again to update.</p>` : "");
@@ -4841,6 +4848,399 @@ details.sec > * + * { margin-top: 8px; }
   const numIn = (k, lab, v, u, step = "any") => `<label class="bl-f"><span>${lab}</span><span class="bl-in"><input type="number" data-o="${k}" value="${v}" step="${step}"><i>${u}</i></span></label>`;
   const readO = (host) => { const o = {}; host.querySelectorAll("[data-o]").forEach((x) => { o[x.dataset.o] = x.type === "checkbox" ? x.checked : x.tagName === "SELECT" || x.type === "text" ? x.value : +x.value; }); return o; };
 
+  // ---------- single-turbine time-domain simulation (OpenFAST-style run control) ----------
+  // Placeholder engine with the inputs and outputs of a coupled aero-servo-hydro-elastic code: rotor-effective wind
+  // from the IEC 61400-1 wind models, a Cp/Ct(λ, β) rotor with a variable-speed, pitch-regulated controller and
+  // fault events, Morison loads from linear irregular waves and current, and the turbine's modal model (soil at the
+  // chosen stiffness) integrated with Newmark. Moments use the mode-acceleration method so the static part is exact.
+  const SIM_CH = [
+    ["Wind1VelX", "Hub-height wind", "m/s", "Environment"], ["RtVAvgxh", "Rotor-effective wind", "m/s", "Environment"], ["YawErr", "Yaw misalignment", "deg", "Environment"],
+    ["Wave1Elev", "Wave elevation at the tower", "m", "Environment"], ["WaveFx", "Total wave force", "MN", "Environment"],
+    ["RotSpeed", "Rotor speed", "rpm", "Rotor and control"], ["BldPitch1", "Blade pitch", "deg", "Rotor and control"], ["GenPwr", "Electrical power", "MW", "Rotor and control"],
+    ["GenTq", "Generator torque (low-speed shaft)", "MN·m", "Rotor and control"], ["RotThrust", "Rotor thrust", "MN", "Rotor and control"], ["RotTorq", "Rotor aerodynamic torque", "MN·m", "Rotor and control"],
+    ["RtAeroCp", "Power coefficient", "–", "Rotor and control"], ["RtTSR", "Tip-speed ratio", "–", "Rotor and control"], ["Azimuth", "Rotor azimuth", "deg", "Rotor and control"],
+    ["RootMflp1", "Blade 1 root flapwise moment", "MN·m", "Blade"], ["RootMedg1", "Blade 1 root edgewise moment", "MN·m", "Blade"],
+    ["TTDspFA", "Tower-top displacement, fore-aft", "m", "Tower top"], ["TTDspSS", "Tower-top displacement, side-side", "m", "Tower top"], ["TTAccFA", "Tower-top acceleration, fore-aft", "m/s²", "Tower top"], ["TTAccSS", "Tower-top acceleration, side-side", "m/s²", "Tower top"],
+    ["TwrBsMyt", "Tower-base moment, fore-aft", "MN·m", "Tower base"], ["TwrBsMxt", "Tower-base moment, side-side", "MN·m", "Tower base"], ["TwrBsM", "Tower-base moment, resultant", "MN·m", "Tower base"],
+    ["MudMy", "Mudline moment, fore-aft", "MN·m", "Foundation"], ["MudMx", "Mudline moment, side-side", "MN·m", "Foundation"], ["MudM", "Mudline moment, resultant", "MN·m", "Foundation"], ["PileM", "Pile moment 6 m below the mudline", "MN·m", "Foundation"],
+  ];
+  const SIM_UNIT = Object.fromEntries(SIM_CH.map((c) => [c[0], c[2]])), SIM_LAB = Object.fromEntries(SIM_CH.map((c) => [c[0], c[1]]));
+  const SIM_LOADS = new Set(["RootMflp1", "RootMedg1", "TwrBsMyt", "TwrBsMxt", "TwrBsM", "MudMy", "MudMx", "MudM", "PileM", "RotThrust"]);
+  const SIM_PRESETS = { loads: ["Wind1VelX", "Wave1Elev", "RotThrust", "TwrBsMyt", "TwrBsMxt", "MudMy", "MudM", "RootMflp1"], control: ["Wind1VelX", "RtVAvgxh", "RotSpeed", "BldPitch1", "GenPwr", "GenTq", "RtTSR", "RtAeroCp"],
+    motion: ["Wind1VelX", "Wave1Elev", "TTDspFA", "TTDspSS", "TTAccFA", "TTAccSS"], all: SIM_CH.map((c) => c[0]) };
+  const IEC_CLASS = { I: 50, II: 42.5, III: 37.5 }, IEC_IREF = { A: 0.16, B: 0.14, C: 0.12 };
+  const SIM0 = { T: 300, dt: 0.05, tTrans: 30, nm: 4, outDt: 0.1, seed: 1, kappa: 1,
+    wind: "ntm", U: 11, cls: "I", turb: "B", TI: 0, alpha: 0.14, tGust: 120, yaw: 0,
+    sea: "irregular", Hs: 2.5, Tp: 8, gamma: 3.3, H: 6, Tw: 10, waveDir: 0, cur: 0.5, surge: 0,
+    mode: "power", event: "none", tEvent: 150 };
+  // rotor coefficients (Heier's analytic Cp(λ, β), scaled to the type's peak Cp); thrust from momentum theory
+  const heier = (lam, bdeg) => { const li = 1 / (1 / (lam + 0.08 * bdeg) - 0.035 / (bdeg ** 3 + 1)); return Math.max(0, 0.5176 * (116 / li - 0.4 * bdeg - 5) * Math.exp(-21 / li) + 0.0068 * lam); };
+  const HEIER_MAX = (() => { let m = 0, l0 = 8; for (let l = 3; l < 14; l += 0.02) { const c = heier(l, 0); if (c > m) { m = c; l0 = l; } } return { cp: m, lam: l0 }; })();
+  function ctFromCp(cp, lam) {             // a from Cp = 4a(1-a)²; heavily loaded rotors follow Glauert's correction
+    const c = Math.min(cp, 0.5925); let a = 0.1; for (let i = 0; i < 30; i++) { const f = 4 * a * (1 - a) ** 2 - c, df = 4 * (1 - a) * (1 - 3 * a); a = Math.min(0.333, Math.max(0, a - f / (df || 1))); }
+    let ct = 1.3 * 4 * a * (1 - a); if (lam > 1) ct += 0.05 * Math.max(0, lam - HEIER_MAX.lam) / 4; return Math.min(1.1, ct);
+  }
+  function simWind(o, ty, rnd) {            // returns hub(t), eff(t), yaw(t) in m/s and degrees
+    const Vref = IEC_CLASS[o.cls] || 50, Iref = IEC_IREF[o.turb] || 0.14, R = ty.rotor_D / 2, L1 = 42, Lu = 8.1 * L1;
+    let U = o.U, sig = 0;
+    if (o.wind === "ewm50") { U = Vref; sig = 0.11 * U; } else if (o.wind === "ewm1") { U = 0.8 * Vref; sig = 0.11 * U; }
+    else if (o.wind === "ntm" || o.wind === "eog" || o.wind === "ecd") sig = Iref * (0.75 * U + 5.6);
+    else if (o.wind === "etm") { const c = 2, Vave = 0.2 * Vref; sig = c * Iref * (0.072 * (Vave / c + 3) * (U / c - 4) + 10); }
+    if (o.TI > 0 && o.wind !== "steady") sig = o.TI / 100 * U;
+    if (o.wind === "steady") sig = 0;
+    const N = 110, comps = [];
+    for (let i = 0; i < N; i++) { const f = 0.002 * Math.pow(0.6 / 0.002, i / (N - 1)), df = f * (Math.pow(0.6 / 0.002, 1 / (N - 1)) - 1), S = sig * sig * 4 * Lu / Math.max(U, 1) / Math.pow(1 + 6 * f * Lu / Math.max(U, 1), 5 / 3);
+      comps.push({ w: 2 * Math.PI * f, a: Math.sqrt(2 * S * df), ph: 2 * Math.PI * rnd(), chi: 1 / Math.sqrt(1 + Math.pow(1.5 * f * 2 * R / Math.max(U, 1), 2)) }); }
+    const Ve1 = 0.8 * 1.4 * Vref, sig1 = IEC_IREF[o.turb] * (0.75 * U + 5.6), Vg = Math.min(1.35 * (Ve1 - U), 3.3 * sig1 / (1 + 0.1 * ty.rotor_D / L1)), Tg = 10.5;
+    const thcg = U < 4 ? 180 : 720 / U, Vcg = 15;
+    return {
+      U, sig,
+      at(t) {
+        let h = 0, e = 0; for (const c of comps) { const v = c.a * Math.cos(c.w * t + c.ph); h += v; e += v * c.chi; }
+        let gust = 0, yaw = o.yaw;
+        if (o.wind === "eog" && t >= o.tGust && t <= o.tGust + Tg) { const s = t - o.tGust; gust = -0.37 * Vg * Math.sin(3 * Math.PI * s / Tg) * (1 - Math.cos(2 * Math.PI * s / Tg)); }
+        if (o.wind === "ecd" && t >= o.tGust) { const s = Math.min(1, (t - o.tGust) / 10), r = 0.5 * (1 - Math.cos(Math.PI * s)); gust = Vcg * r; yaw += thcg * r; }
+        return { hub: Math.max(0, U + h + gust), eff: Math.max(0, U + e + gust), yaw };
+      },
+      Vg, thcg,
+    };
+  }
+  function simWaves(o, depth, rnd) {
+    const comps = [];
+    if (o.sea === "regular") { const w = 2 * Math.PI / o.Tw; comps.push({ w, a: o.H / 2, ph: 0, k: wnum(w, depth) }); }
+    else if (o.sea === "irregular" && o.Hs > 0) {
+      const wp = 2 * Math.PI / o.Tp, N = 60, S = [];
+      for (let i = 0; i < N; i++) { const w = wp * (0.55 + 2.6 * (i + 0.5) / N), sg = w < wp ? 0.07 : 0.09; S.push([w, w ** -5 * Math.exp(-1.25 * (wp / w) ** 4) * o.gamma ** Math.exp(-((w - wp) ** 2) / (2 * sg * sg * wp * wp))]); }
+      const m0 = S.reduce((s, [, v]) => s + v, 0) * (2.6 * wp / N), sc = (o.Hs / 4) ** 2 / m0;
+      S.forEach(([w, v]) => comps.push({ w, a: Math.sqrt(2 * v * sc * 2.6 * wp / N), ph: 2 * Math.PI * rnd(), k: wnum(w, depth) }));
+    }
+    return comps;
+  }
+  function rainflow(x) {                    // ranges and counts (half cycles 0.5) from turning points, ASTM-style 4-point
+    const tp = []; for (let i = 0; i < x.length; i++) { if (i === 0 || i === x.length - 1) { tp.push(x[i]); continue; } if ((x[i] - x[i - 1]) * (x[i + 1] - x[i]) < 0) tp.push(x[i]); }
+    const st = [], out = [];
+    for (const v of tp) { st.push(v); while (st.length >= 3) { const X = Math.abs(st[st.length - 1] - st[st.length - 2]), Y = Math.abs(st[st.length - 2] - st[st.length - 3]); if (X < Y) break; if (st.length === 3) { out.push([Y, 0.5]); st.shift(); } else { out.push([Y, 1]); st.splice(st.length - 3, 2); } } }
+    for (let i = 0; i < st.length - 1; i++) out.push([Math.abs(st[i + 1] - st[i]), 0.5]);
+    return out;
+  }
+  const delOf = (x, m, T) => { const c = rainflow(x); let s = 0; c.forEach(([r, n]) => { s += n * r ** m; }); return Math.pow(s / Math.max(T, 1), 1 / m); };   // 1 Hz equivalent
+  SOLVERS.sim = async function (ty, depth, o, onProg) {
+    const rnd = (() => { let s = (o.seed * 2654435761) >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; })();
+    const t0w = performance.now(), B = TFE.build(ty, depth, 0), nm = Math.max(1, Math.min(6, o.nm | 0)), md = TFE.modal(B, o.kappa || 1, nm), n = B.n, NF = 2 * n, top = n - 1;
+    const W = simWind(o, ty, rnd), sea = simWaves(o, depth + (o.surge || 0), rnd), d = depth + (o.surge || 0), rho = 1025, rhoA = 1.225, g = 9.81;
+    const R = ty.rotor_D / 2, A = Math.PI * R * R, der = TT.derived(ty), Pr = ty.rated_P * 1e6, eta = 0.955, Omr = ty.rated_rpm * Math.PI / 30, Ommin = (ty.min_rpm || 4) * Math.PI / 30;
+    const cpS = ty.Cp / HEIER_MAX.cp, lamOpt = HEIER_MAX.lam, Kg = 0.5 * rhoA * A * R ** 3 * ty.Cp / lamOpt ** 3, J = 3 * ty.blade_mass * R * R * 0.11 + (ty.hub_mass || 0) * 4;
+    const Cp = (l, b) => cpS * heier(Math.max(0.5, l), b), dPh = Math.PI / 180;
+    const u1 = md.solve((() => { const F = new Float64Array(NF); F[2 * top] = 1; return F; })());
+    const u2 = md.solve((() => { const F = new Float64Array(NF); const Lt = B.z[top] - B.z[top - 1]; F[2 * top] = 1 / Lt; F[2 * top - 2] = -1 / Lt; return F; })());
+    const ph = (j, i) => md.Phi[j][2 * i], phT = md.Phi.map((p) => p[2 * top]), phR = md.Phi.map((p) => p[2 * top + 1]);
+    const zcIdx = (z) => md.zc.reduce((b2, v, i) => (Math.abs(v - z) < Math.abs(md.zc[b2] - z) ? i : b2), 0);
+    const iTB = zcIdx(ty.z_interface + 0.5), iMud = zcIdx(-depth + 0.5), iPile = B.z[0] < -depth - 6 ? zcIdx(-depth - 6) : -1;
+    const wet = []; for (let i = 0; i < n; i++) if (B.z[i] > -depth - 0.01 && B.z[i] < 15) wet.push(i);
+    const tribZ = (i) => (i === 0 ? (B.z[1] - B.z[0]) / 2 : i === n - 1 ? (B.z[n - 1] - B.z[n - 2]) / 2 : (B.z[i + 1] - B.z[i - 1]) / 2);
+    const zeta = md.w.map((w, j) => 0.01 + 0.004 * j), cw = Math.cos(o.waveDir * dPh), sw = Math.sin(o.waveDir * dPh);
+    const dt = Math.min(0.1, Math.max(0.01, o.dt)), nT = Math.round(o.T / dt), every = Math.max(1, Math.round(o.outDt / dt));
+    const nOut = Math.floor(nT / every) + 1, ch = {}; SIM_CH.forEach(([k]) => { ch[k] = new Float32Array(nOut); });
+    const tArr = new Float32Array(nOut), dispFA = new Float32Array(nOut * n), dispSS = new Float32Array(nOut * n);
+    const q = { fa: new Float64Array(3 * nm), ss: new Float64Array(3 * nm) };
+    // controller and rotor state
+    let Om = o.mode === "parked" ? 0.05 : Math.min(Omr, Math.max(Ommin, lamOpt * W.U / R)), beta = o.mode === "parked" ? 90 : (W.U > der.rated_U ? 4 + 1.2 * (W.U - der.rated_U) : 0), I = beta * dPh, psi = 0;
+    let state = o.mode === "parked" ? "parked" : "run", tripAt = -1, prevE = 0, Qg = 0;
+    const Kp = 0.9, Ki = 0.11;
+    let k2 = 0;
+    for (let k = 0; k <= nT; k++) {
+      const t = k * dt, w = W.at(t);
+      // events
+      if (state === "run" && o.event !== "none" && t >= o.tEvent) state = o.event === "pitchfault" ? "seized" : o.event;
+      if (state === "seized" && Om > 1.15 * Omr) { state = "shutdown"; tripAt = t; }
+      // structure velocity at the top for the relative wind (aerodynamic damping)
+      let vTop = 0; for (let j = 0; j < nm; j++) vTop += phT[j] * q.fa[nm + j];
+      const yawE = w.yaw * dPh, Ur = Math.max(0.1, w.eff * Math.cos(yawE) - vTop), lam = Om * R / Ur;
+      // pitch control
+      if (state === "run") {
+        const e = Om - Omr, gs = 1 / (1 + beta / 6);
+        I = Math.min(1.5, Math.max(0, I + Ki * e * gs * dt)); const cmd = Math.max(0, Math.min(90, (Kp * e * gs + I) / dPh)), rate = 8 * dt;
+        beta += Math.max(-rate, Math.min(rate, cmd - beta)); prevE = e;
+      } else if (state === "gridloss") beta = Math.min(90, beta + 8 * dt);
+      else if (state === "shutdown") beta = Math.min(90, beta + 5 * dt);
+      else if (state === "parked") beta = 90;
+      const cp = Cp(lam, beta), Pa = 0.5 * rhoA * A * cp * Ur ** 3, Qa = Pa / Math.max(Om, 0.02), ct = state === "parked" || beta > 60 ? 0.008 + 0.0015 * (90 - beta) : ctFromCp(cp, lam) * Math.max(0.15, 1 - beta / 40);
+      const Th = 0.5 * rhoA * A * ct * Ur * Ur + 0.5 * rhoA * 1.0 * (0.8 * ty.rotor_D / 2) * w.eff * w.eff * 0.25;      // feathered rotor plus nacelle drag
+      // generator torque
+      if (state === "run") { Qg = Om < Omr * 0.995 && beta < 1 ? Kg * Om * Om : Pr / eta / Math.max(Om, 0.1); if (Om < Ommin) Qg *= Math.max(0, (Om - 0.8 * Ommin) / (0.2 * Ommin)); Qg = Math.min(Qg, 1.1 * Pr / eta / Omr); }
+      else if (state === "seized") Qg = Math.min(Pr / eta / Math.max(Om, 0.1), 1.1 * Pr / eta / Omr);
+      else if (state === "shutdown") Qg = Om > 0.3 * Omr ? 0.4 * Pr / eta / Omr : 0;
+      else Qg = 0;
+      Om = Math.max(0, Om + (Qa - Qg) / J * dt); psi += Om * dt;
+      // waves and Morison loads (stretched at the crest), current along the waves
+      let et = 0; for (const c of sea) et += c.a * Math.cos(-c.w * t + c.ph);
+      const Fn = new Float64Array(n); let Fw = 0;
+      for (const i of wet) { const zz = B.z[i]; if (zz > et) continue; const ze = Math.min(zz, 0), D = B.gm.D(zz); let u = o.cur * Math.max(0, 1 + zz / d) ** (1 / 7), ax = 0;
+        for (const c of sea) { const f = decay(c.k, ze, d), pp = -c.w * t + c.ph; u += c.a * c.w * f * Math.cos(pp); ax += c.a * c.w * c.w * f * Math.sin(pp); }
+        const fz = (rho * 2.0 * Math.PI * D * D / 4 * ax + 0.5 * rho * 1.0 * D * Math.abs(u) * u) * tribZ(i); Fn[i] = fz; Fw += fz; }
+      // modal integration: fore-aft (thrust, waves), side-side (rotor torque reaction, waves)
+      const Mtop = Qa * (state === "parked" ? 0.2 : 1);
+      for (const [pl, fac] of [["fa", cw], ["ss", sw]]) {
+        const x = q[pl];
+        for (let j = 0; j < nm; j++) { let f = 0; for (const i of wet) if (Fn[i]) f += ph(j, i) * Fn[i] * fac; if (pl === "fa") f += phT[j] * Th; else f += phR[j] * Mtop;
+          const wj = md.w[j], z2 = zeta[j], qv = x[j], vv = x[nm + j], av = x[2 * nm + j];
+          const kEff = wj * wj + 2 * z2 * wj * 2 / dt + 4 / dt / dt, rhs = f + (4 / dt / dt * qv + 4 / dt * vv + av) + 2 * z2 * wj * (2 / dt * qv + vv);
+          const qn = rhs / kEff, an = 4 / dt / dt * (qn - qv) - 4 / dt * vv - av; x[j] = qn; x[nm + j] = vv + dt / 2 * (av + an); x[2 * nm + j] = an; }
+      }
+      if (k % every === 0) {
+        const qsF = phT.map((p, j) => p * Th / md.w[j] ** 2), qsM = phR.map((p, j) => p * Mtop / md.w[j] ** 2);
+        const M = (pl, jj) => { let m = 0; for (let j = 0; j < nm; j++) m += md.rows[jj * nm + j] * (q[pl][j] - (pl === "fa" ? qsF[j] : qsM[j])); return m + (pl === "fa" ? md.stat[jj * 2] * Th : md.stat[jj * 2 + 1] * Mtop); };
+        const disp = (pl, i) => { let x = 0; for (let j = 0; j < nm; j++) x += ph(j, i) * (q[pl][j] - (pl === "fa" ? qsF[j] : qsM[j])); return x + (pl === "fa" ? u1[2 * i] * Th : u2[2 * i] * Mtop); };
+        for (let i = 0; i < n; i++) { dispFA[k2 * n + i] = disp("fa", i); dispSS[k2 * n + i] = disp("ss", i); }
+        let aFA = 0, aSS = 0; for (let j = 0; j < nm; j++) { aFA += phT[j] * q.fa[2 * nm + j]; aSS += phT[j] * q.ss[2 * nm + j]; }
+        const tb = [M("fa", iTB), M("ss", iTB)], mu = [M("fa", iMud), M("ss", iMud)], az = psi % (2 * Math.PI);
+        const flap = Th / 3 * (2 * R / 3) * (1 + 2 * o.alpha * (2 * R / 3) / ty.z_hub * Math.cos(az)), edge = ty.blade_mass * g * 0.33 * R * Math.sin(az) + Qa / 3;
+        const put = { Wind1VelX: w.hub, RtVAvgxh: w.eff, YawErr: w.yaw, Wave1Elev: et, WaveFx: Fw / 1e6, RotSpeed: Om * 30 / Math.PI, BldPitch1: beta, GenPwr: Qg * Om * eta / 1e6, GenTq: Qg / 1e6, RotThrust: Th / 1e6, RotTorq: Qa / 1e6,
+          RtAeroCp: cp, RtTSR: lam, Azimuth: az / dPh, RootMflp1: flap / 1e6, RootMedg1: edge / 1e6, TTDspFA: disp("fa", top), TTDspSS: disp("ss", top), TTAccFA: aFA, TTAccSS: aSS,
+          TwrBsMyt: tb[0] / 1e6, TwrBsMxt: tb[1] / 1e6, TwrBsM: Math.hypot(...tb) / 1e6, MudMy: mu[0] / 1e6, MudMx: mu[1] / 1e6, MudM: Math.hypot(...mu) / 1e6, PileM: iPile >= 0 ? Math.hypot(M("fa", iPile), M("ss", iPile)) / 1e6 : 0 };
+        for (const kk in put) ch[kk][k2] = put[kk];
+        tArr[k2] = t; k2++;
+      }
+      if (onProg && k % 2000 === 0) { onProg(k / nT); await new Promise((r) => setTimeout(r, 0)); }
+    }
+    const i0 = tArr.findIndex((v) => v >= o.tTrans), stats = {};
+    SIM_CH.forEach(([kk]) => { const a = ch[kk].subarray(Math.max(0, i0), k2); let mn = Infinity, mx = -Infinity, s = 0, s2 = 0; for (const v of a) { mn = Math.min(mn, v); mx = Math.max(mx, v); s += v; s2 += v * v; }
+      const mean = s / a.length; stats[kk] = { min: mn, max: mx, mean, std: Math.sqrt(Math.max(0, s2 / a.length - mean * mean)), del: SIM_LOADS.has(kk) ? delOf(Array.from(a), 4, (o.T - o.tTrans)) : null }; });
+    return { t: tArr.subarray(0, k2), ch, stats, dispFA, dispSS, z: Array.from(B.z), n, nOut: k2, sea, wind: { U: W.U, sig: W.sig, Vg: W.Vg }, f: md.w.map((w) => w / (2 * Math.PI)), depth, ms: performance.now() - t0w, input: Object.assign({}, o) };
+  };
+  // ----- Simulate: one turbine, chosen inputs, outputs, animation and export -----
+  const SIMSTORE = "stormtwin-sim-v1";
+  let SIMCFG = (() => { try { return Object.assign({}, SIM0, JSON.parse(localStorage.getItem(SIMSTORE) || "{}")); } catch (e) { return Object.assign({}, SIM0); } })();
+  let SIMOUT = (() => { try { const v = JSON.parse(localStorage.getItem(SIMSTORE + "-ch") || "null"); return Array.isArray(v) ? v : SIM_PRESETS.loads.slice(); } catch (e) { return SIM_PRESETS.loads.slice(); } })();
+  let SIMSTYLE = { exag: 20, color: "moment", waves: true, arrows: true, labels: true, speed: 1, cam: "iso" };
+  const simKeep = () => { try { localStorage.setItem(SIMSTORE, JSON.stringify(SIMCFG)); localStorage.setItem(SIMSTORE + "-ch", JSON.stringify(SIMOUT)); } catch (e) { /* storage unavailable */ } };
+  const sel2 = (k, lab, v, opts) => `<label class="bl-f"><span>${lab}</span><span class="bl-in"><select data-o="${k}">${opts.map(([a, b]) => `<option value="${a}"${String(v) === String(a) ? " selected" : ""}>${b}</option>`).join("")}</select></span></label>`;
+  const WIND_MODELS = [["steady", "Steady (no turbulence)"], ["ntm", "Normal turbulence (NTM)"], ["etm", "Extreme turbulence (ETM)"], ["eog", "Extreme operating gust (EOG)"], ["ecd", "Extreme coherent gust with direction change (ECD)"], ["ewm1", "Extreme wind, 1-year (EWM)"], ["ewm50", "Extreme wind, 50-year (EWM)"]];
+  function simView(preset) {
+    const host = document.getElementById("bl-pane-sim"), ty = TT.get(bSel), t = T[bSite] || T[0], r = RUNS.get(bSel + ":sim");
+    if (preset) { SIMCFG = Object.assign({}, SIMCFG, preset); simKeep(); }
+    const o = SIMCFG, groups = [...new Set(SIM_CH.map((c) => c[3]))];
+    host.innerHTML = `<div class="bl-an"><div class="bl-g bl-in-p sim-in"><div class="bl-hd2"><h3>Simulate one turbine</h3>${PLACEHOLDER}</div>` +
+      `<p class="cap">Time-domain run of ${ty.name} at ${t.spec.name} (${fmt(t.spec.depth, 1)} m): wind, waves, controller and structure coupled, outputs you choose. Settings are kept for the next run.</p>` +
+      `<details class="bl-more" open><summary>Run</summary>` + numIn("T", "Simulation length", o.T, "s", 10) + numIn("tTrans", "Discard start-up transient", o.tTrans, "s", 5) + numIn("seed", "Random seed", o.seed, "", 1) +
+      `<details class="bl-more"><summary>Solver</summary>` + numIn("dt", "Time step", o.dt, "s", 0.01) + numIn("outDt", "Output step", o.outDt, "s", 0.05) + numIn("nm", "Structural modes", o.nm, "", 1) + numIn("kappa", "Soil stiffness factor", o.kappa, "×", 0.1) + `</details></details>` +
+      `<details class="bl-more" open><summary>Wind</summary>` + sel2("wind", "Wind model", o.wind, WIND_MODELS) +
+      `<div data-dep="U"${/ewm/.test(o.wind) ? " hidden" : ""}>` + numIn("U", "Mean wind at hub", o.U, "m/s", 0.5) + `</div>` +
+      sel2("cls", "Turbine class (V<sub>ref</sub>)", o.cls, [["I", "I (50 m/s)"], ["II", "II (42.5 m/s)"], ["III", "III (37.5 m/s)"]]) + sel2("turb", "Turbulence category", o.turb, [["A", "A (I<sub>ref</sub> 0.16)"], ["B", "B (0.14)"], ["C", "C (0.12)"]]) +
+      `<div data-dep="gust"${/eog|ecd/.test(o.wind) ? "" : " hidden"}>` + numIn("tGust", "Gust starts at", o.tGust, "s", 5) + `</div>` +
+      `<details class="bl-more"><summary>More wind settings</summary>` + numIn("TI", "Turbulence intensity override (0 = from the model)", o.TI, "%", 0.5) + numIn("alpha", "Shear exponent", o.alpha, "", 0.01) + numIn("yaw", "Yaw misalignment", o.yaw, "°", 1) + `</details></details>` +
+      `<details class="bl-more" open><summary>Waves and current</summary>` + sel2("sea", "Sea", o.sea, [["none", "Calm"], ["regular", "Regular wave"], ["irregular", "Irregular (JONSWAP)"]]) +
+      `<div data-dep="irr"${o.sea === "irregular" ? "" : " hidden"}>` + numIn("Hs", "H<sub>s</sub>", o.Hs, "m", 0.1) + numIn("Tp", "T<sub>p</sub>", o.Tp, "s", 0.1) + numIn("gamma", "Peak enhancement γ", o.gamma, "", 0.1) + `</div>` +
+      `<div data-dep="reg"${o.sea === "regular" ? "" : " hidden"}>` + numIn("H", "Wave height", o.H, "m", 0.1) + numIn("Tw", "Wave period", o.Tw, "s", 0.1) + `</div>` +
+      `<details class="bl-more"><summary>More sea settings</summary>` + numIn("waveDir", "Waves relative to wind", o.waveDir, "°", 5) + numIn("cur", "Surface current", o.cur, "m/s", 0.1) + numIn("surge", "Water level above MSL", o.surge, "m", 0.1) + `</details></details>` +
+      `<details class="bl-more" open><summary>Turbine and control</summary>` + sel2("mode", "Operating state", o.mode, [["power", "Power production"], ["parked", "Parked, idling"]]) +
+      sel2("event", "Event", o.event, [["none", "None"], ["gridloss", "Grid loss (emergency stop)"], ["shutdown", "Normal shutdown"], ["pitchfault", "Pitch seized, overspeed trip"]]) +
+      `<div data-dep="ev"${o.event === "none" ? " hidden" : ""}>` + numIn("tEvent", "Event at", o.tEvent, "s", 5) + `</div></details>` +
+      `<details class="bl-more"><summary>Outputs <span class="muted" data-nch>${SIMOUT.length} channels</span></summary><div class="row sim-pre">${[["loads", "Loads"], ["control", "Control"], ["motion", "Motion"], ["all", "All"]].map(([k, l]) => `<button class="btn sm" type="button" data-pre="${k}">${l}</button>`).join("")}</div>` +
+      groups.map((gname) => `<div class="bl-sub">${gname}</div>` + SIM_CH.filter((c) => c[3] === gname).map(([k, l, u]) => `<label class="sim-ch"><input type="checkbox" data-ch="${k}"${SIMOUT.includes(k) ? " checked" : ""}> <span>${l}</span> <span class="mono muted">${k} · ${u}</span></label>`).join("")).join("") + `</details>` +
+      `<div class="row" style="margin-top:8px"><button class="btn bl-go" type="button" data-run>Run simulation</button><button class="btn" type="button" data-cfgsave>Save settings</button><label class="btn">Load<input type="file" accept=".json" data-cfgload hidden></label></div>` +
+      `<div class="bl-run"><div class="bl-prog"><i data-bar></i></div><p class="cap" data-msg></p></div></div><div class="bl-res" data-res>${r ? "" : `<p class="muted">Set the inputs and run. Results show as an animation, time series, statistics and an export.</p>`}</div></div>`;
+    const dep = () => { const v = readO(host); host.querySelector('[data-dep="U"]').hidden = /ewm/.test(v.wind); host.querySelector('[data-dep="gust"]').hidden = !/eog|ecd/.test(v.wind);
+      host.querySelector('[data-dep="irr"]').hidden = v.sea !== "irregular"; host.querySelector('[data-dep="reg"]').hidden = v.sea !== "regular"; host.querySelector('[data-dep="ev"]').hidden = v.event === "none"; };
+    host.querySelectorAll("[data-o]").forEach((x) => x.addEventListener("change", () => { SIMCFG = Object.assign({}, SIMCFG, readO(host)); simKeep(); dep(); }));
+    const chs = () => { SIMOUT = [...host.querySelectorAll("[data-ch]")].filter((x) => x.checked).map((x) => x.dataset.ch); host.querySelector("[data-nch]").textContent = SIMOUT.length + " channels"; simKeep(); };
+    host.querySelectorAll("[data-ch]").forEach((x) => x.addEventListener("change", chs));
+    host.querySelectorAll("[data-pre]").forEach((b) => b.addEventListener("click", () => { const p = SIM_PRESETS[b.dataset.pre]; host.querySelectorAll("[data-ch]").forEach((x) => { x.checked = p.includes(x.dataset.ch); }); chs(); }));
+    host.querySelector("[data-cfgsave]").addEventListener("click", () => saveFile("simulation_settings.json", JSON.stringify({ input: SIMCFG, outputs: SIMOUT }, null, 2), "application/json"));
+    host.querySelector("[data-cfgload]").addEventListener("change", (e) => { const f = e.target.files[0]; if (!f) return; f.text().then((txt) => { const v = JSON.parse(txt); SIMCFG = Object.assign({}, SIM0, v.input || v); if (Array.isArray(v.outputs)) SIMOUT = v.outputs; simKeep(); simView(); }).catch(() => { host.querySelector("[data-msg]").textContent = "That file is not a settings file."; }); });
+    host.querySelector("[data-run]").addEventListener("click", async (e) => {
+      SIMCFG = Object.assign({}, SIMCFG, readO(host)); simKeep(); e.target.disabled = true; const bar = host.querySelector("[data-bar]"), msg = host.querySelector("[data-msg]");
+      if (!SIMOUT.length) { msg.textContent = "Choose at least one output channel."; e.target.disabled = false; return; }
+      msg.textContent = `Running ${SIMCFG.T} s at ${SIMCFG.dt} s steps…`;
+      const res = await SOLVERS.sim(TT.get(bSel), (T[bSite] || T[0]).spec.depth, SIMCFG, (p) => { bar.style.width = (100 * p).toFixed(0) + "%"; });
+      bar.style.width = "100%"; msg.textContent = `Done in ${fmt(res.ms / 1000, 1)} s of compute: ${res.nOut} output steps, first frequencies ${res.f.slice(0, 2).map((f) => fmt(f, 3)).join(", ")} Hz.`;
+      RUNS.set(bSel + ":sim", { key: runKey(), input: Object.assign({}, SIMCFG), result: res }); e.target.disabled = false; simResults(host);
+    });
+    if (r) simResults(host);
+  }
+  let SIMPLAY = null;
+  function simResults(host) {
+    const r = RUNS.get(bSel + ":sim"), res = r.result, box = host.querySelector("[data-res]"), ty = TT.get(bSel), out = SIMOUT.filter((k) => res.ch[k]);
+    const plotSel = (box._plot && box._plot.filter((k) => out.includes(k))) || out.slice(0, 3);
+    box.innerHTML = stale(r) + `<div class="sim-anim"><div class="bl-3dp sim-3d" data-v></div>` +
+      `<div class="sim-ctl"><button class="btn sm" data-play>❚❚</button><input type="range" data-scrub min="0" max="${res.nOut - 1}" value="0" aria-label="Time"><span class="mono" data-tnow>0.0 s</span>` +
+      `<select data-spd aria-label="Playback speed">${[0.25, 0.5, 1, 2, 4].map((v) => `<option value="${v}"${v === SIMSTYLE.speed ? " selected" : ""}>${v}×</option>`).join("")}</select></div>` +
+      `<details class="bl-more sim-style"><summary>Style</summary><div class="sim-sty">` +
+      `<label>Deflection ×<input type="range" data-sty="exag" min="1" max="100" value="${SIMSTYLE.exag}"><b class="mono" data-exv>${SIMSTYLE.exag}</b></label>` +
+      `<label>Colour<select data-sty="color"><option value="moment"${SIMSTYLE.color === "moment" ? " selected" : ""}>Bending moment</option><option value="plain"${SIMSTYLE.color === "plain" ? " selected" : ""}>Plain</option></select></label>` +
+      `<label>Camera<select data-sty="cam">${[["iso", "Three-quarter"], ["side", "Side (fore-aft)"], ["front", "Front (side-side)"], ["top", "Rotor close-up"]].map(([a, b]) => `<option value="${a}"${SIMSTYLE.cam === a ? " selected" : ""}>${b}</option>`).join("")}</select></label>` +
+      `<label class="bl-tg"><input type="checkbox" data-sty="waves"${SIMSTYLE.waves ? " checked" : ""}> Waves</label><label class="bl-tg"><input type="checkbox" data-sty="arrows"${SIMSTYLE.arrows ? " checked" : ""}> Load arrows</label><label class="bl-tg"><input type="checkbox" data-sty="labels"${SIMSTYLE.labels ? " checked" : ""}> Readout</label></div></details>` +
+      `<div class="sim-read mono" data-read></div></div>` +
+      `<div class="bl-hd2" style="margin-top:10px"><h3>Time series</h3><span class="row sim-plots">${out.map((k) => `<label class="sim-pk"><input type="checkbox" data-pk="${k}"${plotSel.includes(k) ? " checked" : ""}> ${k}</label>`).join("")}</span></div><div data-charts></div>` +
+      `<h3 style="margin-top:10px;font-size:1rem">Statistics <span class="muted" style="font: 0.78rem var(--font-body)">after the first ${r.input.tTrans} s; DEL: 1 Hz damage-equivalent load, Wöhler slope 4</span></h3>` +
+      `<div class="tbl-wrap"><table class="list bl-ltt"><thead><tr><th>Channel</th><th>Unit</th><th class="r">Min</th><th class="r">Max</th><th class="r">Mean</th><th class="r">Std</th><th class="r">DEL</th></tr></thead><tbody>` +
+      out.map((k) => { const s2 = res.stats[k]; return `<tr><td title="${SIM_LAB[k]}">${k}</td><td>${SIM_UNIT[k]}</td>${[s2.min, s2.max, s2.mean, s2.std].map((v) => `<td class="r mono">${cbv(v)}</td>`).join("")}<td class="r mono">${s2.del !== null ? cbv(s2.del) : ""}</td></tr>`; }).join("") + `</tbody></table></div>` +
+      `<div class="bl-g sim-exp"><div class="bl-hd2"><h3>Export</h3></div><div class="row">` +
+      `<label class="sel">Format<select data-ef><option value="csv">CSV</option><option value="out">OpenFAST-style .out (tab-separated)</option><option value="json">JSON</option></select></label>` +
+      `<label class="sel">Every<select data-ed>${[1, 2, 5, 10].map((v) => `<option value="${v}">${fmt(res.input.outDt * v, 2)} s</option>`).join("")}</select></label>` +
+      `<label class="bl-tg"><input type="checkbox" data-etr checked> Drop the first ${r.input.tTrans} s</label><button class="btn bl-go" style="margin:0" data-exp>Download</button><button class="btn" data-exps>Statistics (CSV)</button></div>` +
+      `<p class="cap">Exports the ${out.length} output channels you chose, with the run settings in the header.</p></div>`;
+    // charts
+    const charts = () => {
+      const sel = [...box.querySelectorAll("[data-pk]")].filter((x) => x.checked).map((x) => x.dataset.pk); box._plot = sel; const host2 = box.querySelector("[data-charts]"); host2.innerHTML = "";
+      sel.forEach((k) => { const d = document.createElement("div"); d.className = "sim-chart"; host2.append(d); const step = Math.max(1, Math.floor(res.nOut / 1500)), xs = [], ys = [];
+        for (let i = 0; i < res.nOut; i += step) { xs.push(res.t[i]); ys.push(res.ch[k][i]); }
+        chart(d, { series: [{ x: xs, y: ys, color: "--accent", width: 1.3 }], xl: "time (s)", yl: `${k} (${SIM_UNIT[k]})`, h: 150, label: SIM_LAB[k], vlines: [{ x: r.input.tTrans, color: "--muted", label: "transient" }] });
+        d.insertAdjacentHTML("afterbegin", `<div class="sim-cur" data-cur></div>`); });
+    };
+    box.querySelectorAll("[data-pk]").forEach((x) => x.addEventListener("change", charts)); charts();
+    // export
+    const exp = (stats) => {
+      const f = box.querySelector("[data-ef]").value, every = +box.querySelector("[data-ed]").value, drop = box.querySelector("[data-etr]").checked, i0 = drop ? Math.max(0, res.t.findIndex((v) => v >= r.input.tTrans)) : 0;
+      const name = `${ty.name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_")}_${r.input.wind}_U${r.input.U}_seed${r.input.seed}`;
+      const head = [`StormTwin turbine simulation (placeholder engine) · ${ty.name} · ${(T[bSite] || T[0]).spec.name} · depth ${fmt(res.depth, 1)} m`, `Settings: ${JSON.stringify(r.input)}`];
+      if (stats) { saveFile(name + "_stats.csv", ["channel,unit,min,max,mean,std,DEL_m4_1Hz"].concat(out.map((k) => { const s2 = res.stats[k]; return [k, SIM_UNIT[k], s2.min, s2.max, s2.mean, s2.std, s2.del === null ? "" : s2.del].join(","); })).join("\n"), "text/csv"); return; }
+      const rows = []; for (let i = i0; i < res.nOut; i += every) rows.push(i);
+      if (f === "json") { const o2 = { meta: { turbine: ty.name, site: (T[bSite] || T[0]).spec.name, depth: res.depth, settings: r.input, units: Object.fromEntries(["Time"].concat(out).map((k) => [k, k === "Time" ? "s" : SIM_UNIT[k]])) }, Time: rows.map((i) => +res.t[i].toFixed(4)) };
+        out.forEach((k) => { o2[k] = rows.map((i) => +res.ch[k][i].toPrecision(6)); }); saveFile(name + ".json", JSON.stringify(o2), "application/json"); return; }
+      if (f === "out") { const L = head.concat(["", ["Time"].concat(out).join("\t"), ["(s)"].concat(out.map((k) => `(${SIM_UNIT[k]})`)).join("\t")]).concat(rows.map((i) => [res.t[i].toFixed(4)].concat(out.map((k) => res.ch[k][i].toExponential(5))).join("\t")));
+        saveFile(name + ".out", L.join("\n"), "text/plain"); return; }
+      saveFile(name + ".csv", head.map((h) => "# " + h).concat([["Time_s"].concat(out.map((k) => `${k}_${SIM_UNIT[k].replace(/[^\w]+/g, "")}`)).join(",")]).concat(rows.map((i) => [res.t[i].toFixed(4)].concat(out.map((k) => res.ch[k][i].toPrecision(6))).join(","))).join("\n"), "text/csv");
+    };
+    box.querySelector("[data-exp]").addEventListener("click", () => exp(false)); box.querySelector("[data-exps]").addEventListener("click", () => exp(true));
+    simAnim(box, res, ty);
+  }
+  function simAnim(box, res, ty) {
+    const el = box.querySelector("[data-v]"), H = ty.z_hub, v = V3("sim", el, { target: [0, H * 0.42, 0], pos: [H * 1.9, H * 1.05, H * 2.5] }); if (!v) return;
+    const m = TT.meta(ty), d = res.depth, T3 = TM.build(m, { white: new THREE.MeshStandardMaterial({ color: 0xe9edf0, roughness: 0.55 }), blade: new THREE.MeshStandardMaterial({ color: 0xf6f7f8, roughness: 0.45 }),
+      grey: new THREE.MeshStandardMaterial({ color: 0xa3adb6, roughness: 0.7 }), yellow: new THREE.MeshStandardMaterial({ color: 0xf2c230 }), dark: new THREE.MeshStandardMaterial({ color: 0x4a5560 }) }, -d - Math.min(ty.embedment, 30));
+    T3.tower.material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, vertexColors: true }); T3.pile.material = new THREE.MeshStandardMaterial({ color: 0xd0d6dc, roughness: 0.7, vertexColors: true });
+    v.scene.add(T3.g);
+    // seabed and the soil block cut away in front, so the pile shows
+    const bed = new THREE.Mesh(new THREE.CircleGeometry(H * 1.2, 48), new THREE.MeshStandardMaterial({ color: 0xc9b58a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })); bed.rotation.x = -Math.PI / 2; bed.position.y = -d; v.scene.add(bed);
+    // the sea: same wave components as the run, travelling along the wave direction
+    const NG = 70, span = H * 2.2, sg = new THREE.PlaneGeometry(span, span, NG, NG); sg.rotateX(-Math.PI / 2);
+    const seaM = new THREE.Mesh(sg, new THREE.MeshStandardMaterial({ color: 0x2f7d99, transparent: true, opacity: 0.55, roughness: 0.25, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false })); v.scene.add(seaM);
+    const base = Float32Array.from(sg.attributes.position.array), wd = res.input.waveDir * Math.PI / 180;
+    // deformable meshes: tower and monopile lathes keep their rest shape; nacelle group follows the top
+    const deform = [T3.tower, T3.pile].map((mesh) => ({ mesh, rest: Float32Array.from(mesh.geometry.attributes.position.array) }));
+    deform.forEach((o) => { const n = o.mesh.geometry.attributes.position.count; o.mesh.geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3)); });
+    const z = res.z, nz = z.length, interp = (arr, k, zz) => { let i = 0; while (i < nz - 2 && z[i + 1] < zz) i++; const a = Math.min(1, Math.max(0, (zz - z[i]) / (z[i + 1] - z[i]))); return arr[k * nz + i] * (1 - a) + arr[k * nz + i + 1] * a; };
+    const yaw0 = T3.yaw.position.clone(), arrowT = new THREE.ArrowHelper(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, H, 30), 30, 0x43b3d5, 8, 5), arrowW = new THREE.ArrowHelper(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, 0, 25), 20, 0xe3a33c, 6, 4);
+    v.scene.add(arrowT); v.scene.add(arrowW);
+    const mMax = Math.max(1, ...["TwrBsM", "MudM"].map((k) => Math.max(Math.abs(res.stats[k].max), Math.abs(res.stats[k].min)))), thMax = Math.max(0.1, res.stats.RotThrust.max), wMax = Math.max(0.1, Math.abs(res.stats.WaveFx.max), Math.abs(res.stats.WaveFx.min));
+    const camSet = () => { const c = SIMSTYLE.cam, p = { iso: [H * 1.9, H * 1.05, H * 2.5], side: [H * 3.3, H * 0.5, 0], front: [0, H * 0.55, H * 3.3], top: [H * 0.7, H * 1.15, H * 1.3] }[c], tg = c === "top" ? [0, H, 0] : [0, H * 0.42, 0]; v.cam.position.set(...p); v.ctl.target.set(...tg); v.ctl.update(); };
+    camSet();
+    let k = 0, acc = 0, playing = true, last = null;
+    const scrub = box.querySelector("[data-scrub]"), tnow = box.querySelector("[data-tnow]"), read = box.querySelector("[data-read]"), btn = box.querySelector("[data-play]");
+    const draw = () => {
+      const ex = SIMSTYLE.exag, tt = res.t[k];
+      deform.forEach((o) => { const p = o.mesh.geometry.attributes.position, c = o.mesh.geometry.attributes.color, rs = o.rest; for (let i = 0; i < p.count; i++) { const zz = rs[3 * i + 1], fa = interp(res.dispFA, k, zz), ss = interp(res.dispSS, k, zz);
+        p.array[3 * i] = rs[3 * i] + ss * ex; p.array[3 * i + 2] = rs[3 * i + 2] - fa * ex;
+        if (SIMSTYLE.color === "moment") { const u = Math.min(1, Math.abs(zz < -d ? 0 : 1) * momentAt(zz) / mMax), cc = turbo(0.08 + 0.85 * u); c.array[3 * i] = cc[0]; c.array[3 * i + 1] = cc[1]; c.array[3 * i + 2] = cc[2]; } else { c.array[3 * i] = c.array[3 * i + 1] = c.array[3 * i + 2] = 1; } }
+        p.needsUpdate = true; c.needsUpdate = true; o.mesh.geometry.computeVertexNormals(); });
+      const fa = interp(res.dispFA, k, H - 5), ss = interp(res.dispSS, k, H - 5), fa2 = interp(res.dispFA, k, H - 15), ss2 = interp(res.dispSS, k, H - 15);
+      T3.yaw.position.set(yaw0.x + ss * ex, yaw0.y, yaw0.z - fa * ex); T3.yaw.rotation.x = -(fa - fa2) / 10 * ex; T3.yaw.rotation.z = -(ss - ss2) / 10 * ex; T3.yaw.rotation.y = -res.ch.YawErr[k] * Math.PI / 180;
+      T3.rotor.rotation.z = res.ch.Azimuth[k] * Math.PI / 180; T3.blades.forEach((b) => { b.rotation.y = res.ch.BldPitch1[k] * Math.PI / 180; });
+      seaM.visible = SIMSTYLE.waves && res.sea.length > 0; if (seaM.visible) { const P = sg.attributes.position; for (let i = 0; i < P.count; i++) { const x = base[3 * i], zz = base[3 * i + 2], s = x * Math.sin(wd) - zz * Math.cos(wd); let e = 0; for (const c of res.sea) e += c.a * Math.cos(c.k * s - c.w * tt + c.ph); P.array[3 * i + 1] = e; } P.needsUpdate = true; sg.computeVertexNormals(); }
+      arrowT.visible = arrowW.visible = SIMSTYLE.arrows; const th = res.ch.RotThrust[k], wf = res.ch.WaveFx[k];
+      arrowT.position.set(ss * ex, H, -fa * ex + 25); arrowT.setLength(Math.max(4, 45 * th / thMax), 8, 5);
+      arrowW.setDirection(new THREE.Vector3(Math.sin(wd) * Math.sign(wf || 1), 0, -Math.cos(wd) * Math.sign(wf || 1))); arrowW.position.set(0, -d * 0.35, 0); arrowW.setLength(Math.max(3, 35 * Math.abs(wf) / wMax), 6, 4);
+      scrub.value = k; tnow.textContent = fmt(tt, 1) + " s";
+      read.hidden = !SIMSTYLE.labels; read.innerHTML = `wind ${fmt(res.ch.Wind1VelX[k], 1)} m/s · rotor ${fmt(res.ch.RotSpeed[k], 2)} rpm · pitch ${fmt(res.ch.BldPitch1[k], 1)}° · power ${fmt(res.ch.GenPwr[k], 1)} MW · thrust ${fmt(th, 2)} MN · η ${fmt(res.ch.Wave1Elev[k], 2)} m · tower base ${fmt(res.ch.TwrBsM[k], 0)} MN·m`;
+      box.querySelectorAll("[data-cur]").forEach((c) => { const sv = c.parentElement.querySelector("svg"); if (!sv) return; const W2 = sv.viewBox.baseVal.width, L = 52, R2 = 14, x0 = res.t[0], x1 = res.t[res.nOut - 1]; c.style.left = `calc(${((L + (tt - x0) / (x1 - x0) * (W2 - L - R2)) / W2) * 100}% - 1px)`; });
+    };
+    // moment along the structure from the nodal displacement curvature is noisy; scale between the tower-base and mudline channels
+    const momentAt = (zz) => { const tb = res.ch.TwrBsM[k], mu = res.ch.MudM[k], zt = ty.z_interface, zm = -d; if (zz >= zt) return tb * Math.max(0, (H - zz) / (H - zt)); if (zz >= zm) return tb + (mu - tb) * (zt - zz) / (zt - zm); return mu * Math.max(0, 1 - (zm - zz) / (0.5 * ty.embedment)); };
+    v.onTick((ts) => { if (last === null) last = ts; const dt = Math.min(0.1, ts - last); last = ts; if (playing) { acc += dt * SIMSTYLE.speed / res.input.outDt; while (acc >= 1) { k = (k + 1) % res.nOut; acc -= 1; } } draw(); });
+    btn.addEventListener("click", () => { playing = !playing; btn.textContent = playing ? "❚❚" : "▶"; });
+    scrub.addEventListener("input", () => { k = +scrub.value; playing = false; btn.textContent = "▶"; draw(); });
+    box.querySelector("[data-spd]").addEventListener("change", (e) => { SIMSTYLE.speed = +e.target.value; });
+    box.querySelectorAll("[data-sty]").forEach((x) => x.addEventListener(x.type === "range" ? "input" : "change", () => { const kk = x.dataset.sty; SIMSTYLE[kk] = x.type === "checkbox" ? x.checked : x.type === "range" ? +x.value : x.value; if (kk === "exag") box.querySelector("[data-exv]").textContent = x.value; if (kk === "cam") camSet(); }));
+  }
+  // ----- Load cases: design load cases after IEC 61400-3-1 / IEC 61400-1 (or DNV-ST-0437), run on the same engine -----
+  // Each case expands into runs over wind speeds, seeds and misalignments; extremes get the partial safety factor of
+  // their category (N normal 1.35, A abnormal 1.1), fatigue (DLC 1.2) is weighted over the site's wind distribution.
+  const DLC_STD = {
+    iec: { name: "IEC 61400-3-1:2019 with IEC 61400-1 ed. 4", psf: { N: 1.35, A: 1.1, F: 1.0 }, gm: 1.1 },
+    dnv: { name: "DNV-ST-0437 (loads and site conditions)", psf: { N: 1.35, A: 1.1, F: 1.0 }, gm: 1.1 },
+  };
+  const DLC_DEFS = [
+    { id: "1.2", cat: "F", name: "Power production, normal turbulence", wind: "ntm", sea: "nss", mode: "power", Us: "bins", seeds: 3, note: "Fatigue across the operating range" },
+    { id: "1.3", cat: "N", name: "Power production, extreme turbulence", wind: "etm", sea: "nss", mode: "power", Us: "rated", seeds: 2, note: "Extreme turbulence around rated wind" },
+    { id: "1.4", cat: "N", name: "Coherent gust with direction change", wind: "ecd", sea: "nss", mode: "power", Us: "near", seeds: 1, note: "V<sub>r</sub> − 2, V<sub>r</sub>, V<sub>r</sub> + 2 m/s" },
+    { id: "1.6", cat: "N", name: "Power production in the severe sea state", wind: "ntm", sea: "sss", mode: "power", Us: "rated", seeds: 2, note: "50-year H<sub>s</sub> with operating wind" },
+    { id: "2.3", cat: "A", name: "Extreme operating gust with grid loss", wind: "eog", sea: "nss", mode: "power", event: "gridloss", Us: "gust", seeds: 1, note: "Grid lost at the worst point of the gust" },
+    { id: "2.1", cat: "N", name: "Control fault: pitch seized", wind: "ntm", sea: "nss", mode: "power", event: "pitchfault", Us: "rated", seeds: 1, note: "Overspeed trip and shutdown" },
+    { id: "6.1", cat: "N", name: "Parked, 50-year wind and sea", wind: "ewm50", sea: "ess50", mode: "parked", Us: "one", seeds: 2, yaws: [-8, 8], note: "Yaw misalignment ±8°" },
+    { id: "6.2", cat: "A", name: "Parked, 50-year storm, grid loss", wind: "ewm50", sea: "ess50", mode: "parked", Us: "one", seeds: 1, yaws: [-90, -30, 30, 90], note: "Yaw drive lost: any misalignment" },
+    { id: "6.3", cat: "N", name: "Parked, 1-year wind, extreme misalignment", wind: "ewm1", sea: "ess1", mode: "parked", Us: "one", seeds: 1, yaws: [-20, 20], note: "Yaw misalignment ±20°" },
+  ];
+  let DLCCFG = { std: "iec", cls: "I", turb: "B", T: 120, tTrans: 20, sel: DLC_DEFS.map((x) => x.id), hs50: 9.5, wA: 10.5, wk: 2.1, binStep: 4 };
+  try { Object.assign(DLCCFG, JSON.parse(localStorage.getItem("stormtwin-dlc-v1") || "{}")); } catch (e) { /* storage unavailable */ }
+  const dlcKeep = () => { try { localStorage.setItem("stormtwin-dlc-v1", JSON.stringify(DLCCFG)); } catch (e) { /* storage unavailable */ } };
+  const hsNSS = (U) => 0.4 + 0.016 * U * U / 1.3, tpOf = (hs) => tpTyp(hs) + 0.6;
+  function dlcRuns(ty, def, c) {
+    const der = TT.derived(ty), Vr = Math.round(der.rated_U), vin = ty.cut_in, vout = ty.cut_out;
+    let Us = [];
+    if (def.Us === "bins") for (let u = Math.ceil(vin + 1); u <= vout; u += c.binStep) Us.push(u);
+    else if (def.Us === "rated") Us = [Vr, vout - 1];
+    else if (def.Us === "near") Us = [Vr - 2, Vr, Vr + 2];
+    else if (def.Us === "gust") Us = [Vr - 2, Vr + 2, vout - 1];
+    else Us = [0];
+    const runs = [];
+    Us.forEach((U) => (def.yaws || [0]).forEach((yaw) => { for (let s = 1; s <= def.seeds; s++) {
+      const sea = def.sea, Hs = sea === "nss" ? hsNSS(U) : sea === "sss" ? c.hs50 * 0.9 : sea === "ess50" ? c.hs50 : 0.8 * c.hs50;
+      runs.push(Object.assign({}, SIM0, { T: c.T, tTrans: c.tTrans, dt: 0.08, outDt: 0.2, nm: 3, seed: 100 * s + Math.round(U) + yaw, wind: def.wind, U: U || 11, cls: c.cls, turb: c.turb, yaw,
+        sea: "irregular", Hs: +Hs.toFixed(2), Tp: +tpOf(Hs).toFixed(1), gamma: sea === "nss" ? 2 : 3.3, waveDir: yaw ? 15 : 0, cur: /ess/.test(sea) ? 1.2 : 0.5, mode: def.mode, event: def.event || "none",
+        tEvent: def.wind === "eog" ? Math.min(c.T * 0.5, c.T - 30) + 5 : c.T * 0.4, tGust: Math.min(c.T * 0.5, c.T - 30), label: `U ${U || "EWM"} m/s${yaw ? `, yaw ${yaw}°` : ""}, seed ${s}` })); } }));
+    return runs;
+  }
+  const DLC_KEYS = [["TwrBsM", "Tower base"], ["MudM", "Mudline"], ["PileM", "Pile, −6 m"], ["RootMflp1", "Blade root, flap"], ["RotThrust", "Thrust"], ["TTAccFA", "Tower-top acc."]];
+  function dlcView() {
+    const host = document.getElementById("bl-pane-dlc"), ty = TT.get(bSel), t = T[bSite] || T[0], r = RUNS.get(bSel + ":dlc"), c = DLCCFG, std = DLC_STD[c.std];
+    const rowsHtml = DLC_DEFS.map((d) => { const n = dlcRuns(ty, d, c).length;
+      return `<tr><td><input type="checkbox" data-dsel="${d.id}"${c.sel.includes(d.id) ? " checked" : ""} aria-label="Run DLC ${d.id}"></td><td class="mono">${d.id}</td><td>${d.name}<div class="muted" style="font-size:0.72rem">${d.note}</div></td><td class="mono">${d.wind.toUpperCase()}</td><td class="mono">${d.sea.toUpperCase()}</td><td><span class="pill ${d.cat === "F" ? "" : d.cat === "A" ? "amber" : "green"}">${d.cat === "F" ? "fatigue" : d.cat === "A" ? "abnormal" : "normal"}</span></td><td class="r mono">${std.psf[d.cat]}</td><td class="r mono">${n}</td></tr>`; }).join("");
+    const total = DLC_DEFS.filter((d) => c.sel.includes(d.id)).reduce((a, d) => a + dlcRuns(ty, d, c).length, 0);
+    host.innerHTML = `<div class="bl-hd2"><h3>Design load cases</h3>${PLACEHOLDER}</div><p class="cap">The load cases a certification body expects for a fixed-bottom offshore turbine, run on the simulation engine for ${ty.name} at ${t.spec.name} (${fmt(t.spec.depth, 1)} m). Extreme loads get the partial safety factor of their category; DLC 1.2 gives damage-equivalent loads weighted over the site's wind.</p>` +
+      `<div class="dlc-set bl-g"><div class="dlc-grid">` + sel2("std", "Standard", c.std, Object.entries(DLC_STD).map(([k, v]) => [k, v.name])) + sel2("cls", "Turbine class", c.cls, [["I", "I (V<sub>ref</sub> 50 m/s)"], ["II", "II (42.5)"], ["III", "III (37.5)"]]) + sel2("turb", "Turbulence category", c.turb, [["A", "A"], ["B", "B"], ["C", "C"]]) +
+      numIn("hs50", "50-year H<sub>s</sub>", c.hs50, "m", 0.1) + numIn("wA", "Site Weibull A at hub", c.wA, "m/s", 0.1) + numIn("wk", "Site Weibull k", c.wk, "", 0.05) + numIn("T", "Length of each run", c.T, "s", 10) + numIn("binStep", "Fatigue wind bins every", c.binStep, "m/s", 1) +
+      `</div><p class="cap" style="margin:4px 0 0">The standards ask for 10-minute runs (1 hour for some sea states) and six seeds per bin; shorter runs here keep the placeholder engine quick. Normal sea state: H<sub>s</sub> rising with wind; severe and extreme sea states from the 50-year H<sub>s</sub>.</p></div>` +
+      `<div class="tbl-wrap"><table class="list bl-ltt dlc-tbl"><thead><tr><th></th><th>DLC</th><th>Design situation</th><th>Wind</th><th>Sea</th><th>Type</th><th class="r">γ<sub>f</sub></th><th class="r">Runs</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` +
+      `<div class="row" style="margin-top:8px"><button class="btn bl-go" style="margin:0" data-drun>Run ${total} simulations</button><span class="muted" data-dmsg></span></div><div class="bl-prog" style="margin-top:6px"><i data-dbar></i></div><div data-dres></div>`;
+    host.querySelectorAll("[data-o]").forEach((x) => x.addEventListener("change", () => { Object.assign(DLCCFG, readO(host.querySelector(".dlc-set"))); dlcKeep(); dlcView(); }));
+    host.querySelectorAll("[data-dsel]").forEach((x) => x.addEventListener("change", () => { DLCCFG.sel = [...host.querySelectorAll("[data-dsel]")].filter((y) => y.checked).map((y) => y.dataset.dsel); dlcKeep(); dlcView(); }));
+    host.querySelector("[data-drun]").addEventListener("click", async (e) => {
+      e.target.disabled = true; const defs = DLC_DEFS.filter((d) => c.sel.includes(d.id)), all = []; defs.forEach((d) => dlcRuns(ty, d, c).forEach((inp) => all.push([d, inp])));
+      const bar = host.querySelector("[data-dbar]"), msg = host.querySelector("[data-dmsg]"), out = {}, depth = t.spec.depth, t0 = performance.now();
+      for (let i = 0; i < all.length; i++) { const [d, inp] = all[i]; msg.textContent = `DLC ${d.id}: ${inp.label} (${i + 1} of ${all.length})`;
+        const res = await SOLVERS.sim(ty, depth, inp); (out[d.id] = out[d.id] || []).push({ inp, stats: res.stats }); bar.style.width = (100 * (i + 1) / all.length).toFixed(0) + "%"; }
+      msg.textContent = `${all.length} runs in ${fmt((performance.now() - t0) / 1000, 0)} s.`;
+      RUNS.set(bSel + ":dlc", { key: runKey(), input: JSON.parse(JSON.stringify(c)), result: out }); e.target.disabled = false; dlcResults(host);
+    });
+    if (r) dlcResults(host);
+  }
+  function dlcResults(host) {
+    const r = RUNS.get(bSel + ":dlc"), out = r.result, c = r.input, std = DLC_STD[c.std], ty = TT.get(bSel), t = T[bSite] || T[0], box = host.querySelector("[data-dres]");
+    const defs = DLC_DEFS.filter((d) => out[d.id]), ext = defs.filter((d) => d.cat !== "F");
+    const peak = (d, k) => { let best = { v: 0, run: null }; out[d.id].forEach((x) => { const s2 = x.stats[k], v = Math.max(Math.abs(s2.max), Math.abs(s2.min)); if (v > best.v) best = { v, run: x }; }); return best; };
+    const gov = {}; DLC_KEYS.forEach(([k]) => { gov[k] = { v: 0, id: null }; ext.forEach((d) => { const v = peak(d, k).v * std.psf[d.cat]; if (v > gov[k].v) gov[k] = { v, id: d.id }; }); });
+    // design check: bending stress at the tower base and mudline against yield with the material factor
+    const B = TFE.build(ty, t.spec.depth, 0), hs = TFE.hotSpots(ty, B, t.spec.depth), chk = [["TwrBsM", hs.tower_base, ty.mat_tw, "Tower base"], ["MudM", hs.mudline, ty.mat_mp, "Mudline"]].map(([k, h, mat, lab]) => {
+      const fy = fyOf(matOf("steel", mat), h.t * 1e3) / std.gm, s2 = gov[k].v * 1e6 / h.W / 1e6 + h.N / h.A / 1e6 * 1.1; return { lab, s: s2, fy, u: s2 / fy, id: gov[k].id }; });
+    const pill = (u) => `<span class="pill ${u < 0.8 ? "green" : u < 1 ? "amber" : "red"}">${fmt(u, 2)}</span>`;
+    let h = stale(r) + `<h3 style="margin:12px 0 4px;font-size:1rem">Extreme loads (characteristic × γ<sub>f</sub> = design)</h3><div class="tbl-wrap"><table class="list bl-ltt"><thead><tr><th>DLC</th><th class="r">γ<sub>f</sub></th>${DLC_KEYS.map(([k, l]) => `<th class="r">${l}<div class="muted" style="font-weight:400">${SIM_UNIT[k]}</div></th>`).join("")}<th></th></tr></thead><tbody>` +
+      ext.map((d) => `<tr><td class="mono">${d.id}</td><td class="r mono">${std.psf[d.cat]}</td>${DLC_KEYS.map(([k]) => { const p = peak(d, k), dv = p.v * std.psf[d.cat], g = gov[k].id === d.id; return `<td class="r mono"${g ? ' style="font-weight:700;color:var(--crit)"' : ""} title="characteristic ${cbv(p.v)}, worst run: ${p.run ? p.run.inp.label : ""}">${cbv(dv)}</td>`; }).join("")}<td><button class="btn sm" data-open="${d.id}">Simulate worst</button></td></tr>`).join("") +
+      `<tr class="dlc-gov"><td colspan="2"><b>Governing</b></td>${DLC_KEYS.map(([k]) => `<td class="r mono"><b>${cbv(gov[k].v)}</b><div class="muted">DLC ${gov[k].id || "–"}</div></td>`).join("")}<td></td></tr></tbody></table></div>` +
+      `<div class="tbl-wrap" style="margin-top:8px"><table class="list bl-chk"><tbody>${chk.map((x) => `<tr><td>${x.lab}: bending and axial stress from DLC ${x.id || "–"}</td><td class="mono">${fmt(x.s, 0)} MPa of f<sub>y</sub>/γ<sub>M</sub> ${fmt(x.fy, 0)} MPa</td><td>${pill(x.u)}</td></tr>`).join("")}</tbody></table></div>`;
+    if (out["1.2"]) {
+      const runs = out["1.2"], byU = {}; runs.forEach((x) => { (byU[x.inp.U] = byU[x.inp.U] || []).push(x); });
+      const Us = Object.keys(byU).map(Number).sort((a, b) => a - b), m = 4, wb = (u) => { const a = u - c.binStep / 2, b = u + c.binStep / 2, F = (v) => 1 - Math.exp(-((Math.max(0, v) / c.wA) ** c.wk)); return F(b) - F(a); };
+      const keysF = [["TwrBsMyt", "Tower base, fore-aft"], ["MudMy", "Mudline, fore-aft"], ["RootMflp1", "Blade root, flap"]];
+      const del = (u, k) => Math.pow(byU[u].reduce((s2, x) => s2 + x.stats[k].del ** m, 0) / byU[u].length, 1 / m);
+      const life = (k) => Math.pow(Us.reduce((s2, u) => s2 + wb(u) * del(u, k) ** m, 0) / Math.max(1e-9, Us.reduce((s2, u) => s2 + wb(u), 0)), 1 / m);
+      h += `<h3 style="margin:14px 0 4px;font-size:1rem">Fatigue, DLC 1.2: damage-equivalent loads (1 Hz, m = ${m})</h3><div class="grid2"><div data-fch></div><div class="tbl-wrap"><table class="list bl-ltt"><thead><tr><th>Location</th><th class="r">Lifetime DEL</th></tr></thead><tbody>${keysF.map(([k, l]) => `<tr><td>${l}</td><td class="r mono">${cbv(life(k))} ${SIM_UNIT[k]}</td></tr>`).join("")}</tbody></table>` +
+        `<p class="cap">Weighted over the site's wind (Weibull A ${c.wA} m/s, k ${c.wk}); time outside the operating range is not counted. Feed these into the Fatigue tab's S-N check, or replace them with the real engine's rainflow results.</p></div></div>`;
+      box.innerHTML = h;
+      chart(box.querySelector("[data-fch]"), { series: keysF.map(([k], i) => ({ x: Us, y: Us.map((u) => del(u, k)), color: ["--accent", "--warn", "--ok"][i], width: 2, points: false })), xl: "wind at hub (m/s)", yl: "DEL (MN·m)", h: 200, label: "Damage-equivalent load by wind bin", legend: keysF.map(([, l], i) => ({ label: l, color: ["--accent", "--warn", "--ok"][i] })) });
+    } else box.innerHTML = h;
+    box.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => { const d = DLC_DEFS.find((x) => x.id === b.dataset.open), p = peak(d, "MudM"); bShowTab("sim"); simView(Object.assign({}, p.run.inp, { T: Math.max(p.run.inp.T, 180), dt: 0.05, outDt: 0.1, nm: 4 })); }));
+  }
   // ----- 3D soil-pile -----
   function pileView() {
     const host = document.getElementById("bl-pane-pile"), ty = TT.get(bSel), r = RUNS.get(bSel + ":pile"), o = (r && r.input) || { model: "hs", mesh: "medium", radius: 12, ecc: Math.round(0.75 * (ty.z_hub + (T[bSite] || T[0]).spec.depth)), umax: +(0.1 * ty.D_pile).toFixed(2), steps: 16 };
