@@ -388,6 +388,7 @@ details.sec > * + * { margin-top: 8px; }
 .vp-wi label .v { font-family: var(--font-data); color: var(--accent); }
 .vp-wi input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 0; }
 .vp-legend .wk { display: inline-flex; align-items: center; gap: 5px; }
+.bgrad { display: inline-block; width: 44px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, #eadcae, #b9d1a6 22%, #6fb3a9 45%, #3b7fa6 70%, #1c3d6b); }
 .wgrad { display: inline-block; width: 44px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, var(--wake-lo), var(--wake-hi)); }
 @media (max-width: 860px) { .vp-wi { top: auto; bottom: 96px; width: min(236px, calc(100% - 24px)); } }
 
@@ -643,6 +644,8 @@ details.sec > * + * { margin-top: 8px; }
           <label class="sel">Colour<select id="vp-color" aria-label="Colour turbines by"><option value="verdict">Verdict</option><option value="life">Life used</option><option value="alarms">Frequency alarms</option></select></label>
           <label class="sel">Wakes<select id="vp-wake" aria-label="Wake display"><option value="both">Rings + map</option><option value="rings">Rings</option><option value="map">Map</option><option value="off">Off</option></select></label>
           <label class="sel">Sea<select id="vp-sea" aria-label="Sea state shown"><option value="live">Live</option><option value="storm">Storm replay</option><option value="whatif">What-if</option></select></label>
+          <label class="sel">Water<select id="vp-water" aria-label="Water surface"><option value="clear">See-through</option><option value="off">Hidden (seabed only)</option><option value="opaque">Opaque</option></select></label>
+          <label class="sel">Relief<select id="vp-relief" aria-label="Vertical exaggeration of the seabed"><option value="1">True scale</option><option value="4" selected>×4</option><option value="8">×8</option><option value="15">×15</option></select></label>
         </div>
       </div>
       <div class="vp-msg" id="vp-msg" hidden></div>
@@ -1736,7 +1739,7 @@ details.sec > * + * { margin-top: 8px; }
       uF: { value: Array.from({ length: NF }, () => new THREE.Vector4()) }, uFPh: { value: new Array(NF).fill(0) },
       uFpos: { value: new THREE.Vector2() }, uFt0: { value: -1e6 }, uFon: { value: 0 },
       uDeep: { value: new THREE.Color() }, uShallow: { value: new THREE.Color() }, uFoam: { value: new THREE.Color() }, uSky: { value: new THREE.Color() },
-      uSun: { value: new THREE.Vector3(-0.5, 0.65, 0.35).normalize() }, uHs: { value: 1 }, uFogFar: { value: 1500 },
+      uSun: { value: new THREE.Vector3(-0.5, 0.65, 0.35).normalize() }, uHs: { value: 1 }, uFogFar: { value: 1500 }, uClear: { value: 1 },
     };
     const mat = new THREE.ShaderMaterial({
       uniforms: uni,
@@ -1763,7 +1766,7 @@ details.sec > * + * { margin-top: 8px; }
           gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
         }`,
       fragmentShader: `
-        uniform vec3 uDeep, uShallow, uFoam, uSky, uSun; uniform float uHs, uFogFar;
+        uniform vec3 uDeep, uShallow, uFoam, uSky, uSun; uniform float uHs, uFogFar, uClear;
         varying vec3 vPos; varying vec3 vNrm; varying float vH;
         void main() {
           vec3 n = normalize(vNrm); vec3 v = normalize(cameraPosition - vPos);
@@ -1779,20 +1782,23 @@ details.sec > * + * { margin-top: 8px; }
           float fog = smoothstep(uFogFar * 0.45, uFogFar, dist);
           col = mix(col, uSky, fog);
           // see-through water: the seabed and piles show from above, the surface turns mirror-like at grazing angles
-          float alpha = clamp(0.4 + 0.5 * fres + 0.35 * clamp(foam, 0.0, 1.0), 0.0, 1.0);
+          float alpha = mix(1.0, clamp(0.16 + 0.6 * fres + 0.35 * clamp(foam, 0.0, 1.0), 0.0, 1.0), uClear);
           gl_FragColor = vec4(col, mix(alpha, 1.0, max(fog, smoothstep(0.0, uFogFar * 0.5, dist) * 0.35)));
         }`,
     });
     mat.transparent = true;
     const ocean = new THREE.Mesh(geo, mat); ocean.renderOrder = -1; scene.add(ocean);
     // seabed: the farm's bathymetry, drawn at the turbines' scale so each pile meets it at its own depth
-    const bedMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+    const bedMat = new THREE.MeshBasicMaterial({ vertexColors: true });      // unlit: colour and hillshade are baked per vertex
     bedMat.extensions = { derivatives: true };            // depth contours every 2 m, a fifth darker every 10 m
+    const bedU = { uDm: { value: 40 }, uVE: { value: 4 }, uSc: { value: U / TS } };
+    let bedVE = 4, waterMode = "clear", bedDm = 40;
+    const dispDepth = (d) => bedDm + (d - bedDm) * bedVE;            // displayed depth: relief about the farm's mean, exaggerated
     bedMat.onBeforeCompile = (sh) => {
-      sh.uniforms.uStep = { value: 2 * TS / U };
+      Object.assign(sh.uniforms, bedU);
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying float vY;").replace("#include <begin_vertex>", "#include <begin_vertex>\nvY = position.y;");
-      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying float vY; uniform float uStep;").replace("#include <dithering_fragment>",
-        "#include <dithering_fragment>\nfloat q = -vY / uStep; float ln = abs(fract(q - 0.5) - 0.5) / max(fwidth(q), 1e-4); float q5 = q / 5.0; float l5 = abs(fract(q5 - 0.5) - 0.5) / max(fwidth(q5), 1e-4);\ngl_FragColor.rgb *= mix(0.8, 1.0, clamp(ln, 0.0, 1.0)) * mix(0.62, 1.0, clamp(l5 * 0.7, 0.0, 1.0));");
+      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying float vY; uniform float uDm, uVE, uSc;").replace("#include <fog_fragment>",
+        "float dTrue = uDm + (-vY * uSc - uDm) / uVE; float q = dTrue / 2.0; float ln = abs(fract(q - 0.5) - 0.5) / max(fwidth(q), 1e-4); float q5 = q / 5.0; float l5 = abs(fract(q5 - 0.5) - 0.5) / max(fwidth(q5), 1e-4);\ngl_FragColor.rgb *= mix(0.78, 1.0, clamp(ln, 0.0, 1.0)) * mix(0.55, 1.0, clamp(l5 * 0.7, 0.0, 1.0));\n#include <fog_fragment>");
     };
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x6f6a62, roughness: 1, flatShading: true });
     let bed = null;
@@ -1808,22 +1814,33 @@ details.sec > * + * { margin-top: 8px; }
       };
       return (x, y) => Math.max(1, raw(x, y));
     }
-    function buildBed(size) {
+    let bedGrid = null, bedRange = [30, 50];
+    const RAMP = [[0, 0xeadcae], [0.22, 0xb9d1a6], [0.45, 0x6fb3a9], [0.7, 0x3b7fa6], [1, 0x1c3d6b]].map(([u, c]) => [u, new THREE.Color(c)]);
+    const rampAt = (u, c) => { let i = 0; while (i < RAMP.length - 2 && u > RAMP[i + 1][0]) i++; const [u0, c0] = RAMP[i], [u1, c1] = RAMP[i + 1]; return c.copy(c0).lerp(c1, Math.min(1, Math.max(0, (u - u0) / (u1 - u0)))); };
+    function prepBed(size) {                    // depth field on the grid, and the mean the relief is exaggerated about
+      const N = 220, f = farmBathy(), dep = new Float32Array((N + 1) * (N + 1));
+      for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) { const sx = -size / 2 + size * i / N, sz = -size / 2 + size * j / N; dep[j * (N + 1) + i] = f((sx + center.x) * U / 1000, (sz + center.z) * U / 1000); }
+      const ds = T.map((t) => t.spec.depth); bedDm = ds.reduce((a, b) => a + b, 0) / ds.length;
+      const srt = Array.from(dep).sort((a, b) => a - b); bedRange = [srt[Math.floor(0.02 * srt.length)], Math.max(srt[Math.floor(0.98 * srt.length)], srt[Math.floor(0.02 * srt.length)] + 4)];
+      bedGrid = { N, size, dep };
+    }
+    function buildBed() {
       if (bed) { scene.remove(bed); bed.geometry.dispose(); }
-      const N = 180, g = new THREE.PlaneGeometry(size, size, N, N); g.rotateX(-Math.PI / 2);
-      const P = g.attributes.position, col = new Float32Array(P.count * 3), f = farmBathy();
-      const dep = new Float32Array(P.count);
-      for (let i = 0; i < P.count; i++) dep[i] = f((P.getX(i) + center.x) * U / 1000, (P.getZ(i) + center.z) * U / 1000);
-      const srt = Array.from(dep).sort((a, b) => a - b), dLo = srt[Math.floor(0.03 * srt.length)], dHi = Math.max(srt[Math.floor(0.97 * srt.length)], dLo + 4);
-      const sand = new THREE.Color(0xe6d3a3), mid = new THREE.Color(0x9fae8e), deep = new THREE.Color(0x2f5d6e), c = new THREE.Color();
-      for (let i = 0; i < P.count; i++) {
-        const xk = (P.getX(i) + center.x) * U / 1000, yk = (P.getZ(i) + center.z) * U / 1000, d = dep[i], u = Math.min(1, Math.max(0, (d - dLo) / (dHi - dLo)));
-        P.setY(i, -d * TS / U);
-        const ripple = 0.06 * Math.sin(xk * 41 + yk * 23) * Math.sin(xk * 17 - yk * 37);
-        (u < 0.5 ? c.copy(sand).lerp(mid, u / 0.5) : c.copy(mid).lerp(deep, (u - 0.5) / 0.5)).multiplyScalar(0.94 + ripple);
-        col.set([c.r, c.g, c.b], 3 * i);
+      const { N, size, dep } = bedGrid, g = new THREE.PlaneGeometry(size, size, N, N); g.rotateX(-Math.PI / 2);
+      const P = g.attributes.position, col = new Float32Array(P.count * 3), c = new THREE.Color(), [dLo, dHi] = bedRange, M = N + 1;
+      bedU.uDm.value = bedDm; bedU.uVE.value = bedVE;
+      // hillshade as on a survey chart: light from the north-west, 40° up, slopes steepened 3× for the shading only
+      const hgt = (i, j) => -dispDepth(dep[Math.min(N, Math.max(0, j)) * M + Math.min(N, Math.max(0, i))]) * TS / U, cs = size / N, ZF = 3;
+      const L = new THREE.Vector3(-0.54, 0.64, -0.54).normalize(), n = new THREE.Vector3();
+      for (let k = 0; k < P.count; k++) {           // PlaneGeometry rows run north to south after the rotation: match by position
+        const i = Math.round((P.getX(k) / size + 0.5) * N), j = Math.round((P.getZ(k) / size + 0.5) * N), d = dep[j * M + i];
+        P.setY(k, hgt(i, j));
+        n.set(-(hgt(i + 1, j) - hgt(i - 1, j)) / (2 * cs) * ZF, 1, -(hgt(i, j + 1) - hgt(i, j - 1)) / (2 * cs) * ZF).normalize();
+        const shade = Math.min(1.3, Math.max(0.3, 0.3 + 0.7 * Math.max(0, n.dot(L)) / L.y));
+        const xk = (P.getX(k) + center.x) * U / 1000, yk = (P.getZ(k) + center.z) * U / 1000, ripple = 0.04 * Math.sin(xk * 41 + yk * 23) * Math.sin(xk * 17 - yk * 37);
+        rampAt((d - dLo) / (dHi - dLo), c).multiplyScalar(0.92 * shade * (1 + ripple)); col.set([Math.min(1, c.r), Math.min(1, c.g), Math.min(1, c.b)], 3 * k);
       }
-      g.setAttribute("color", new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+      g.setAttribute("color", new THREE.BufferAttribute(col, 3));
       bed = new THREE.Mesh(g, bedMat); scene.add(bed);
     }
     // wind streaks
@@ -1855,10 +1872,10 @@ details.sec > * + * { margin-top: 8px; }
     function buildTurbine(t, i) {
       const m = metaFor(i), g = new THREE.Group();
       const zh = m.z_hub / U, R = m.rotor_D / 2 / U, rp = m.D_pile / 2 / U;
-      const T3 = TM.build(m, { white, blade: bladeMat, grey, yellow, dark: darkMat }, -(t.spec.depth + 3));
+      const dd = dispDepth(t.spec.depth), T3 = TM.build(m, { white, blade: bladeMat, grey, yellow, dark: darkMat }, -(Math.max(dd, t.spec.depth) + 3));
       T3.g.scale.setScalar(1 / U); g.add(T3.g);
       const rD = m.Dz(-t.spec.depth) / 2, apron = new THREE.Mesh(new THREE.CylinderGeometry(rD * 2.4, rD * 3.6, 1.6, 14, 1), rockMat);
-      apron.position.y = -t.spec.depth + 0.3; T3.g.add(apron);
+      apron.position.y = -dd + 0.3; T3.g.add(apron);
       const { yaw, rotor, nac, hub, blades, tower, tp, plat, pile, door } = T3;
       const az = DOOR_AZ * Math.PI / 180, rd = m.Dz(m.z_door) / 2;
       door.position.set(Math.sin(az) * rd, m.z_door, -Math.cos(az) * rd); door.rotation.y = -az;
@@ -1891,7 +1908,8 @@ details.sec > * + * { margin-top: 8px; }
         : colorMode === "alarms" ? [["--ok", "no frequency alarm"], ["--crit", "frequency alarm"]]
         : [["--crit", "act now"], ["--warn", "inspect"], ["--ok", "no action"]];
       L.innerHTML = it.map(([c, l]) => `<span><i class="dot" style="background:var(${c})"></i>${l}</span>`).join("") +
-        (SEA !== "storm" && wakeMode !== "off" ? `<span class="wk">wake deficit <i class="wgrad"></i> 0–35%</span>` : "");
+        (SEA !== "storm" && wakeMode !== "off" ? `<span class="wk">wake deficit <i class="wgrad"></i> 0–35%</span>` : "") +
+        (waterMode !== "opaque" ? `<span class="wk">seabed <i class="bgrad"></i> ${fmt(bedRange[0], 0)}–${fmt(bedRange[1], 0)} m${bedVE > 1 ? `, relief ×${bedVE}` : ""}</span>` : "");
     }
     function recolour() {
       turbines.forEach((o, i) => {
@@ -1911,9 +1929,10 @@ details.sec > * + * { margin-top: 8px; }
       const xs = T.map((t) => t.spec.x * 1000 / U), zs = T.map((t) => t.spec.y * 1000 / U);
       center.set((Math.min(...xs) + Math.max(...xs)) / 2, 0, (Math.min(...zs) + Math.max(...zs)) / 2);
       extent = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs), 200);
+      const size = extent * 2.6 + 600; prepBed(size);
       turbines = T.map((t, i) => buildTurbine(t, i));
-      const size = extent * 2.6 + 600; ocean.scale.set(size, 1, size);
-      uni.uFogFar.value = size * 0.55; buildBed(size);
+      ocean.scale.set(size, 1, size);
+      uni.uFogFar.value = size * 0.55; buildBed(); scene.fog = new THREE.Fog(uni.uSky.value, size * 0.25, size * 0.55);
       sea(); recolour(); resetView(false);
     }
     // sea state -> wave components
@@ -2107,7 +2126,7 @@ details.sec > * + * { margin-top: 8px; }
     }
     function theme() {
       const sky = new THREE.Color(css("--sky"));
-      scene.background = sky; uni.uSky.value = sky;
+      scene.background = sky; uni.uSky.value = sky; if (scene.fog) scene.fog.color = sky;
       uni.uDeep.value = new THREE.Color(css("--ocean-deep")); uni.uShallow.value = new THREE.Color(css("--ocean-shallow")); uni.uFoam.value = new THREE.Color(css("--foam"));
       streaks.material.color = new THREE.Color(css("--foam"));
       if (turbines.length) sea();
@@ -2132,6 +2151,9 @@ details.sec > * + * { margin-top: 8px; }
     document.getElementById("vp-sea").addEventListener("change", (e) => setSea(e.target.value));
     document.getElementById("vwi-live").addEventListener("click", () => setSea("live"));
     document.getElementById("vp-wake").addEventListener("change", (e) => { wakeMode = e.target.value; sea(); });
+    function setWater(v) { waterMode = v; ocean.visible = v !== "off"; streaks.visible = v !== "off"; uni.uClear.value = v === "clear" ? 1 : 0; legend(); }
+    document.getElementById("vp-water").addEventListener("change", (e) => setWater(e.target.value));
+    document.getElementById("vp-relief").addEventListener("change", (e) => { bedVE = +e.target.value; if (!bedGrid) return; buildBed(); retype(); });
     theme(); resize(); requestAnimationFrame(frame);
     return {
       setFarm, retype, theme, setSea, sea: () => { if (SEA === "whatif") sea(); }, reset: () => { highlight(-1); resetView(true); },
