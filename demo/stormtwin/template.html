@@ -671,6 +671,7 @@ details.sec > * + * { margin-top: 8px; }
           <label class="sel">Sea<select id="vp-sea" aria-label="Sea state shown"><option value="live">Live</option><option value="storm">Storm replay</option><option value="whatif">What-if</option></select></label>
           <label class="sel">Water<select id="vp-water" aria-label="Water surface"><option value="clear">See-through</option><option value="off">Hidden (seabed only)</option><option value="opaque">Opaque</option></select></label>
           <label class="sel">Relief<select id="vp-relief" aria-label="Vertical exaggeration of the seabed"><option value="1">True scale</option><option value="4" selected>×4</option><option value="8">×8</option><option value="15">×15</option></select></label>
+          <label class="sel">Mudline<select id="vp-mud" aria-label="Seabed surface"><option value="solid">Solid</option><option value="clear">Translucent, piles below</option></select></label>
           </div>
         </details>
       </div>
@@ -1819,7 +1820,8 @@ details.sec > * + * { margin-top: 8px; }
     const bedMat = new THREE.MeshBasicMaterial({ vertexColors: true });      // unlit: colour and hillshade are baked per vertex
     bedMat.extensions = { derivatives: true };            // depth contours every 2 m, a fifth darker every 10 m
     const bedU = { uDm: { value: 40 }, uVE: { value: 4 }, uSc: { value: U / TS } };
-    let bedVE = 4, waterMode = "clear", bedDm = 40;
+    let bedVE = 4, waterMode = "clear", bedDm = 40, mudMode = "solid";
+    const pileWire = new THREE.LineBasicMaterial({ color: 0xf2c230 }), pileFill = new THREE.MeshBasicMaterial({ color: 0xf2c230, transparent: true, opacity: 0.14, depthWrite: false, side: THREE.DoubleSide }), pileToe = new THREE.MeshBasicMaterial({ color: 0xf2c230 });
     const dispDepth = (d) => bedDm + (d - bedDm) * bedVE;            // displayed depth: relief about the farm's mean, exaggerated
     bedMat.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, bedU);
@@ -1868,7 +1870,7 @@ details.sec > * + * { margin-top: 8px; }
         rampAt((d - dLo) / (dHi - dLo), c).multiplyScalar(0.92 * shade * (1 + ripple)); col.set([Math.min(1, c.r), Math.min(1, c.g), Math.min(1, c.b)], 3 * k);
       }
       g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-      bed = new THREE.Mesh(g, bedMat); scene.add(bed);
+      bed = new THREE.Mesh(g, bedMat); bed.renderOrder = -2; scene.add(bed);
     }
     // wind streaks
     const NS = 260, streakPos = new Float32Array(NS * 6), streakSeed = [];
@@ -1899,8 +1901,17 @@ details.sec > * + * { margin-top: 8px; }
     function buildTurbine(t, i) {
       const m = metaFor(i), g = new THREE.Group();
       const zh = m.z_hub / U, R = m.rotor_D / 2 / U, rp = m.D_pile / 2 / U;
-      const dd = dispDepth(t.spec.depth), T3 = TM.build(m, { white, blade: bladeMat, grey, yellow, dark: darkMat }, -(Math.max(dd, t.spec.depth) + 3));
+      const dd = dispDepth(t.spec.depth), T3 = TM.build(m, { white, blade: bladeMat, grey, yellow, dark: darkMat }, -dd - 0.3);
       T3.g.scale.setScalar(1 / U); g.add(T3.g);
+      // embedded pile below the mudline: wireframe with rings every 5 m and a solid toe ring, shown when the seabed is translucent
+      const Dp = m.D_pile, Le = m.embedment, nz = Math.max(4, Math.round(Le / 5)), emb = new THREE.Group(); emb.visible = mudMode === "clear";
+      const wire = new THREE.Mesh(new THREE.CylinderGeometry(Dp / 2, Dp / 2, Le, 24, 1, true), pileFill); wire.position.y = -dd - Le / 2; emb.add(wire);
+      const lp = [], NG = 12, NR = 32, r0 = Dp / 2, y0 = -dd, y1 = -dd - Le;
+      for (let k = 0; k < NG; k++) { const a = 2 * Math.PI * k / NG; lp.push(r0 * Math.cos(a), y0, r0 * Math.sin(a), r0 * Math.cos(a), y1, r0 * Math.sin(a)); }
+      for (let q = 1; q <= nz; q++) { const y = y0 - Le * q / nz; for (let k = 0; k < NR; k++) { const a = 2 * Math.PI * k / NR, b2 = 2 * Math.PI * (k + 1) / NR; lp.push(r0 * Math.cos(a), y, r0 * Math.sin(a), r0 * Math.cos(b2), y, r0 * Math.sin(b2)); } }
+      const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.Float32BufferAttribute(lp, 3)); emb.add(new THREE.LineSegments(lg, pileWire));
+      const toe = new THREE.Mesh(new THREE.TorusGeometry(Dp / 2, 0.25, 6, 32), pileToe); toe.rotation.x = Math.PI / 2; toe.position.y = -dd - Le; emb.add(toe);
+      T3.g.add(emb); wire.userData.part = "soil"; toe.userData.part = "soil";
       const rD = m.Dz(-t.spec.depth) / 2, apron = new THREE.Mesh(new THREE.CylinderGeometry(rD * 2.4, rD * 3.6, 1.6, 14, 1), rockMat);
       apron.position.y = -dd + 0.3; T3.g.add(apron);
       const { yaw, rotor, nac, hub, blades, tower, tp, plat, pile, door } = T3;
@@ -1919,7 +1930,8 @@ details.sec > * + * { margin-top: 8px; }
       [["rna", [nac, hub, T3.extras[0]]], ["blade_A", [blades[0]]], ["blade_B", [blades[1]]], ["blade_C", [blades[2]]], ["tower", [tower]], ["door", [door]], ["flange", [tp]], ["platform", [plat, ...T3.extras.slice(1)]], ["splash", [pile]]]
         .forEach(([k, ms]) => ms.forEach((o) => { o.userData.part = k; }));
       farmGroup.add(g);
-      return { g, yaw, rotor, ring, beam, lab, parts };
+      parts.soil = [pile, wire]; parts.weld = [pile, wire];
+      return { g, yaw, rotor, ring, beam, lab, parts, emb };
     }
     function colourFor(t) {
       if (colorMode === "life" && t.history) {
@@ -2190,6 +2202,12 @@ details.sec > * + * { margin-top: 8px; }
     document.getElementById("vp-wake").addEventListener("change", (e) => { wakeMode = e.target.value; sea(); });
     function setWater(v) { waterMode = v; ocean.visible = v !== "off"; streaks.visible = v !== "off"; uni.uClear.value = v === "clear" ? 1 : 0; legend(); }
     document.getElementById("vp-water").addEventListener("change", (e) => setWater(e.target.value));
+    function setMud(v) {
+      mudMode = v; const see = v === "clear";
+      bedMat.transparent = see; bedMat.opacity = see ? 0.38 : 1; bedMat.depthWrite = !see; bedMat.needsUpdate = true;
+      turbines.forEach((o) => { if (o.emb) o.emb.visible = see; });
+    }
+    document.getElementById("vp-mud").addEventListener("change", (e) => setMud(e.target.value));
     document.getElementById("vp-relief").addEventListener("change", (e) => { bedVE = +e.target.value; if (!bedGrid) return; buildBed(); retype(); });
     theme(); resize(); requestAnimationFrame(frame);
     return {
