@@ -231,6 +231,8 @@ button.tab { font: inherit; }
 .node .meta { flex: none; font-family: var(--font-data); font-size: 0.72rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
 .node .sd { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px var(--surface); }
 .node.farm-n .nm { font-weight: 600; }
+.bl-inst { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 8px 10px; margin: 0 0 10px; border: 1px solid var(--warn); border-radius: 8px; background: var(--warn-soft); font-size: 0.84rem; }
+.bl-instd { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; } .bl-instd .pill { text-transform: none; letter-spacing: 0; } .bl-tyi .nm { font-weight: 500; }
 .bl-grp { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin: 10px 4px 4px; } .bl-grp:first-child { margin-top: 2px; }
 .bl-ty { display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left; font: inherit; border: 1px solid transparent; border-radius: 7px; background: none; color: var(--ink); padding: 7px 10px; cursor: pointer; margin-bottom: 2px; }
 .bl-ty:hover { background: var(--grid); } .bl-ty.on { background: var(--accent-soft); border-color: var(--accent); } .bl-ty .nm { font-weight: 600; font-size: 0.88rem; } .bl-ty .mt { font-size: 0.72rem; color: var(--muted); }
@@ -4064,7 +4066,8 @@ details.sec > * + * { margin-top: 8px; }
       drawStorm(); drawList(-1); farmHistory(); showPane("farm"); farmLive(document.getElementById("farm-live")); powerPanel(document.getElementById("farm-power"));
     } else if (NAV.type === "turbine") {
       const t = T[NAV.t];
-      ey.innerHTML = `${F.name} · <button type="button" class="ey-type" title="Change this turbine's type">${TT.typeOf(NAV.t).name}</button>`; ey.querySelector(".ey-type").addEventListener("click", () => openBuilder(NAV.t)); ti.innerHTML = t.spec.name + ` <span class="pill ${t.status}">${statusText[t.status]}</span>`;
+      ey.innerHTML = `${F.name} · <button type="button" class="ey-type" title="Change this turbine's type">${TT.typeOf(NAV.t).name}</button> · <button type="button" class="ey-type" data-edit1 title="Change this turbine only, for example its pile length">Edit ${t.spec.name}</button>`;
+      ey.querySelector(".ey-type").addEventListener("click", () => openBuilder(NAV.t)); ey.querySelector("[data-edit1]").addEventListener("click", () => editTurbine(NAV.t)); ti.innerHTML = t.spec.name + ` <span class="pill ${t.status}">${statusText[t.status]}</span>`;
       TGROUPS.forEach(([k, l]) => { const b = el("button", { type: "button", role: "tab", "data-tab": k }, l); b.addEventListener("click", () => showTab(TSUB[k] || k)); tabs.append(b); });
       detail(NAV.t); showTab(NAV.tab || "overview");
     } else if (NAV.type === "component") {
@@ -4148,8 +4151,9 @@ details.sec > * + * { margin-top: 8px; }
         (lu ? `<div><div class="tc-sec"><span>Fatigue life used</span><span>design pace ${fmt(pace, 1)} %</span></div><b class="mono" style="font-size:1.05rem">${fmt(lu.v, 1)} %</b> <span class="muted">${HOTNAME[lu.k] || lu.k}, 90 % band ${fmt(band.p5, 1)}–${fmt(band.p95, 1)} %</span></div>` : "") +
         `<div><div class="tc-sec"><span>Hot spots after the storm</span></div><table class="tc-hs">${[["flange_bolts", "Tower-base flange bolts"], ["door_frame", "Door frame"], ["mudline_weld", "Mudline weld"]].map(([k, nm]) => `<tr><td>${nm}</td><td><span class="pill ${hst[k]}">${statusText[hst[k]]}</span></td></tr>`).join("")}` +
         `<tr><td>First natural frequency</td><td>${alarms ? `<span class="pill red">${alarms} alarm${alarms > 1 ? "s" : ""}</span>` : `<span class="pill green">normal</span>`}</td></tr></table></div>` +
-        `<div class="tc-acts"><button class="btn sb-go" type="button" data-tgo="overview">Full details</button>${[["live", "Live sensors"], ["whole", "Whole structure"], ["fatigue", "Fatigue"], ["whatif", "What-if"]].map(([k, l]) => `<button class="btn" type="button" data-tgo="${k}">${l}</button>`).join("")}</div>`;
+        `<div class="tc-acts"><button class="btn sb-go" type="button" data-tgo="overview">Full details</button><button class="btn" type="button" data-tedit>Edit this turbine</button>${[["live", "Live sensors"], ["whole", "Whole structure"], ["fatigue", "Fatigue"], ["whatif", "What-if"]].map(([k, l]) => `<button class="btn" type="button" data-tgo="${k}">${l}</button>`).join("")}</div>`;
       body.querySelectorAll("[data-tgo]").forEach((b) => b.addEventListener("click", () => { const k = b.dataset.tgo; hide(); go({ type: "turbine", farm: FI, t: i, tab: k }); }));
+      body.querySelector("[data-tedit]").addEventListener("click", () => { hide(); editTurbine(i); });
       box.hidden = false; clearInterval(timer); tick(); timer = setInterval(tick, 500);
     }
     function tick() {
@@ -5784,7 +5788,8 @@ details.sec > * + * { margin-top: 8px; }
         ["rna", `rotor Ø${fmt(ty.rotor_D, 0)} m · RNA ${fmt(TFE.rnaMass(ty) / 1e3, 0)} t`], ["power", `${fmt(ty.rated_P, 1)} MW · ${fmt(ty.rated_rpm, 1)} rpm`],
         ["flange", `${ty.n_bolts} × M${ty.bolt_d} ${ty.bolt_grade}`], ["mats", `${mMp.id} monopile · ${mTw.id} tower`]];
       return `<div class="bl-cards">${rows.map(([k, v]) => { const sc = BSECS.find((q) => q[0] === k); return `<button type="button" class="bl-card2" data-gosec="${k}">${ICO[sc[2]] || ""}<b>${sc[1]}</b><span>${v}</span></button>`; }).join("")}</div>`; };
-    host.innerHTML = `<div class="bl-secchips" role="tablist" aria-label="Design sections">${BSECS.map(([k, l]) => `<button type="button" data-gosec="${k}" class="${k === bSec ? "on" : ""}">${l.replace(" and soil", "").replace(" and monopile", "").replace(" and nacelle", "").replace(" and rotor speed", "").replace("Tower-base flange", "Flange")}</button>`).join("")}</div>` +
+    const instBanner = instBannerHTML(ty);
+    host.innerHTML = instBanner + `<div class="bl-secchips" role="tablist" aria-label="Design sections">${BSECS.map(([k, l]) => `<button type="button" data-gosec="${k}" class="${k === bSec ? "on" : ""}">${l.replace(" and soil", "").replace(" and monopile", "").replace(" and nacelle", "").replace(" and rotor speed", "").replace("Tower-base flange", "Flange")}</button>`).join("")}</div>` +
       (ro ? `<p class="hint bl-ro">Built-in types are read-only. <button class="btn" type="button" data-dup>Duplicate to edit</button></p>` : "") +
       `<div data-sec="overview"><label class="bl-f bl-name"><span>Name</span><input type="text" data-k="name" value="${ty.name.replace(/"/g, "&quot;")}"${dis}></label>${sumry()}<p class="cap">Pick a group to edit it. Results on the right update as you go.</p></div>` +
       `<div data-sec="fdn">` + fdnHTML(ty, ro) +
@@ -5811,7 +5816,8 @@ details.sec > * + * { margin-top: 8px; }
       return `<fieldset class="bl-g"><legend>Materials</legend>${sel("mat_mp", "steel", "Monopile and transition piece", ty.t_mp * 1e3)}${sel("mat_tw", "steel", "Tower", ty.t_tower_base * 1e3)}${sel("bolt_grade", "bolt", "Flange bolts")}` +
         more("mats2", "Drivetrain materials", sel("mat_cast", "cast", "Castings: hub, bedplate, gearbox housing") + sel("mat_shaft", "shaft", "Main shaft")) + more("matlib", "Material library", lib) + `</fieldset>`;
     }
-    const edit = (fn) => { if (ro) return; const nt = bClean(JSON.parse(JSON.stringify(TT.get(bSel)))); fn(nt); bClean(nt); TT.upsert(nt); clearTimeout(bTimer); bTimer = setTimeout(() => { bList(); bResults(TT.get(bSel)); bFarm(); }, 300); };
+    instWire(host);
+    const edit = (fn) => { if (ro) return; const nt = bClean(JSON.parse(JSON.stringify(TT.get(bSel)))); fn(nt); bClean(nt); TT.upsert(nt); clearTimeout(bTimer); bTimer = setTimeout(() => { bList(); bResults(TT.get(bSel)); bFarm(); const old = host.querySelector(".bl-inst"); if (old) { old.outerHTML = instBannerHTML(TT.get(bSel)); instWire(host); } }, 300); };
     fdnWire(host, edit, ro);
     host.querySelectorAll("[data-mat]").forEach((x) => x.addEventListener("change", () => { edit((nt) => { nt[x.dataset.mat] = x.value; }); setTimeout(bForm, 0); }));
     host.querySelectorAll("[data-sp]").forEach((x) => x.addEventListener("change", () => { if (!x.value) return; const i = +x.closest("[data-i]").dataset.i; edit((nt) => { const l = nt.soil[i]; Object.assign(l, SOIL_PRESETS[l.kind].find((q2) => q2[0] === x.value)[2]); }); setTimeout(bForm, 0); }));
@@ -5845,8 +5851,10 @@ details.sec > * + * { margin-top: 8px; }
     const host = document.getElementById("bl-list"), use = {};
     T.forEach((t, i) => { const id = TT.typeOf(i).id; use[id] = (use[id] || 0) + 1; });
     const card = (ty) => `<button type="button" class="bl-ty${ty.id === bSel ? " on" : ""}" data-id="${ty.id}"><span class="nm">${ty.name.replace(/ \(as built\)$/, "")}</span><span class="mt">${fmt(ty.rated_P, 0)} MW · rotor ${fmt(ty.rotor_D, 0)} m${use[ty.id] ? ` · <b>${use[ty.id]}</b> in farm` : ""}</span></button>`;
-    const bi = TT.all().filter((ty) => ty.builtin), mine = TT.all().filter((ty) => !ty.builtin);
-    host.innerHTML = `<div class="bl-grp">Built-in</div>${bi.map(card).join("")}<div class="bl-grp">Your types</div>${mine.length ? mine.map(card).join("") : `<p class="cap" style="margin:2px 4px 8px">None yet: "New from this" copies the selected type.</p>`}`;
+    const bi = TT.all().filter((ty) => ty.builtin), mine = TT.all().filter((ty) => !ty.builtin && !ty.instanceFor), inst = TT.all().filter((ty) => ty.instanceFor);
+    const icard = (ty) => `<button type="button" class="bl-ty bl-tyi${ty.id === bSel ? " on" : ""}" data-id="${ty.id}"><span class="nm">${ty.instanceFor.split("/").pop()}</span><span class="mt">${ty.instanceFor.split(/:(.*)/s)[1].split("/")[0]} · ${instDiff(ty).length} change${instDiff(ty).length === 1 ? "" : "s"}</span></button>`;
+    host.innerHTML = `<div class="bl-grp">Built-in</div>${bi.map(card).join("")}<div class="bl-grp">Your types</div>${mine.length ? mine.map(card).join("") : `<p class="cap" style="margin:2px 4px 8px">None yet: "New from this" copies the selected type.</p>`}` +
+      (inst.length ? `<div class="bl-grp">Individual turbines</div>${inst.map(icard).join("")}` : "");
     host.querySelectorAll("[data-id]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.id === bSel) return; bSel = b.dataset.id; bSec = "overview"; bOpenSel(); }));
     document.getElementById("bl-del").disabled = !!TT.get(bSel).builtin;
     return;
@@ -5860,11 +5868,12 @@ details.sec > * + * { margin-top: 8px; }
   function bFarm() {
     const host = document.getElementById("bl-farm"), opts = (cur) => TT.all().map((ty) => `<option value="${ty.id}"${ty.id === cur ? " selected" : ""}>${ty.name}</option>`).join("");
     host.innerHTML = `<div class="panel-h"><h3>Turbines in ${D.meta.farm.name}</h3><button class="btn" type="button" data-all>Use “${TT.get(bSel).name}” for all</button></div>` +
-      `<div class="tbl-wrap"><table class="list"><thead><tr><th>Turbine</th><th class="r">Depth</th><th>Type</th><th class="r">f<sub>1</sub> now</th></tr></thead><tbody>` +
-      T.map((t, i) => { const ty = TT.typeOf(i); return `<tr><td>${t.spec.name}</td><td class="r mono">${fmt(t.spec.depth, 1)} m</td><td><select data-ti="${i}" aria-label="Type for ${t.spec.name}">${opts(ty.id)}</select></td><td class="r mono">${fmt(t.f1 * TT.f1Ratio(ty), 3)} Hz</td></tr>`; }).join("") +
+      `<div class="tbl-wrap"><table class="list"><thead><tr><th>Turbine</th><th class="r">Depth</th><th>Type</th><th class="r">f<sub>1</sub> now</th><th></th></tr></thead><tbody>` +
+      T.map((t, i) => { const ty = TT.typeOf(i); return `<tr><td>${t.spec.name}</td><td class="r mono">${fmt(t.spec.depth, 1)} m</td><td><select data-ti="${i}" aria-label="Type for ${t.spec.name}">${opts(ty.id)}</select></td><td class="r mono">${fmt(t.f1 * TT.f1Ratio(ty), 3)} Hz</td><td><button class="btn sm" type="button" data-edit1="${i}" title="Edit ${t.spec.name} on its own">Edit</button></td></tr>`; }).join("") +
       `</tbody></table></div><p class="cap">Live channels, the whole-turbine filter and the 3D view follow each turbine's type, on the same sea, wind and site soil. The storm replay, fatigue history and frequency tabs stay on the as-built design they were computed for.</p>`;
     host.querySelectorAll("[data-ti]").forEach((s) => s.addEventListener("change", () => { TT.assign(+s.dataset.ti, s.value); bList(); bFarm(); }));
     host.querySelector("[data-all]").addEventListener("click", () => { T.forEach((t, i) => TT.assign(i, bSel)); bList(); bFarm(); });
+    host.querySelectorAll("[data-edit1]").forEach((b) => b.addEventListener("click", () => editTurbine(+b.dataset.edit1)));
   }
   function bOpenSel() { bList(); bForm(); document.getElementById("bl-out").innerHTML = `<p class="muted">Solving the model…</p>`; setTimeout(() => bResults(TT.get(bSel)), 20); bFarm(); if (bTab !== "design") bShowTab(bTab); }
   document.querySelectorAll("#builder .bl-tabs [data-btab]").forEach((b) => b.addEventListener("click", () => bShowTab(b.dataset.btab)));
@@ -5896,7 +5905,46 @@ details.sec > * + * { margin-top: 8px; }
     e.target.value = "";
   });
   document.getElementById("bl-open").addEventListener("click", () => openBuilder());
-  function closeBuilder() { bldEl.hidden = true; if (syncDepths() || bMapTouched) { if (S3) S3.setFarm(); drawTree(); drawDrawer(); } bMapTouched = false; }
+  // ----- individual turbines: a private copy of the type for one turbine in a farm or site -----
+  const instKeyFarm = (ti) => `farm:${D.meta.farm.name}/${T[ti].spec.name}`;
+  function instTypeFor(key, cur, label) {            // reuse the turbine's own copy, or make one from its current type
+    if (cur.instanceFor === key) return cur;
+    const base = cur.instanceFor ? TT.get(cur.baseId) || cur : cur, nt = bClean(JSON.parse(JSON.stringify(base)));
+    Object.assign(nt, { id: uid(), builtin: false, asBuilt: 0, baseId: base.id, variantOf: base.variantOf || base.id, instanceFor: key, name: base.name.replace(/ \(as built\)$/, "") + " · " + label });
+    nt.soil = JSON.parse(JSON.stringify(base.soil)); TT.upsert(nt); return TT.get(nt.id);
+  }
+  function editTurbine(ti) {                          // open the builder on turbine ti's own copy of its type
+    const nt = instTypeFor(instKeyFarm(ti), TT.typeOf(ti), T[ti].spec.name); TT.assign(ti, nt.id);
+    bSel = nt.id; bSec = "pile"; bShowMode("turbine"); openBuilder(ti); bShowTab("design"); bForm();
+  }
+  // what differs between an individual copy and its base type, in words
+  function instDiff(ty) {
+    const base = TT.get(ty.baseId); if (!base) return [];
+    const out = [], f = BF.flatMap(([, fs]) => fs);
+    f.forEach(([k, lab, u, sc]) => { const a = base[k], b = ty[k]; if (typeof a === "number" && typeof b === "number" && Math.abs(a - b) > 1e-9 * Math.max(1, Math.abs(a))) out.push(`${lab.replace(/<[^>]+>/g, "")} ${+(a / sc).toPrecision(4)} → ${+(b / sc).toPrecision(4)} ${u.replace(/<[^>]+>/g, "")}`.trim()); });
+    if (JSON.stringify(base.mp) !== JSON.stringify(ty.mp)) out.push("monopile diameters or walls");
+    if (JSON.stringify(base.tw) !== JSON.stringify(ty.tw)) out.push("tower diameters or walls");
+    if (JSON.stringify(base.soil) !== JSON.stringify(ty.soil)) out.push("soil layers");
+    if (JSON.stringify(base.fdn) !== JSON.stringify(ty.fdn)) out.push("foundation model");
+    ["mat_mp", "mat_tw", "bolt_grade", "mat_cast", "mat_shaft", "bolt_d"].forEach((k) => { if (base[k] !== ty[k]) out.push(`${k.replace("mat_", "material ").replace("_", " ")}: ${base[k]} → ${ty[k]}`); });
+    return out;
+  }
+  function instReset(ty) {                            // hand the turbine back to its base type and drop the copy
+    const base = TT.get(ty.baseId); if (!base) return;
+    const [kind, rest] = ty.instanceFor.split(/:(.*)/s), [owner, tname] = rest.split(/\/(?=[^/]*$)/);
+    if (kind === "farm") { const fi = ALL.findIndex((d) => d.meta.farm.name === owner); if (fi === FI) { const ti = T.findIndex((t) => t.spec.name === tname); if (ti >= 0) TT.assign(ti, base.id); } }
+    else { const ss = MB.site(owner); if (ss) { ss.turbines.forEach((q) => { if (q.typeId === ty.id) q.typeId = base.id; }); MB.saveSite(ss); } }
+    TT.remove(ty.id); bSel = base.id;
+  }
+  function instBannerHTML(ty) {
+    if (!ty.instanceFor) return ""; const d2 = instDiff(ty), who = ty.instanceFor.split("/").pop(), base = TT.get(ty.baseId);
+    return `<div class="bl-inst"><div><b>Editing ${who} only.</b> <span class="muted">Based on ${base ? base.name : "its type"}; other turbines keep it.</span>${d2.length ? `<div class="bl-instd">${d2.map((x) => `<span class="pill amber">${x}</span>`).join(" ")}</div>` : `<div class="muted" style="font-size:0.78rem">No changes yet: edit any value below.</div>`}</div><button class="btn sm" type="button" data-instreset>Back to ${base ? base.name.replace(/ \(as built\)$/, "") : "the type"}</button></div>`;
+  }
+  function instWire(host) { const ir = host.querySelector("[data-instreset]"); if (ir) ir.addEventListener("click", () => { instReset(TT.get(bSel)); bOpenSel(); }); }
+  function instTidy() {                               // copies the user opened but never changed go away
+    TT.all().filter((ty) => ty.instanceFor && TT.get(ty.baseId) && !instDiff(ty).length).forEach((ty) => instReset(ty));
+  }
+  function closeBuilder() { instTidy(); bldEl.hidden = true; if (syncDepths() || bMapTouched) { if (S3) S3.setFarm(); drawTree(); drawDrawer(); } bMapTouched = false; }
   let bMapTouched = false;
   document.getElementById("bl-close").addEventListener("click", closeBuilder);
   bldEl.addEventListener("click", (e) => { if (e.target === bldEl) closeBuilder(); });
@@ -6291,7 +6339,7 @@ details.sec > * + * { margin-top: 8px; }
           `<label class="bl-f"><span>Type</span><span class="bl-in"><select data-tty>${TT.all().map((q) => `<option value="${q.id}"${q.id === t.typeId ? " selected" : ""}>${q.name}</option>`).join("")}</select></span></label>` +
           kv([["Position", `${fmt(t.x, 2)}, ${fmt(t.y, 2)} km`], ["Water depth", fmt(ck.d, 1) + " m"], ["Soil", profAt(m, t.x, t.y).name], ["Nearest turbine", isFinite(ck.nn) ? fmt(ck.nn, 1) + " D" : "–"], ["Rotor · hub", `${fmt(ty.rotor_D, 0)} m · +${fmt(ty.z_hub, 0)} m`]]) +
           (ck.list.length ? `<ul class="sb-ck">${ck.list.map(([c, txt, fx]) => `<li class="${c}">${txt}${fx ? `<div class="sb-fix">${sbFixBtn(fx, ss, m, t, ty)}</div>` : ""}</li>`).join("")}</ul>` : `<p class="cap" style="color:var(--ok)">No issues at this position.</p>`) +
-          `<div class="bl-row"><button class="btn" type="button" data-topen>Open the type in the turbine builder</button><button class="btn" type="button" data-tdel>Remove</button></div><hr class="sb-hr">`; }
+          `<div class="bl-row"><button class="btn" type="button" data-tone>Edit this turbine only</button><button class="btn" type="button" data-topen>Edit its type</button><button class="btn" type="button" data-tdel>Remove</button></div><hr class="sb-hr">`; }
       html += `<h4 class="bl-h"${t ? "" : ' style="margin-top:0"'}>Site</h4><div class="sb-farm" data-sfarm>${sbFarmHTML(ss)}</div><div data-sum><p class="muted">Computing the energy yield…</p></div>`;
       side.innerHTML = html;
       side.querySelectorAll("[data-sfa]").forEach((b) => b.addEventListener("click", () => {
@@ -6305,6 +6353,8 @@ details.sec > * + * { margin-top: 8px; }
         side.querySelector("[data-tty]").addEventListener("change", (e) => { const s2 = sbEditable(), q = s2.turbines.find((x) => x.name === t.name); q.typeId = e.target.value; MB.saveSite(s2); sbPick = q.id; sbOpen(); });
         side.querySelector("[data-tdel]").addEventListener("click", () => { const s2 = sbEditable(); s2.turbines = s2.turbines.filter((x) => x.name !== t.name); MB.saveSite(s2); sbPick = null; sbOpen(); });
         side.querySelector("[data-topen]").addEventListener("click", () => { bSel = t.typeId; bShowMode("turbine"); bOpenSel(); });
+        side.querySelector("[data-tone]").addEventListener("click", () => { const s2 = sbEditable(), q = s2.turbines.find((x) => x.id === t.id) || s2.turbines.find((x) => x.name === t.name);
+          const nt = instTypeFor(`site:${s2.id}/${q.name}`, TT.get(q.typeId) || TT.get(TT.farmDefault()), q.name); q.typeId = nt.id; MB.saveSite(s2); bSel = nt.id; bSec = "pile"; bShowMode("turbine"); bOpenSel(); });
         side.querySelectorAll("[data-fix]").forEach((b) => b.addEventListener("click", () => sbFix([t.id], b.dataset.fix)));
       }
       clearTimeout(sbYieldTimer); sbYieldTimer = setTimeout(() => {
