@@ -488,6 +488,15 @@ details.sec > * + * { margin-top: 8px; }
 .sb-ck { margin: 6px 0; padding-left: 18px; font-size: 0.78rem; }
 .sb-ck li.crit { color: var(--crit); }
 .sb-ck li.warn { color: var(--warn); }
+.sb-ck li.info { color: var(--accent); }
+.sb-ck li { margin-bottom: 4px; } .sb-fix { margin: 4px 0 2px; } .sb-fix .btn, .sb-fixall .btn { font-size: 0.74rem; padding: 3px 8px; }
+.sb-fixall { flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.mb-prof { margin-top: 8px; } .mb-soilwrap { display: flex; gap: 10px; align-items: flex-start; }
+.mb-col { width: 170px; flex: none; color: var(--muted); display: block; } .mb-pyw { flex: 1 1 100%; min-width: 0; } .mb-soilwrap { flex-wrap: wrap; }
+.mb-lay td:first-child input { width: 2.9rem; } .mb-lay td:nth-child(2) select { min-width: 3.9rem; } .mb-lay td:nth-child(3) select { min-width: 5.2rem; } .mb-lay td:last-child { width: 1.6rem; } .mb-lay .btn.icon { width: 1.5rem; height: 1.5rem; padding: 0; } .mb-lay, .mb-par { margin: 0; }
+.mb-lay input, .mb-par input { width: 3.6rem; } .mb-lay select { width: 100%; font: inherit; font-size: 0.74rem; } .mb-lay td:first-child { white-space: nowrap; }
+.mb-lay td:nth-child(2), .mb-lay td:nth-child(3) { width: auto; } .mb-par td { white-space: nowrap; width: auto !important; }
+.bl-h5 { margin: 10px 0 2px; font-size: 0.78rem; font-weight: 600; } input[type=color][data-pcol] { width: 3rem; height: 1.6rem; padding: 0; border: 1px solid var(--line); background: none; }
 .sb-hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 #mb-main, #sb-main { gap: 10px; }
 @media (max-width: 1000px) { .mb-grid { grid-template-columns: minmax(0, 1fr); } }
@@ -2421,6 +2430,10 @@ details.sec > * + * { margin-top: 8px; }
     function norm(ty) {
       const zi = ty.z_interface, zt = ty.z_hub - 5;
       if (!ty.fdn) ty.fdn = { mode: "soil", py: [], macro: null };
+      if (!(ty.L_mp > 0)) {                 // fabricated monopile length, toe to flange; defaults cover each type's design water depth
+        const dd = { "asbuilt-15": 52, "asbuilt-10": 32, "concept-20": 60 }[ty.id] || 45;
+        ty.L_mp = Math.ceil(dd + zi + ty.embedment);
+      }
       ty.mat_mp = ty.mat_mp || "S355ML"; ty.mat_tw = ty.mat_tw || "S355"; ty.bolt_grade = ty.bolt_grade || "10.9"; ty.mat_cast = ty.mat_cast || "GJS-400-18-LT"; ty.mat_shaft = ty.mat_shaft || "34CrNiMo6";
       if (!Array.isArray(ty.mp) || !ty.mp.length) ty.mp = [{ z: zi, D: ty.D_pile, t: ty.t_mp || ty.t_pile }];
       if (!Array.isArray(ty.tw) || ty.tw.length < 2) ty.tw = [{ z: zi, D: ty.D_tower_base || ty.D_pile, t: ty.t_tower_base }, { z: zt, D: ty.D_tower_top, t: ty.t_tower_top }];
@@ -4800,7 +4813,7 @@ details.sec > * + * { margin-top: 8px; }
   const bldEl = document.getElementById("builder");
   // [key, label, unit, scale, step, min, max, advanced]: advanced fields sit under "More settings"
   const BF = [
-    ["Pile and monopile", [["t_pile", "Pile wall in the soil", "mm", 1e-3, 1, 30, 200], ["embedment", "Embedment below the seabed", "m", 1, 0.5, 10, 80], ["z_interface", "Interface (tower-base flange) above MSL", "m", 1, 0.5, 8, 30, 1], ["tp_mass", "Transition piece, platform and appurtenances", "t", 1e3, 5, 0, 1500, 1]]],
+    ["Pile and monopile", [["t_pile", "Pile wall in the soil", "mm", 1e-3, 1, 30, 200], ["embedment", "Embedment below the seabed", "m", 1, 0.5, 10, 80], ["L_mp", "Monopile length, toe to flange", "m", 1, 0.5, 30, 250], ["z_interface", "Interface (tower-base flange) above MSL", "m", 1, 0.5, 8, 30, 1], ["tp_mass", "Transition piece, platform and appurtenances", "t", 1e3, 5, 0, 1500, 1]]],
     ["Tower", [["z_hub", "Hub height above MSL", "m", 1, 1, 60, 220]]],
     ["Rotor and nacelle", [["rotor_D", "Rotor diameter", "m", 1, 1, 80, 320], ["blade_mass", "Mass per blade", "t", 1e3, 1, 5, 200], ["hub_mass", "Hub with pitch system", "t", 1e3, 5, 10, 600, 1],
       ["nacelle_mass", "Nacelle: drivetrain, generator, bedplate", "t", 1e3, 5, 50, 2000], ["J_rna", "Rotor-nacelle inertia about the tilt axis", "10<sup>6</sup> kg·m²", 1e6, 10, 1, 3000, 1]]],
@@ -4904,6 +4917,7 @@ details.sec > * + * { margin-top: 8px; }
       ["Lateral soil resistance (rigid-pile bound)", `load ${fmt(r.Htot / 1e6, 1)} MN, Σ p<sub>u</sub> ${fmt(r.Hcap / 1e6, 0)} MN`, amb(r.Htot / (0.5 * r.Hcap), 0.8, 1)],
       ["Shell slenderness D/t", `pile ${fmt(r.dtp, 0)}, tower base ${fmt(r.dtb, 0)}, tower top ${fmt(r.towerTop, 0)}`, amb(Math.max(r.dtp, r.dtb, r.towerTop) / 300, 0.8, 1)],
       ["Embedment ratio L/D", fmt(ty.embedment / ty.D_pile, 1), ok(ty.embedment / ty.D_pile >= 3)],
+      (() => { const need = r.dep + ty.z_interface + ty.embedment; return ["Monopile long enough for the water depth", `${fmt(ty.L_mp, 1)} m; ${fmt(need, 1)} m needed at ${fmt(r.dep, 1)} m water (suits up to ${fmt(ty.L_mp - ty.z_interface - ty.embedment, 1)} m)`, ok(need <= ty.L_mp + 1e-6)]; })(),
       ["Tower base fits the monopile top", `tower base Ø${fmt(ty.D_tower_base, 2)} m on Ø${fmt(ty.D_pile, 2)} m (a conical transition piece takes up to 30 %)`, ok(ty.D_tower_base <= ty.D_pile + 0.01 && ty.D_tower_base >= 0.7 * ty.D_pile)],
     ];
   }
@@ -5118,6 +5132,12 @@ details.sec > * + * { margin-top: 8px; }
     const fx = Math.min(m.nx - 1.001, Math.max(0, x / m.W * m.nx - 0.5)), fy = Math.min(m.ny - 1.001, Math.max(0, y / m.H * m.ny - 0.5)), i = Math.floor(fx), j = Math.floor(fy), a = fx - i, b = fy - j, d = m.depth, n = m.nx;
     return d[j * n + i] * (1 - a) * (1 - b) + d[j * n + i + 1] * a * (1 - b) + d[(j + 1) * n + i] * (1 - a) * b + d[(j + 1) * n + i + 1] * a * b;
   }
+  // soil profiles belong to the map: layers as in the p-y analysis, painted as zones. Older maps get the standard set.
+  const SOIL_DEF = () => SOIL_PROFILES.map(([name, f], i) => ({ name, color: SOILCOL[i % SOILCOL.length], layers: f() }));
+  const mapProfiles = (m) => { if (!Array.isArray(m.profiles) || !m.profiles.length) m.profiles = SOIL_DEF(); return m.profiles; };
+  const profAt = (m, x, y) => { const P = mapProfiles(m); return P[soilIdx(m, x, y)] || P[0]; };
+  const profKey = (pr) => JSON.stringify(pr.layers.map((l) => (l.kind === "clay" ? [l.to, "c", l.su, l.su_grad, l.gamma, l.eps50] : [l.to, "s", l.phi, l.gamma, l.k])));
+  const profShort = (pr) => pr.name.replace(/\s*\(.*\)\s*$/, "").slice(0, 32);
   const soilIdx = (m, x, y) => { const [i, j] = mapCell(m, x, y), v = m.soil[j * m.nx + i]; return v === 255 || v === null || v === undefined ? m.meta.soil0 : v; };
   const exclAt = (m, x, y) => { const [i, j] = mapCell(m, x, y); return !!m.excl[j * m.nx + i]; };
   const SOILCOL = ["#d9b25f", "#c98f3e", "#8d7bb0", "#6c5fa0", "#4f8f6e", "#9a6fb8"];
@@ -5132,7 +5152,7 @@ details.sec > * + * { margin-top: 8px; }
     for (let py = 0; py < ph; py++) for (let px = 0; px < pw; px++) { const x = (px + 0.5) / pw * m.W, y = (py + 0.5) / ph * m.H, d = depthAt(m, x, y); band[py * pw + px] = Math.floor(d / step); }
     for (let py = 0; py < ph; py++) for (let px = 0; px < pw; px++) {
       const x = (px + 0.5) / pw * m.W, y = (py + 0.5) / ph * m.H, d = depthAt(m, x, y), k = py * pw + px; let [r, gg, b] = depthCol(d);
-      if (o.layer === "soil" || o.soil) { const s2 = soilIdx(m, x, y), c = SOILCOL[s2 % SOILCOL.length], cr = parseInt(c.slice(1, 3), 16), cg = parseInt(c.slice(3, 5), 16), cb = parseInt(c.slice(5, 7), 16), al = o.layer === "soil" ? 0.6 : 0.18; r = r * (1 - al) + cr * al; gg = gg * (1 - al) + cg * al; b = b * (1 - al) + cb * al; }
+      if (o.layer === "soil" || o.soil) { const s2 = soilIdx(m, x, y), c = (mapProfiles(m)[s2] || {}).color || SOILCOL[s2 % SOILCOL.length], cr = parseInt(c.slice(1, 3), 16), cg = parseInt(c.slice(3, 5), 16), cb = parseInt(c.slice(5, 7), 16), al = o.layer === "soil" ? 0.6 : 0.18; r = r * (1 - al) + cr * al; gg = gg * (1 - al) + cg * al; b = b * (1 - al) + cb * al; }
       if (exclAt(m, x, y) && ((px + py) % 6 < 2 || o.layer === "excl")) { const al = o.layer === "excl" ? 0.55 : 0.7; r = r * (1 - al) + 209 * al; gg = gg * (1 - al) + 73 * al; b = b * (1 - al) + 91 * al; }
       if ((px + 1 < pw && band[k + 1] !== band[k]) || (py + 1 < ph && band[k + pw] !== band[k])) { r *= 0.62; gg *= 0.62; b *= 0.62; }
       img.data.set([r, gg, b, 255], 4 * k);
@@ -5225,7 +5245,7 @@ details.sec > * + * { margin-top: 8px; }
     cv.addEventListener("pointermove", (e) => {
       if (painting) apply(e);
       if (tf) { const rc = cv.getBoundingClientRect(), [x, y] = tf.inv(e.clientX - rc.left, e.clientY - rc.top), mm = MB.map(mbSel);
-        if (x >= 0 && y >= 0 && x <= mm.W && y <= mm.H) host.querySelector("[data-mread]").textContent = `x ${fmt(x, 2)} km · y ${fmt(y, 2)} km · depth ${fmt(depthAt(mm, x, y), 1)} m · ${SOIL_PROFILES[soilIdx(mm, x, y)][0]}${exclAt(mm, x, y) ? " · exclusion zone" : ""}`; }
+        if (x >= 0 && y >= 0 && x <= mm.W && y <= mm.H) host.querySelector("[data-mread]").textContent = `x ${fmt(x, 2)} km · y ${fmt(y, 2)} km · depth ${fmt(depthAt(mm, x, y), 1)} m · ${profAt(mm, x, y).name}${exclAt(mm, x, y) ? " · exclusion zone" : ""}`; }
     });
     const end = () => { if (painting && dirty) { MB.saveMap(MB.map(mbSel)); dirty = false; } painting = false; };
     cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
@@ -5239,9 +5259,35 @@ details.sec > * + * { margin-top: 8px; }
       `<details class="bl-more"><summary>Import depths</summary><p class="cap">CSV of x (km), y (km), depth (m), one point per line, for example from a survey or GEBCO export converted to local coordinates. Points are gridded by inverse distance.</p><label class="btn">Load XYZ file<input type="file" data-xyz accept=".csv,.txt,.xyz" hidden></label></details>`;
   }
   function mbSoilPanel(m) {
-    return `<h4 class="bl-h" style="margin-top:0">Soil zones</h4><p class="cap">Pick a soil profile and paint where it applies. Unpainted seabed uses the default. Turbines placed in the site builder take the profile under them.</p>` +
-      `<div class="mb-pal">${SOIL_PROFILES.map(([nm], i) => `<button type="button" data-sw="${i}" class="${mbBrush.soil === i ? "on" : ""}"><i style="background:${SOILCOL[i % SOILCOL.length]}"></i>${nm}</button>`).join("")}</div>` +
-      `<label class="bl-f"><span>Default profile</span><span class="bl-in"><select data-s0>${SOIL_PROFILES.map(([nm], i) => `<option value="${i}"${m.meta.soil0 === i ? " selected" : ""}>${nm}</option>`).join("")}</select></span></label>`;
+    const P = mapProfiles(m), sel = Math.min(mbBrush.soil, P.length - 1), pr = P[sel]; mbBrush.soil = sel;
+    const num = (i, k, step) => `<input type="number" data-lp="${k}" data-li="${i}" value="${pr.layers[i][k]}" step="${step}">`;
+    const presetOf = (l) => (SOIL_PRESETS[l.kind].find(([, , v]) => Object.keys(v).every((k) => Math.abs(v[k] - l[k]) < 1e-9)) || [""])[0];
+    const rows = pr.layers.map((l, i) => `<tr><td>${i ? fmt(pr.layers[i - 1].to, 1) : "0"}–${i === pr.layers.length - 1 ? "∞" : num(i, "to", 0.5)}</td>` +
+      `<td><select data-lk="${i}"><option value="sand"${l.kind === "sand" ? " selected" : ""}>Sand</option><option value="clay"${l.kind === "clay" ? " selected" : ""}>Clay</option></select></td>` +
+      `<td><select data-lpre="${i}"><option value="">custom</option>${SOIL_PRESETS[l.kind].map(([k, nm]) => `<option value="${k}"${presetOf(l) === k ? " selected" : ""}>${nm}</option>`).join("")}</select></td>` +
+      `<td>${pr.layers.length > 1 ? `<button type="button" class="btn icon" data-ldel="${i}" aria-label="Remove layer">×</button>` : ""}</td></tr>`).join("");
+    const params = pr.layers.map((l, i) => `<tr><td>${i + 1}</td>` + (l.kind === "clay"
+      ? `<td>s<sub>u</sub> ${num(i, "su", 1)} kPa</td><td>+${num(i, "su_grad", 0.1)} kPa/m</td><td>γ′ ${num(i, "gamma", 0.5)}</td><td>ε<sub>50</sub> ${num(i, "eps50", 0.001)}</td>`
+      : `<td>φ′ ${num(i, "phi", 0.5)}°</td><td>k ${num(i, "k", 1)} MN/m³</td><td>γ′ ${num(i, "gamma", 0.5)}</td><td></td>`) + `</tr>`).join("");
+    // soil column, top 40 m
+    const H = 150, Zm = 40, col = pr.layers.map((l, i) => { const a = i ? pr.layers[i - 1].to : 0, b = Math.min(l.to, Zm); if (a >= Zm) return "";
+      return `<rect x="0" y="${a / Zm * H}" width="34" height="${(b - a) / Zm * H}" fill="${l.kind === "clay" ? "#7b6a92" : "#c9a55a"}" opacity="${0.45 + 0.1 * i}"/><text x="40" y="${(a / Zm * H) + 11}" font-size="9" fill="currentColor">${l.kind === "clay" ? `clay, s<tspan dy="2" font-size="7">u</tspan><tspan dy="-2"> ${l.su} kPa</tspan>` : `sand, φ′ ${l.phi}°`}</text>`; }).join("");
+    return `<h4 class="bl-h" style="margin-top:0">Soil zones</h4><p class="cap">Each zone is a layered profile, as used for the p-y curves. Pick one and paint where it applies; unpainted seabed uses the default. The site builder reads the zone under each turbine and offers to compute its p-y curves.</p>` +
+      `<div class="mb-pal">${P.map((q, i) => `<button type="button" data-sw="${i}" class="${sel === i ? "on" : ""}"><i style="background:${q.color}"></i>${q.name}</button>`).join("")}</div>` +
+      `<div class="bl-row"><button class="btn" type="button" data-pnew>New profile</button><button class="btn" type="button" data-pdup>Duplicate</button>${P.length > 1 ? `<button class="btn" type="button" data-pdel>Delete</button>` : ""}</div>` +
+      `<fieldset class="bl-g mb-prof"><legend>Profile</legend><label class="bl-f"><span>Name</span><span class="bl-in"><input type="text" data-pname value="${pr.name.replace(/"/g, "&quot;")}"></span></label>` +
+      `<label class="bl-f"><span>Colour</span><span class="bl-in"><input type="color" data-pcol value="${pr.color}"></span></label>` +
+      `<table class="bl-st mb-lay"><thead><tr><th>depth below seabed, m</th><th>soil</th><th>preset</th><th></th></tr></thead><tbody>${rows}</tbody></table>` +
+      `<div class="bl-row"><button class="btn" type="button" data-ladd>Add layer</button></div>` +
+      `<details class="bl-more"><summary>Layer parameters</summary><table class="bl-st mb-par"><tbody>${params}</tbody></table><p class="cap">Sand: API p-y with initial modulus k. Clay: Matlock with s<sub>u</sub> rising with depth. γ′ is the submerged unit weight in kN/m³.</p></details>` +
+      `<div class="mb-soilwrap"><div><h5 class="bl-h5">Top 40 m</h5><svg viewBox="0 0 120 ${H + 12}" class="mb-col" role="img" aria-label="Soil column, top 40 m">${col}<text x="0" y="${H + 10}" font-size="8" fill="currentColor" opacity="0.7">40 m</text></svg></div>` +
+      `<div class="mb-pyw"><h5 class="bl-h5">p-y curves, 10 m pile</h5><div data-pyprev></div></div></div></fieldset>` +
+      `<label class="bl-f"><span>Default profile</span><span class="bl-in"><select data-s0>${P.map((q, i) => `<option value="${i}"${m.meta.soil0 === i ? " selected" : ""}>${q.name}</option>`).join("")}</select></span></label>`;
+  }
+  function pyPreview(el2, layers, D) {
+    const tyS = { soil: layers }, ys = Array.from({ length: 41 }, (_, i) => i * 0.15 * D / 40), cols = ["--accent", "--warn", "--crit", "--ok"];
+    chart(el2, { series: [2, 6, 12, 20].map((z, i) => { const [k, pu] = TFE.soilAt(tyS, z, D); return { x: ys.map((y) => y * 1000), y: ys.map((y) => pu * Math.tanh(k * y / pu) / 1e3), color: cols[i], width: 1.6 }; }),
+      xl: "deflection y (mm)", yl: "p (kN/m)", w: 300, h: 170, label: "p-y curves at 2, 6, 12 and 20 m below the seabed", legend: [2, 6, 12, 20].map((z, i) => ({ label: z + " m", color: cols[i] })) });
   }
   function mbMetaForm(m, ro) {
     const f = (k, l, u, step) => `<label class="bl-f"><span>${l}</span><span class="bl-in"><input type="number" data-meta="${k}" value="${m.meta[k]}" step="${step}"${ro ? " disabled" : ""}><i>${u}</i></span></label>`;
@@ -5253,6 +5299,22 @@ details.sec > * + * { margin-top: 8px; }
   function mbWireSide(host, render) {
     host.querySelectorAll("[data-meta]").forEach((x) => x.addEventListener("change", () => { const mm = mbEditable(); mm.meta[x.dataset.meta] = +x.value; MB.saveMap(mm); }));
     host.querySelectorAll("[data-sw]").forEach((b) => b.addEventListener("click", () => { mbBrush.soil = +b.dataset.sw; mbTool = "soil"; mbMain(); }));
+    // profile editing (a built-in map is copied first)
+    const pedit = (fn) => { const mm = mbEditable(), P = mapProfiles(mm); fn(P, P[Math.min(mbBrush.soil, P.length - 1)], mm); MB.saveMap(mm); mbOpen(); };
+    const q = (sel) => host.querySelector(sel), on = (sel, ev, fn) => host.querySelectorAll(sel).forEach((x) => x.addEventListener(ev, () => fn(x)));
+    if (q("[data-pyprev]")) { const pr = mapProfiles(MB.map(mbSel))[mbBrush.soil]; if (pr) pyPreview(q("[data-pyprev]"), pr.layers, 10); }
+    on("[data-pnew]", "click", () => pedit((P) => { P.push({ name: "New profile " + (P.length + 1), color: ["#5f9fb8", "#b86f5f", "#7fa35a", "#b8a25f"][P.length % 4], layers: [mkLayer(10, "sand", "medium"), mkLayer(200, "clay", "stiff")] }); mbBrush.soil = P.length - 1; }));
+    on("[data-pdup]", "click", () => pedit((P, pr) => { P.push(Object.assign(clone(pr), { name: pr.name + " (copy)" })); mbBrush.soil = P.length - 1; }));
+    on("[data-pdel]", "click", () => pedit((P, pr, mm) => { const i = P.indexOf(pr); P.splice(i, 1); mm.soil = mm.soil.map((v) => (v === i ? 255 : v > i && v !== 255 ? v - 1 : v));
+      if (mm.meta.soil0 === i) mm.meta.soil0 = 0; else if (mm.meta.soil0 > i) mm.meta.soil0--; mbBrush.soil = Math.max(0, i - 1); }));
+    on("[data-pname]", "change", (x) => pedit((P, pr) => { pr.name = x.value.trim() || pr.name; }));
+    on("[data-pcol]", "change", (x) => pedit((P, pr) => { pr.color = x.value; }));
+    on("[data-ladd]", "click", () => pedit((P, pr) => { const L = pr.layers, last = L[L.length - 1], prev = L.length > 1 ? L[L.length - 2].to : 0; L.splice(L.length - 1, 0, Object.assign(clone(last), { to: prev + 10 })); }));
+    on("[data-ldel]", "click", (x) => pedit((P, pr) => { pr.layers.splice(+x.dataset.ldel, 1); pr.layers[pr.layers.length - 1].to = 200; }));
+    on("[data-lk]", "change", (x) => pedit((P, pr) => { const i = +x.dataset.lk, l = pr.layers[i]; pr.layers[i] = mkLayer(l.to, x.value, x.value === "clay" ? "firm" : "medium"); }));
+    on("[data-lpre]", "change", (x) => pedit((P, pr) => { if (!x.value) return; const i = +x.dataset.lpre, l = pr.layers[i]; pr.layers[i] = mkLayer(l.to, l.kind, x.value); }));
+    on("[data-lp]", "change", (x) => pedit((P, pr) => { const i = +x.dataset.li, l = pr.layers[i], k = x.dataset.lp, v = +x.value; if (!isFinite(v)) return;
+      if (k === "to") { const lo = i ? pr.layers[i - 1].to + 0.5 : 0.5, hi = i + 1 < pr.layers.length - 1 ? pr.layers[i + 1].to - 0.5 : 150; l.to = Math.min(hi, Math.max(lo, v)); } else l[k] = Math.max(0, v); }));
     const s0 = host.querySelector("[data-s0]"); if (s0) s0.addEventListener("change", () => { const mm = mbEditable(); mm.meta.soil0 = +s0.value; MB.saveMap(mm); mbOpen(); });
     const gen = host.querySelector("[data-gen]"); if (gen) gen.addEventListener("click", () => {
       const p = Object.fromEntries([...host.querySelectorAll("[data-g]")].map((x) => [x.dataset.g, +x.value])), mm = mbEditable(), rn = randn(p.seed || 1), ph = [rn(), rn(), rn(), rn()].map((v) => v * 3);
@@ -5338,7 +5400,14 @@ details.sec > * + * { margin-top: 8px; }
     if (t.x < 0 || t.y < 0 || t.x > m.W || t.y > m.H) out.push(["crit", "outside the map"]);
     let nn = Infinity; s.turbines.forEach((o) => { if (o !== t) nn = Math.min(nn, Math.hypot(o.x - t.x, o.y - t.y) * 1000 / ty.rotor_D); });
     if (nn < 4) out.push(["crit", `${fmt(nn, 1)} rotor diameters from the nearest turbine (under 4 D)`]); else if (nn < 6) out.push(["warn", `${fmt(nn, 1)} D to the nearest turbine (wake losses rise below about 6 D)`]);
-    return { list: out, nn, d };
+    // 1. the monopile must reach the seabed and still be embedded to its design depth
+    const need = d + ty.z_interface + ty.embedment, avail = ty.L_mp - ty.z_interface - d;
+    if (need > ty.L_mp + 1e-6) out.push(["crit", avail <= 0 ? `the ${fmt(ty.L_mp, 1)} m monopile does not reach the seabed at ${fmt(d, 1)} m water`
+      : `the ${fmt(ty.L_mp, 1)} m monopile leaves ${fmt(avail, 1)} m embedment at ${fmt(d, 1)} m water; the design needs ${fmt(ty.embedment, 1)} m`, "pile"]);
+    // 2. nonlinear p-y curves computed for the soil zone under the turbine
+    const pr = profAt(m, t.x, t.y);
+    if (!(ty.fdn && ty.fdn.mode === "py_nl" && ty.soilKey === profKey(pr))) out.push(["info", `no nonlinear p-y curves for this soil zone (${profShort(pr)}); the type uses ${ty.fdn && ty.fdn.mode === "py_nl" ? "p-y curves from other soil" : "its own soil layers"}`, "py"]);
+    return { list: out, nn, d, pr };
   }
   let sbYieldTimer = 0;
   function sbMain() {
@@ -5361,7 +5430,7 @@ details.sec > * + * { margin-top: 8px; }
           s.turbines.forEach((t) => { const ty = TT.get(t.typeId) || TT.get(TT.farmDefault()), dx = (x - t.x) * 1000, dz = (y - t.y) * 1000, xd = dx * fx + dz * fz; if (xd > 0) sum += wakeDeficit(0.78, xd, Math.abs(dx * fz - dz * fx), ty.rotor_D) ** 2; });
           const df = Math.sqrt(sum); if (df < 0.01) continue; g.fillStyle = `rgba(255,255,255,${Math.min(0.55, df * 1.6)})`; g.fillRect(tf.X(i * m.W / nxp), tf.Y(j * m.H / nyp), m.W / nxp * tf.sc + 1, m.H / nyp * tf.sc + 1); }
       }
-      s.turbines.forEach((t) => { const ty = TT.get(t.typeId) || TT.get(TT.farmDefault()), x = tf.X(t.x), y = tf.Y(t.y), ck = sbChecks(s, m, t, ty).list, bad = ck.some((c) => c[0] === "crit") ? "#d1495b" : ck.length ? "#e09f3e" : "#ffffff";
+      s.turbines.forEach((t) => { const ty = TT.get(t.typeId) || TT.get(TT.farmDefault()), x = tf.X(t.x), y = tf.Y(t.y), ck = sbChecks(s, m, t, ty).list, bad = ck.some((c) => c[0] === "crit") ? "#d1495b" : ck.some((c) => c[0] === "warn") ? "#e09f3e" : "#ffffff";
         g.strokeStyle = "rgba(255,255,255,0.6)"; g.lineWidth = 1; g.beginPath(); g.arc(x, y, Math.max(3, ty.rotor_D / 2000 * tf.sc), 0, 2 * Math.PI); g.stroke();
         g.fillStyle = bad; g.beginPath(); g.arc(x, y, t.id === sbPick ? 6.5 : 4.5, 0, 2 * Math.PI); g.fill(); g.strokeStyle = t.id === sbPick ? "#0a6a8a" : "#0e1b27"; g.lineWidth = t.id === sbPick ? 2.5 : 1; g.stroke();
         g.fillStyle = "#fff"; g.font = "600 10px IBM Plex Mono, monospace"; g.textAlign = "center"; g.fillText(t.name, x, y - 9); });
@@ -5399,8 +5468,8 @@ details.sec > * + * { margin-top: 8px; }
       if (t) { const ty = TT.get(t.typeId) || TT.get(TT.farmDefault()), ck = sbChecks(ss, m, t, ty);
         html += `<h4 class="bl-h" style="margin-top:0">${t.name}</h4><label class="bl-f"><span>Name</span><span class="bl-in"><input type="text" data-tn value="${t.name}"></span></label>` +
           `<label class="bl-f"><span>Type</span><span class="bl-in"><select data-tty>${TT.all().map((q) => `<option value="${q.id}"${q.id === t.typeId ? " selected" : ""}>${q.name}</option>`).join("")}</select></span></label>` +
-          kv([["Position", `${fmt(t.x, 2)}, ${fmt(t.y, 2)} km`], ["Water depth", fmt(ck.d, 1) + " m"], ["Soil", SOIL_PROFILES[soilIdx(m, t.x, t.y)][0]], ["Nearest turbine", isFinite(ck.nn) ? fmt(ck.nn, 1) + " D" : "–"], ["Rotor · hub", `${fmt(ty.rotor_D, 0)} m · +${fmt(ty.z_hub, 0)} m`]]) +
-          (ck.list.length ? `<ul class="sb-ck">${ck.list.map(([c, txt]) => `<li class="${c}">${txt}</li>`).join("")}</ul>` : `<p class="cap" style="color:var(--ok)">No issues at this position.</p>`) +
+          kv([["Position", `${fmt(t.x, 2)}, ${fmt(t.y, 2)} km`], ["Water depth", fmt(ck.d, 1) + " m"], ["Soil", profAt(m, t.x, t.y).name], ["Nearest turbine", isFinite(ck.nn) ? fmt(ck.nn, 1) + " D" : "–"], ["Rotor · hub", `${fmt(ty.rotor_D, 0)} m · +${fmt(ty.z_hub, 0)} m`]]) +
+          (ck.list.length ? `<ul class="sb-ck">${ck.list.map(([c, txt, fx]) => `<li class="${c}">${txt}${fx ? `<div class="sb-fix">${sbFixBtn(fx, ss, m, t, ty)}</div>` : ""}</li>`).join("")}</ul>` : `<p class="cap" style="color:var(--ok)">No issues at this position.</p>`) +
           `<div class="bl-row"><button class="btn" type="button" data-topen>Open the type in the turbine builder</button><button class="btn" type="button" data-tdel>Remove</button></div><hr class="sb-hr">`; }
       html += `<h4 class="bl-h"${t ? "" : ' style="margin-top:0"'}>Site</h4><div class="sb-farm" data-sfarm>${sbFarmHTML(ss)}</div><div data-sum><p class="muted">Computing the energy yield…</p></div>`;
       side.innerHTML = html;
@@ -5415,18 +5484,52 @@ details.sec > * + * { margin-top: 8px; }
         side.querySelector("[data-tty]").addEventListener("change", (e) => { const s2 = sbEditable(), q = s2.turbines.find((x) => x.name === t.name); q.typeId = e.target.value; MB.saveSite(s2); sbPick = q.id; sbOpen(); });
         side.querySelector("[data-tdel]").addEventListener("click", () => { const s2 = sbEditable(); s2.turbines = s2.turbines.filter((x) => x.name !== t.name); MB.saveSite(s2); sbPick = null; sbOpen(); });
         side.querySelector("[data-topen]").addEventListener("click", () => { bSel = t.typeId; bShowMode("turbine"); bOpenSel(); });
+        side.querySelectorAll("[data-fix]").forEach((b) => b.addEventListener("click", () => sbFix([t.id], b.dataset.fix)));
       }
       clearTimeout(sbYieldTimer); sbYieldTimer = setTimeout(() => {
         const el2 = side.querySelector("[data-sum]"); if (!el2) return; const Y = sbYield(ss, m), N = ss.turbines.length;
         const cap = Y.tys.reduce((a, ty) => a + ty.rated_P, 0), G = Y.gross.reduce((a, b) => a + b, 0), Nn = Y.net.reduce((a, b) => a + b, 0), ds = ss.turbines.map((q) => depthAt(m, q.x, q.y));
-        const issues = ss.turbines.filter((q) => sbChecks(ss, m, q, TT.get(q.typeId) || TT.get(TT.farmDefault())).list.length).length;
-        el2.innerHTML = N ? kv([["Turbines · capacity", `${N} · ${fmt(cap, 0)} MW`], ["Water depth", `${fmt(Math.min(...ds), 1)}–${fmt(Math.max(...ds), 1)} m`], ["Gross energy", fmt(G / 1e3, 0) + " GWh/yr"], ["Net of wakes", fmt(Nn / 1e3, 0) + " GWh/yr"], ["Wake loss", fmt(100 * (1 - Nn / Math.max(G, 1e-9)), 1) + " %"], ["Capacity factor (net)", fmt(100 * Nn / Math.max(cap * 8766, 1e-9), 1) + " %"], ["Turbines with issues", String(issues)]]) +
+        const cks = ss.turbines.map((q) => sbChecks(ss, m, q, TT.get(q.typeId) || TT.get(TT.farmDefault())).list), issues = cks.filter((l) => l.some((c) => c[0] !== "info")).length;
+        const nPile = cks.filter((l) => l.some((c) => c[2] === "pile")).length, nPy = cks.filter((l) => l.some((c) => c[2] === "py")).length;
+        el2.innerHTML = N ? kv([["Turbines · capacity", `${N} · ${fmt(cap, 0)} MW`], ["Water depth", `${fmt(Math.min(...ds), 1)}–${fmt(Math.max(...ds), 1)} m`], ["Gross energy", fmt(G / 1e3, 0) + " GWh/yr"], ["Net of wakes", fmt(Nn / 1e3, 0) + " GWh/yr"], ["Wake loss", fmt(100 * (1 - Nn / Math.max(G, 1e-9)), 1) + " %"], ["Capacity factor (net)", fmt(100 * Nn / Math.max(cap * 8766, 1e-9), 1) + " %"], ["Turbines with issues", String(issues)], ["Without p-y for their soil", String(nPy)]]) +
+          (nPile || nPy ? `<div class="bl-row sb-fixall">${nPile ? `<button class="btn" type="button" data-fixall="pile">Extend the short piles (${nPile})</button>` : ""}${nPy ? `<button class="btn" type="button" data-fixall="py">Compute p-y curves for all (${nPy})</button>` : ""}</div>` : "") +
           `<div class="tbl-wrap" style="margin-top:8px"><table class="list bl-ltt"><thead><tr><th>Turbine</th><th class="r">Depth</th><th class="r">Net GWh</th><th class="r">Wake loss</th></tr></thead><tbody>` +
           ss.turbines.map((q, i) => `<tr${q.id === sbPick ? ' style="font-weight:600"' : ""}><td>${q.name}</td><td class="r mono">${fmt(ds[i], 1)}</td><td class="r mono">${fmt(Y.net[i] / 1e3, 1)}</td><td class="r mono">${fmt(100 * (1 - Y.net[i] / Math.max(Y.gross[i], 1e-9)), 1)} %</td></tr>`).join("") + `</tbody></table></div>` +
           `<p class="cap">Weibull wind from the map (A ${m.meta.A} m/s, k ${m.meta.k} at 10 m, scaled to each hub), 12 sectors weighted around ${m.meta.windDir}°, Gaussian wakes added in quadrature, no electrical or availability losses.</p>`
           : `<p class="cap">Drag a turbine type onto the map, or use Grid layout.</p>`;
+        el2.querySelectorAll("[data-fixall]").forEach((b) => b.addEventListener("click", () => { const k = b.dataset.fixall;
+          sbFix(ss.turbines.filter((q, i) => cks[i].some((c) => c[2] === k)).map((q) => q.id), k); }));
       }, 60);
     }
+  }
+  // ---- placement fixes: longer piles and p-y curves for the soil zone, as variants of the turbine type ----
+  const PILE_LD = 4, PILE_ALLOW = 1;          // standard embedment of at least 4 pile diameters, 1 m installation allowance
+  const pileFix = (ty, d) => { const E = Math.max(ty.embedment, Math.ceil(2 * PILE_LD * ty.D_pile) / 2); return { embedment: E, L_mp: Math.ceil(2 * (d + ty.z_interface + E + PILE_ALLOW)) / 2 }; };
+  function sbFixBtn(fx, ss, m, t, ty) {
+    if (fx === "pile") { const f = pileFix(ty, depthAt(m, t.x, t.y)); return `<button class="btn" type="button" data-fix="pile">Extend the monopile to ${fmt(f.L_mp, 1)} m (${fmt(f.embedment, 1)} m embedded)</button>`; }
+    return `<button class="btn" type="button" data-fix="py">Compute p-y curves for this soil</button>`;
+  }
+  function tyVariant(base, patch) {           // reuse an identical variant if one exists
+    const root = base.variantOf || base.id, rootTy = TT.get(root) || base, nt = clone(base);
+    Object.assign(nt, patch);
+    if (nt.soilKey) nt.fdn = { mode: "py_nl", py: pyFromSoil(nt), macro: null };
+    const same = TT.all().find((q) => (q.variantOf || q.id) === root && (q.soilKey || "") === (nt.soilKey || "") && Math.abs(q.L_mp - nt.L_mp) < 0.01 && Math.abs(q.embedment - nt.embedment) < 0.01);
+    if (same) return same;
+    nt.id = uid(); nt.builtin = false; nt.asBuilt = 0; nt.variantOf = root;
+    nt.name = rootTy.name.replace(/ \(as built\)$/, "") + (Math.abs(nt.L_mp - rootTy.L_mp) > 0.01 ? ` · ${fmt(nt.L_mp, 1)} m pile` : "") + (nt.soilName ? ` · ${nt.soilName}` : "");
+    const c = bClean(nt); c.soil = clone(nt.soil); TT.upsert(c); return c;
+  }
+  function sbFix(ids, kind) {
+    const ss = sbEditable(), m = MB.map(ss.mapId) || MB.maps()[0];
+    const deep = {};                          // one pile length per type, long enough for its deepest turbine in the group
+    ids.forEach((id) => { const q = ss.turbines.find((x) => x.id === id); if (q) deep[q.typeId] = Math.max(deep[q.typeId] || 0, depthAt(m, q.x, q.y)); });
+    ids.forEach((id) => { const q = ss.turbines.find((x) => x.id === id); if (!q) return;
+      const base = TT.get(q.typeId) || TT.get(TT.farmDefault());
+      let patch;
+      if (kind === "pile") patch = pileFix(base, deep[q.typeId]);
+      else { const pr = profAt(m, q.x, q.y); patch = { soil: clone(pr.layers), soilKey: profKey(pr), soilName: profShort(pr) }; }
+      q.typeId = tyVariant(base, patch).id; });
+    MB.saveSite(ss); sbOpen();
   }
   // ---- a site as a live farm in the explorer ----
   const sbSig = (ss) => JSON.stringify([ss.name, ss.mapId, ss.turbines.map((t) => [t.name, t.typeId, t.x, t.y])]);
