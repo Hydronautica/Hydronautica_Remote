@@ -271,7 +271,11 @@ button.tab { font: inherit; }
 .vp-chip { background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; backdrop-filter: blur(4px); }
 .vp-farm b { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; margin-right: 6px; }
 .vp-farm .pill { margin-left: 4px; }
-.vp-tools, .vp-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.vp-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.vp-set { position: relative; } .vp-set > summary { list-style: none; display: inline-flex; gap: 6px; align-items: center; cursor: pointer; } .vp-set > summary::-webkit-details-marker { display: none; }
+.vp-set[open] > summary { border-color: var(--accent); color: var(--accent); }
+.vp-set .vp-tools { position: absolute; right: 0; top: calc(100% + 6px); z-index: 8; display: grid; gap: 6px; padding: 10px; min-width: 230px; background: color-mix(in srgb, var(--surface) 96%, transparent); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18); }
+.vp-set .vp-tools .sel { display: flex; justify-content: space-between; } .vp-set .vp-tools select { min-width: 9.5rem; }
 .sel { display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--muted); background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 6px; padding: 3px 4px 3px 9px; }
 .sel select { font: inherit; font-size: 0.8rem; color: var(--ink); background: transparent; border: 0; padding: 2px; cursor: pointer; }
 .vp-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.76rem; }
@@ -291,7 +295,7 @@ button.tab { font: inherit; }
 .dr-sub { display: flex; gap: 4px; padding: 6px 14px 0; flex-wrap: wrap; }
 .dr-sub button { font: inherit; font-size: 0.78rem; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); cursor: pointer; }
 .dr-sub button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
-.tcard { position: absolute; right: 16px; top: 112px; width: 340px; min-width: 260px; min-height: 180px; max-width: calc(100% - 24px); max-height: calc(100% - 124px); resize: both; overflow: hidden; display: flex; flex-direction: column;
+.tcard { position: absolute; right: 16px; top: 60px; width: 340px; min-width: 260px; min-height: 180px; max-width: calc(100% - 24px); max-height: calc(100% - 72px); resize: both; overflow: hidden; display: flex; flex-direction: column;
   background: color-mix(in srgb, var(--surface) 96%, transparent); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22); z-index: 7; }
 .tc-h { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-bottom: 1px solid var(--line); cursor: move; user-select: none; touch-action: none; }
 .tc-h b { font-family: var(--font-head, inherit); font-size: 1.02rem; } .tc-type { font-size: 0.76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; } .tc-h .btn.icon { flex: none; }
@@ -659,13 +663,16 @@ details.sec > * + * { margin-top: 8px; }
       <div id="three" role="img" aria-label="3D view of the farm and sea; click a turbine to analyse it"></div>
       <div class="vp-ui top">
         <div class="vp-chip vp-farm" id="vp-farm"></div>
-        <div class="vp-tools">
+        <details class="vp-set" id="vp-set">
+          <summary class="btn" aria-label="View settings"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>View</summary>
+          <div class="vp-tools">
           <label class="sel">Colour<select id="vp-color" aria-label="Colour turbines by"><option value="verdict">Verdict</option><option value="life">Life used</option><option value="alarms">Frequency alarms</option></select></label>
           <label class="sel">Wakes<select id="vp-wake" aria-label="Wake display"><option value="both">Rings + map</option><option value="rings">Rings</option><option value="map">Map</option><option value="off">Off</option></select></label>
           <label class="sel">Sea<select id="vp-sea" aria-label="Sea state shown"><option value="live">Live</option><option value="storm">Storm replay</option><option value="whatif">What-if</option></select></label>
           <label class="sel">Water<select id="vp-water" aria-label="Water surface"><option value="clear">See-through</option><option value="off">Hidden (seabed only)</option><option value="opaque">Opaque</option></select></label>
           <label class="sel">Relief<select id="vp-relief" aria-label="Vertical exaggeration of the seabed"><option value="1">True scale</option><option value="4" selected>×4</option><option value="8">×8</option><option value="15">×15</option></select></label>
-        </div>
+          </div>
+        </details>
       </div>
       <div class="vp-msg" id="vp-msg" hidden></div>
       <section class="tcard" id="tcard" role="dialog" aria-labelledby="tc-name" hidden>
@@ -2178,6 +2185,7 @@ details.sec > * + * { margin-top: 8px; }
       sea(); farmChip();
     }
     document.getElementById("vp-sea").addEventListener("change", (e) => setSea(e.target.value));
+    document.addEventListener("pointerdown", (e) => { const d = document.getElementById("vp-set"); if (d.open && !d.contains(e.target)) d.open = false; });
     document.getElementById("vwi-live").addEventListener("click", () => setSea("live"));
     document.getElementById("vp-wake").addEventListener("change", (e) => { wakeMode = e.target.value; sea(); });
     function setWater(v) { waterMode = v; ocean.visible = v !== "off"; streaks.visible = v !== "off"; uni.uClear.value = v === "clear" ? 1 : 0; legend(); }
