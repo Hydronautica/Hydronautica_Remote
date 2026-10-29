@@ -1,0 +1,34 @@
+diff --git a/sources/bathymetry/bottom_def.f90 b/sources/bathymetry/bottom_def.f90
+index 973d2f8..bc5cea4 100755
+--- a/sources/bathymetry/bottom_def.f90
++++ b/sources/bathymetry/bottom_def.f90
+@@ -23,6 +23,7 @@ REAL(RP)                   :: ramp_temp_A(3)
+ REAL(RP), DIMENSION(n1,n2) :: bottom_red
+ !
+ REAL(RP) :: delta1, delta2, L12, x1, x2, H1, H2, xd
++REAL(RP) :: xlen_in, ylen_in
+ !
+ SELECT CASE (i_bottom)
+     !
+@@ -277,6 +278,13 @@ SELECT CASE (i_bottom)
+         PRINT*,'Initialisation of the bottom with the file not tested in MPI'
+         STOP
+ #endif
++        ! xlen and ylen are still in peak wavelengths for the analytical / stream-function cases
++        ! (only L_gene, L_abs_* and L_*_y were made dimensional); this block works in metres
++        xlen_in = xlen; ylen_in = ylen
++        IF (i_case /= 35) THEN
++            xlen = xlen * lambda_h
++            ylen = ylen * lambda_h
++        ENDIF
+         ! data is read from bathy.dat file (cartesian grid)
+         CALL read_bathy(bathy_file, bathy)
+         !
+@@ -404,6 +412,7 @@ SELECT CASE (i_bottom)
+             ENDDO
+         ENDDO
+         !
++        xlen = xlen_in; ylen = ylen_in
+         zbeta=.true.
+         !
+     CASE(11) ! Configuration for Alexey S. study of soliton over step

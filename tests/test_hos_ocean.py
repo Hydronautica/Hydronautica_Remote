@@ -19,7 +19,9 @@ def test_frame_points_along_travel_direction():
     ex, ey = c.frame()
     assert np.allclose(ex, [1, 0], atol=1e-12) and np.allclose(ey, [0, 1], atol=1e-12)
     u, v = c.to_frame(5000.0, 4000.0)
-    assert u == pytest.approx(5000 - 50) and v == pytest.approx(4000 - 50)
+    o, Lx, Ly = c.extent()
+    assert u == pytest.approx(5000 - o[0]) and v == pytest.approx(4000 - o[1])
+    assert Lx / c.wavelength == pytest.approx(round(Lx / c.wavelength)) and Lx >= 9900
     X, Y = c.from_frame(u, v)
     assert (X, Y) == (pytest.approx(5000.0), pytest.approx(4000.0))
 
@@ -55,7 +57,7 @@ def test_yaml_and_probes(tmp_path):
     assert d["computation case"]["Hs"] == 8 and d["computation case"]["spreading"] == "invbeta_cos2"
     n1, n2 = d["numerical parameters"]["discretization"]["x"], d["numerical parameters"]["discretization"]["y"]
     assert n1 % 2 == 0 and n2 % 2 == 0
-    assert d["domain size"]["x"] * c.wavelength == pytest.approx(9900, rel=1e-3)
+    assert d["domain size"]["x"] == round(c.extent()[1] / c.wavelength) and d["domain size"]["x"] * c.wavelength >= 9900
     pr = (tmp_path / "prob.inp").read_text().split()
     assert len(pr) == 4
     meta = json.loads((tmp_path / "probes.json").read_text())
@@ -115,3 +117,24 @@ def test_read_surface(tmp_path):
     x, y, eta, t = read_surface(p)
     assert np.allclose(x, [0, 10, 20]) and np.allclose(y, [0, 5]) and t == 1.0
     assert eta.shape == (2, 3) and eta[1, 2] == 30
+
+
+def test_hos_ocean_places_the_bathymetry(tmp_path):
+    """Integration: run HOS-Ocean briefly on a shoal and check the sea bed and probes it used."""
+    from nls.hos_ocean import check_bathymetry, find_executable, read_probes, run
+    if not find_executable():
+        pytest.skip("HOS-Ocean not built (third_party/hos-ocean/build.sh)")
+    x, y = np.linspace(25, 3975, 80), np.linspace(25, 1975, 40)
+    X, Y = np.meshgrid(x, y)
+    Z = 40 - 25 * np.exp(-((X - 2000) ** 2 / 400**2 + (Y - 1000) ** 2 / 300**2))
+    c = HOSCase(x, y, Z, SeaState(Hs=2, Tp=10, direction_from=270, spread=20, duration=0.3),
+                [("S", 2000.0, 1000.0)], points_per_wavelength=6)
+    c.write(tmp_path)
+    run(tmp_path, timeout=300)
+    chk = check_bathymetry(c, tmp_path)
+    assert chk["rms"] < 0.02 * chk["depth_range"]
+    rec = read_probes(tmp_path / "Results" / "probes.dat")
+    u, v = c.to_frame(2000.0, 1000.0)
+    lam = c.wavelength
+    assert rec.x[0] == pytest.approx(u + (c.absorption_in + c.generation) * lam, abs=0.1)
+    assert rec.y[0] == pytest.approx(v + c.side_ramp * lam, abs=0.1)

@@ -9,7 +9,9 @@ bathymetry (shoals acting as lenses), directional spreading and crossing seas.
 
 HOS-Ocean is GPL software and stays a separate program: this module only
 writes its input files and reads its output files, and can launch the
-executable if it is installed (https://gitlab.com/lheea/HOS-Ocean).
+executable. Build it with ``third_party/hos-ocean/build.sh``, which applies our
+fix for sea beds read from a file (see third_party/hos-ocean/README.md);
+unpatched builds misplace the bathymetry.
 
 Workflow::
 
@@ -173,8 +175,11 @@ class HOSCase:
         ex, ey = self.frame()
         corners = np.array([[self.x[0], self.y[0]], [self.x[-1], self.y[0]], [self.x[0], self.y[-1]], [self.x[-1], self.y[-1]]])
         u, v = corners @ ex, corners @ ey
-        u0, v0 = u.min() - self.margin, v.min() - self.margin
-        Lx, Ly = u.max() + self.margin - u0, v.max() + self.margin - v0
+        # HOS-Ocean sizes its domain in whole peak wavelengths: pad the map evenly up to them
+        lam = self.wavelength
+        lx, ly = u.max() - u.min() + 2 * self.margin, v.max() - v.min() + 2 * self.margin
+        Lx, Ly = math.ceil(lx / lam - 1e-9) * lam, math.ceil(ly / lam - 1e-9) * lam
+        u0, v0 = u.min() - self.margin - (Lx - lx) / 2, v.min() - self.margin - (Ly - ly) / 2
         return u0 * ex + v0 * ey, Lx, Ly
 
     def to_frame(self, px, py):
@@ -205,8 +210,8 @@ class HOSCase:
         """(n1, n2) for HOS: points per peak wavelength over the whole domain."""
         _, Lx, Ly = self.extent()
         lam = self.wavelength
-        nlx = math.ceil(self.absorption_in + self.generation + self.absorption_out + Lx / lam)
-        nly = math.ceil(2 * self.side_ramp + Ly / lam)
+        nlx = math.ceil(self.absorption_in + self.generation + self.absorption_out + round(Lx / lam))
+        nly = math.ceil(2 * self.side_ramp + round(Ly / lam))
         return _fft_size(nlx * self.points_per_wavelength), _fft_size(nly * self.points_per_wavelength)
 
     @property
@@ -220,7 +225,8 @@ class HOSCase:
         n1, n2 = self.resolution()
         # invbeta_cos2: D(theta) ~ cos^2(pi theta / (2 beta)) for |theta| < beta; ~1 degree stands in for long-crested
         spread = (f"  spreading: invbeta_cos2\n  beta: {math.radians(max(s.spread, 1.0)):.6f} # radians\n")
-        brk = ("wave breaking:\n  Barthelemy Tian:\n    velocity ratio threshold: 0.85\n\n" if self.breaking else "")
+        # Chalikov's curvature-based dissipation (the Barthelemy-Tian onset criterion is 2-D only in HOS-Ocean)
+        brk = ("wave breaking:\n  Chalikov:\n    diffusion strength: 0.001\n    curvature threshold: 2.0\n\n" if self.breaking else "")
         return (
             f"# HOS-Ocean input written by nls.hos_ocean for {self.name}\n"
             f"# Frame: x along the mean wave travel direction ({(s.direction_from + 180) % 360:.1f} deg true), y to its left.\n"
@@ -228,8 +234,8 @@ class HOSCase:
             "restart: disable\n\n"
             f"gravity: {G}\n\n"
             "domain size:\n"
-            f"  x: {Lx / lam:.4f} # peak wavelengths\n"
-            f"  y: {Ly / lam:.4f} # peak wavelengths\n\n"
+            f"  x: {round(Lx / lam)} # peak wavelengths\n"
+            f"  y: {round(Ly / lam)} # peak wavelengths\n\n"
             "relaxation zones:\n"
             "  generation:\n"
             f"    length: {self.generation}\n"
@@ -325,8 +331,12 @@ class HOSCase:
 
 
 # ----- running and reading -----
+LOCAL_BUILD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "third_party", "hos-ocean", "src", "build", "sources", "HOS-Ocean")
+
+
 def find_executable(name=None):
-    for cand in [name, os.environ.get("HOS_OCEAN"), "HOS-Ocean", "HOS-ocean"]:
+    """The given path, $HOS_OCEAN, our patched build (third_party/hos-ocean/build.sh), or HOS-Ocean on PATH."""
+    for cand in [name, os.environ.get("HOS_OCEAN"), LOCAL_BUILD, "HOS-Ocean", "HOS-ocean"]:
         if cand and (shutil.which(cand) or os.path.isfile(cand)):
             return shutil.which(cand) or cand
     return None
@@ -336,7 +346,7 @@ def run(folder, exe=None, timeout=None):
     """Run HOS-Ocean in ``folder`` (needs the executable on PATH, in $HOS_OCEAN, or given)."""
     path = find_executable(exe)
     if not path:
-        raise FileNotFoundError("HOS-Ocean executable not found; install it from https://gitlab.com/lheea/HOS-Ocean "
+        raise FileNotFoundError("HOS-Ocean executable not found; build it with third_party/hos-ocean/build.sh "
                                 "or set HOS_OCEAN to its path")
     return subprocess.run([path, "input_HOS-Ocean.yml"], cwd=folder, check=True, timeout=timeout)
 
@@ -408,6 +418,40 @@ def read_surface(path, frame=-1):
     a = np.array(z)
     col = 2 if a.shape[1] >= 4 else 0
     return x, y, a[:, col].reshape(ny, nx), t
+
+
+def read_bathymetry_used(path):
+    """Results/beta.dat: the sea bed HOS-Ocean actually used. Returns x (n1), y (n2), depth (n2, n1), all in metres."""
+    with open(path) as f:
+        lines = f.read().splitlines()
+    zone = next(l for l in lines if l.startswith("ZONE"))
+    tok = zone.replace(",", " ").replace("=", " = ").split()
+    ni, nj = int(tok[tok.index("I") + 2]), int(tok[tok.index("J") + 2])
+    rows = [r for r in (_floats(l) for l in lines if l.strip() and l.strip()[0] not in "#TVZ") if r and len(r) >= 3][:ni * nj]
+    a = np.array([r[:3] for r in rows])
+    return a[:ni, 0], a[::ni, 1][:nj], -a[:, 2].reshape(nj, ni)
+
+
+def check_bathymetry(case, folder):
+    """Compare HOS-Ocean's sea bed with the case's over the physical zone (away from the ramps).
+
+    Returns the RMS and largest depth difference in metres; a misplaced bed gives errors of the order of the
+    depth range."""
+    x, y, D = read_bathymetry_used(os.path.join(folder, "Results", "beta.dat"))
+    with open(os.path.join(folder, "probes.json")) as f:
+        meta = json.load(f)
+    # HOS's x includes the inlet absorption and generation zones, y the right-hand ramp
+    lam = case.wavelength
+    x0, y0 = (case.absorption_in + case.generation) * lam, case.side_ramp * lam
+    _, Lx, Ly = case.extent()
+    u, v = x - x0, y - y0
+    iu = (u > 0.05 * Lx) & (u < 0.95 * Lx)
+    jv = (v > 0.05 * Ly) & (v < 0.95 * Ly)
+    U, V = np.meshgrid(u[iu], v[jv])
+    X, Y = case.from_frame(U, V)
+    want = np.clip(_bilinear(case.x, case.y, case.depth, X, Y), max(0.5, case.depth_min), case.depth_total)
+    diff = D[np.ix_(jv, iu)] - want
+    return {"rms": float(np.sqrt(np.mean(diff**2))), "max": float(np.abs(diff).max()), "depth_range": float(np.ptp(want))}
 
 
 def wave_stats(t, eta):
