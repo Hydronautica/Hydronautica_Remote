@@ -85,3 +85,9 @@ Storms, cable faults, vessel breakdowns, grid curtailment, price spikes, supply-
 3. **Twin gameplay:** preventive assessments, inspections that narrow uncertainty, remaining-life decisions.
 4. **Content:** more regions, turbine models, events, AI competitors.
 5. **Engine decision:** stay on the web, or port the core to Unreal.
+
+## Prototype
+A playable browser vertical slice is in `demo/windsim/`:
+- `sim.js`: the simulation core (no DOM; runs in Node and the browser). This is the part to port.
+- `game.js`: three.js scene and interface.
+- `balance_test.js`: plays whole games headlessly with reactive and twin-guided maintenance, to check the economy.
