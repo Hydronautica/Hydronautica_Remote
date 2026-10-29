@@ -857,7 +857,7 @@ details.sec > * + * { margin-top: 8px; }
 (function () {
   const ALL = JSON.parse(document.getElementById("data").textContent).farms;
   let FI = 0, D = ALL[0], T = D.turbines;
-  const FK = () => D.meta.farm.id + (D.custom ? "." + D.custom.rev : "");      // cache key of the open farm
+  const FK = () => D.meta.farm.id + (D.custom ? "." + D.custom.rev : "") + "~" + (D.depthRev || 0);      // cache key of the open farm
   let S3 = null;                                   // 3D scene (null when WebGL is unavailable)
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const statusVar = { red: "--crit", amber: "--warn", green: "--ok", rbi: "--accent" };
@@ -881,6 +881,7 @@ details.sec > * + * { margin-top: 8px; }
     return Object.assign({}, dn, { meta, turbines, custom: { siteId: sn.siteId, mapId: sn.mapId, rev: sn.rev || 0, donorFarm: dn.meta.farm.name, donorOf } });
   }
   LIVESITES.forEach((sn) => { try { ALL.push(siteFarm(sn)); } catch (e) { /* a stale snapshot is skipped */ } });
+  const regionText = (d) => { const ds = d.turbines.map((t) => t.spec.depth); return d.meta.farm.region.replace(/\d+(\.\d+)?–\d+(\.\d+)? m/, `${Math.round(Math.min(...ds))}–${Math.round(Math.max(...ds))} m`); };
   const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (html) e.innerHTML = html; return e; };
   const NS = "http://www.w3.org/2000/svg";
   const svg = (tag, attrs = {}) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
@@ -961,7 +962,7 @@ details.sec > * + * { margin-top: 8px; }
         d.turbines.forEach((t) => { if (t.history) HOTS.forEach((k) => { worst = Math.max(worst, t.history.hot[k].total); }); });
       }
       const b = el("button", { class: "farmcard" + (i === FI ? " on" : ""), type: "button" },
-        `<span class="fn">${F.name}${d.custom ? ' <span class="tag-site">custom site</span>' : ""}</span><span class="fr">${F.region} · ${d.turbines.length} × ${d.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}</span>` +
+        `<span class="fn">${F.name}${d.custom ? ' <span class="tag-site">custom site</span>' : ""}</span><span class="fr">${regionText(d)} · ${d.turbines.length} × ${d.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}</span>` +
         `<span class="fc">${c.red ? `<span class="pill red">${c.red} act now</span>` : ""}${c.amber ? `<span class="pill amber">${c.amber} inspect</span>` : ""}<span class="pill green">${c.green} no action</span><span class="fr">${F.storm_name} ${F.storm_peak}</span></span>` +
         (d.history ? `<span class="lu">worst life used ${fmt(worst, 1)}% · design pace ${fmt(pace, 1)}%</span>` : "") +
         `<span class="lu">${d.turbines.filter((t) => t.modal && t.modal.alarms.length).length} turbine(s) with frequency alarms</span>`);
@@ -1799,14 +1800,13 @@ details.sec > * + * { margin-top: 8px; }
       const ts = T.map((t) => t.spec);
       let m = null, ox = 0, oy = 0;
       if (D.custom) m = D.custom.mapId ? MB.map(D.custom.mapId) : null;
-      else { m = MB.map("map-" + D.meta.farm.id); ox = Math.min(...ts.map((t) => t.x)) - 2.5; oy = Math.min(...ts.map((t) => t.y)) - 2.5; }
+      else { m = MB.map("map-" + D.meta.farm.id); const o = farmOrigin(); ox = o[0]; oy = o[1]; }
       const raw = (x, y) => {
         if (m) { const u = x - ox, v = y - oy, cu = Math.min(m.W, Math.max(0, u)), cv = Math.min(m.H, Math.max(0, v)); return depthAt(m, cu, cv) + 0.8 * Math.hypot(u - cu, v - cv); }
         let sw = 0, sd = 0; ts.forEach((t) => { const w = 1 / (0.15 + (x - t.x) ** 2 + (y - t.y) ** 2); sw += w; sd += w * t.depth; });
         return sd / sw + 1.4 * Math.sin(2 * Math.PI * (x * 0.8 + y * 0.6) / 2.2);
       };
-      const corr = ts.map((t) => t.depth - raw(t.x, t.y));             // each turbine sits at its own recorded depth
-      return (x, y) => { let d = raw(x, y), sw = 0, sc = 0; ts.forEach((t, i) => { const w = Math.exp(-((x - t.x) ** 2 + (y - t.y) ** 2) / 0.09); sw += w; sc += w * corr[i]; }); return Math.max(2, d + sc / Math.max(sw, 1)); };
+      return (x, y) => Math.max(1, raw(x, y));
     }
     function buildBed(size) {
       if (bed) { scene.remove(bed); bed.geometry.dispose(); }
@@ -3284,7 +3284,7 @@ details.sec > * + * { margin-top: 8px; }
   const structKey = (ti) => FK() + ":" + ti + ":" + TT.key(TT.typeOf(ti));
   function turbStruct(ti) {
     const key = structKey(ti); if (structCache.has(key)) return structCache.get(key);
-    if (!TT.isAsBuilt(ti) || D.custom) { const S = typeStruct(ti); structCache.set(key, S); return S; }
+    if (!TT.isAsBuilt(ti) || D.custom || T[ti].spec.depth !== T[ti].spec.depth0) { const S = typeStruct(ti); structCache.set(key, S); return S; }
     const F = liveFarm(), tt = F.turbines[ti], n = tt.z.length, nzc = tt.zc.length, ng = F.grid.length, ne = F.n_est, np = F.n_plant;
     const f32 = (s) => Float64Array.from(b64(s, Float32Array));
     const S = Object.assign({}, tt, { n, nzc, ng, ne, np, grid: F.grid, hot: F.hot,
@@ -3295,7 +3295,7 @@ details.sec > * + * { margin-top: 8px; }
   // the same structural data for a turbine type made in the builder: solved here on this turbine's
   // depth, scour and site soil factor; the tracked frequency keeps its site-to-design ratio
   function typeStruct(ti) {
-    const F = liveFarm(), tt = F.turbines[ti], ty = TT.typeOf(ti), B = TFE.build(ty, tt.depth, tt.scour);
+    const F = liveFarm(), tt = Object.assign({}, F.turbines[ti], { depth: T[ti].spec.depth }), ty = TT.typeOf(ti), B = TFE.build(ty, tt.depth, tt.scour);
     const plant = TFE.modal(B, tt.kappa_true, F.n_plant), grid = F.grid.map((k) => TFE.modal(B, k, F.n_est)), design = grid[F.grid.indexOf(1)];
     const r = plant.f1 / tt.f1_true, cat = (a) => { const o = new Float64Array(a.reduce((s2, x) => s2 + x.length, 0)); let i = 0; a.forEach((x) => { o.set(x, i); i += x.length; }); return o; };
     const zc = plant.zc;
@@ -3847,7 +3847,7 @@ details.sec > * + * { margin-top: 8px; }
       ey.textContent = "One owner · " + ALL.length + " farms · " + ALL.reduce((a, d) => a + d.turbines.length, 0) + " turbines"; ti.textContent = "Portfolio";
       drawPortfolio(); showPane("portfolio");
     } else if (NAV.type === "farm") {
-      ey.textContent = `${F.region} · ${T.length} × ${D.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}`;
+      ey.textContent = `${regionText(D)} · ${T.length} × ${D.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}`;
       ti.innerHTML = `${F.name}<div class="muted" style="font-family:var(--font-body);font-size:0.86rem;font-weight:400;margin-top:2px">After the ${F.storm_name.toLowerCase()} of ${F.storm_peak}</div>`;
       if (D.custom) {
         ti.innerHTML += `<div class="site-note">${ICO.farm}<span>Custom site from the builder. Layout, water depths and turbine types are yours; the storm replay, screening and service history are carried over from the ${D.custom.donorFarm} turbines of the nearest depth.</span><button type="button" class="btn" data-editsite>Edit the site</button></div>`;
@@ -3927,8 +3927,22 @@ details.sec > * + * { margin-top: 8px; }
     if (S3) S3.theme();
     drawTree(); drawCrumbs(); drawDrawer();
   }
+  // the farm's turbines take their water depth from its map: a site's map, or the farm's own map once edited
+  function farmOrigin() { const ts = T.map((t) => t.spec); return [Math.min(...ts.map((t) => t.x)) - 2.5, Math.min(...ts.map((t) => t.y)) - 2.5]; }
+  function syncDepths() {
+    let m = null, o = [0, 0];
+    if (D.custom) m = D.custom.mapId ? MB.map(D.custom.mapId) : null;
+    else { const mm = MB.map("map-" + D.meta.farm.id); if (mm && mm.edited) { m = mm; o = farmOrigin(); } }
+    let changed = false;
+    T.forEach((t) => { if (t.spec.depth0 === undefined) t.spec.depth0 = t.spec.depth;
+      const d = m ? +depthAt(m, t.spec.x - o[0], t.spec.y - o[1]).toFixed(2) : t.spec.depth0;
+      if (Math.abs(d - t.spec.depth) > 0.005) { t.z_mudline_weld -= d - t.spec.depth; t.spec.depth = d; changed = true; } });
+    if (changed) { D.depthRev = (D.depthRev || 0) + 1; if (D.custom && LVD) delete LVD[D.meta.farm.name]; }
+    return changed;
+  }
   function loadFarm(i) {
     FI = i; D = ALL[i]; T = D.turbines; current = -1;
+    syncDepths();
     const hs = Math.min(4, Math.max(1.5, (D.history ? D.history.hs_mean : 2) * 2));
     setWIsilent({ hs: hs.toFixed(1), tp: tpTyp(hs).toFixed(1) });
     farmChip();
@@ -5087,8 +5101,10 @@ details.sec > * + * { margin-top: 8px; }
     e.target.value = "";
   });
   document.getElementById("bl-open").addEventListener("click", () => openBuilder());
-  document.getElementById("bl-close").addEventListener("click", () => { bldEl.hidden = true; });
-  bldEl.addEventListener("click", (e) => { if (e.target === bldEl) bldEl.hidden = true; });
+  function closeBuilder() { bldEl.hidden = true; if (syncDepths() || bMapTouched) { if (S3) S3.setFarm(); drawTree(); drawDrawer(); } bMapTouched = false; }
+  let bMapTouched = false;
+  document.getElementById("bl-close").addEventListener("click", closeBuilder);
+  bldEl.addEventListener("click", (e) => { if (e.target === bldEl) closeBuilder(); });
   TT.onChange(() => { LIVE.clear(); structCache.clear(); if (S3 && S3.retype) S3.retype(); if (drawerOpen) drawDrawer(); });
   // ---------- map and site builders ----------
   // Maps: a bathymetry grid with soil zones, exclusion zones and site metocean data. Sites: a map plus turbines of
@@ -5113,17 +5129,27 @@ details.sec > * + * { margin-top: 8px; }
           ts.forEach((t) => { const w = 1 / (0.15 + (x - t.x) ** 2 + (y - t.y) ** 2); sw += w; sd += w * t.depth; });
           m.depth[j * m.nx + i] = +(sd / sw + 1.6 * Math.sin(2 * Math.PI * (x * 0.8 + y * 0.6) / 2.2) + 0.6 * Math.sin(5.1 * x + 1.3 * y)).toFixed(2);
         }
+        for (let it = 0; it < 3; it++) {      // pull the surveyed seabed onto each turbine's recorded depth
+          const corr = ts.map((t) => t.depth - depthAt(m, t.x - x0, t.y - y0));
+          for (let j = 0; j < m.ny; j++) for (let i = 0; i < m.nx; i++) { const x = (i + 0.5) * m.W / m.nx + x0, y = (j + 0.5) * m.H / m.ny + y0; let sw = 0, sc = 0;
+            ts.forEach((t, k) => { const w = Math.exp(-((x - t.x) ** 2 + (y - t.y) ** 2) / 0.09); sw += w; sc += w * corr[k]; });
+            m.depth[j * m.nx + i] = +(m.depth[j * m.nx + i] + sc / Math.max(sw, 1)).toFixed(3); }
+        }
+        m.ox = x0; m.oy = y0;
         builtins.maps.push(m);
         const ty = d.meta.turbine.rotor_D > 220 ? "asbuilt-15" : "asbuilt-10";
         builtins.sites.push({ id: "site-" + d.meta.farm.id, name: d.meta.farm.name + " (as built)", builtin: true, mapId: m.id, turbines: ts.map((t) => ({ id: uid(), name: t.name, typeId: ty, x: +(t.x - x0).toFixed(3), y: +(t.y - y0).toFixed(3) })) });
       });
     }
-    const maps = () => { if (!builtins) makeBuiltins(); return builtins.maps.concat(store.maps); };
+    // an edited built-in map is stored under the same id and replaces the survey until it is reset
+    const maps = () => { if (!builtins) makeBuiltins(); const ids = new Set(builtins.maps.map((m) => m.id));
+      return builtins.maps.map((b) => store.maps.find((m) => m.id === b.id) || b).concat(store.maps.filter((m) => !ids.has(m.id))); };
     const sites = () => { if (!builtins) makeBuiltins(); return builtins.sites.concat(store.sites); };
     const up = (arr, o) => { const i = arr.findIndex((x) => x.id === o.id); if (i >= 0) arr[i] = o; else arr.push(o); save(); };
     return { maps, sites, blank, map: (id) => maps().find((m) => m.id === id), site: (id) => sites().find((s) => s.id === id),
-      saveMap: (m) => up(store.maps, m), saveSite: (s) => up(store.sites, s), removeMap: (id) => { store.maps = store.maps.filter((m) => m.id !== id); save(); },
-      removeSite: (id) => { store.sites = store.sites.filter((s) => s.id !== id); save(); }, persist: save, META0 };
+      saveMap: (m) => { up(store.maps, m); bMapTouched = true; }, saveSite: (s) => up(store.sites, s), removeMap: (id) => { store.maps = store.maps.filter((m) => m.id !== id); save(); },
+      removeSite: (id) => { store.sites = store.sites.filter((s) => s.id !== id); save(); }, persist: save, META0,
+      resetMap: (id) => { store.maps = store.maps.filter((m) => m.id !== id); save(); builtins = null; bMapTouched = true; } };
   })();
   const clone = (o) => JSON.parse(JSON.stringify(o));
   // sampling
@@ -5194,18 +5220,17 @@ details.sec > * + * { margin-top: 8px; }
     if (!MB.map(mbSel)) mbSel = MB.maps()[0].id;
     mbList(); mbMain();
   }
-  function mbEditable() {                     // the selected map, duplicated first if it is built in
-    let m = MB.map(mbSel); if (!m.builtin) return m;
-    const c = clone(m); c.id = uid(); c.builtin = false; c.name = m.name.replace(/ \(from the farm\)$/, "") + " (copy)"; MB.saveMap(c); mbSel = c.id; return c;
+  function mbEditable() {                     // the selected map; a farm's own map is edited in place and can be reset
+    const m = MB.map(mbSel); if (m.builtin) m.edited = true; return m;
   }
   function mbMain() {
     const host = document.getElementById("mb-main"), m = MB.map(mbSel), ro = !!m.builtin;
     const ds = m.depth, dmin = Math.min(...ds), dmax = Math.max(...ds);
     const tools = mbLayer === "depth" ? [["raise", "Shallower"], ["lower", "Deeper"], ["smooth", "Smooth"], ["set", "Set depth"]] : mbLayer === "soil" ? [["soil", "Paint"], ["soilerase", "Erase"]] : mbLayer === "excl" ? [["excl", "Paint"], ["exclerase", "Erase"]] : [];
     if (tools.length && !tools.some(([k]) => k === mbTool)) mbTool = tools[0][0];
-    const side = mbLayer === "meta" ? mbMetaForm(m, ro) : mbLayer === "depth" ? mbDepthPanel(m) : mbLayer === "soil" ? mbSoilPanel(m) : `<p class="cap">Paint areas turbines must avoid: export cables, pipelines, wrecks, shipping lanes, unexploded ordnance. The site builder flags turbines placed inside them.</p>`;
+    const side = mbLayer === "meta" ? mbMetaForm(m, false) : mbLayer === "depth" ? mbDepthPanel(m) : mbLayer === "soil" ? mbSoilPanel(m) : `<p class="cap">Paint areas turbines must avoid: export cables, pipelines, wrecks, shipping lanes, unexploded ordnance. The site builder flags turbines placed inside them.</p>`;
     host.innerHTML = `<div class="mb-top"><label class="bl-f bl-name"><span>Name</span><input type="text" data-mn value="${m.name.replace(/"/g, "&quot;")}"${ro ? " disabled" : ""}></label>` +
-      (ro ? `<p class="hint bl-ro">Built-in maps are read-only. Painting or editing makes a copy.</p>` : "") + `</div>` +
+      (ro ? `<p class="hint bl-ro">${m.edited ? "Edited survey of the farm. The farm's turbines and the 3D viewer use this seabed." : "The farm's surveyed seabed. Edits change the depths the farm's turbines and the 3D viewer use."}${m.edited ? ` <button class="btn" type="button" data-mreset>Reset to the survey</button>` : ""}</p>` : "") + `</div>` +
       `<div class="mb-grid"><div><div class="bl-row mb-bar">${tools.length ? `<span class="seg">${tools.map(([k, l]) => `<button type="button" data-tool="${k}" class="${mbTool === k ? "on" : ""}">${l}</button>`).join("")}</span>` : ""}` +
       (tools.length ? `<label class="sel">Brush<input type="range" data-br min="0.2" max="3" step="0.1" value="${mbBrush.r}"><span class="mono" data-brv>${fmt(mbBrush.r, 1)} km</span></label>` : "") +
       (mbLayer === "depth" ? (mbTool === "set" ? `<label class="sel">Depth<input type="number" data-bset value="${mbBrush.set}" step="1" style="width:4rem">m</label>` : `<label class="sel">Strength<input type="number" data-bs value="${mbBrush.s}" step="0.5" style="width:3.6rem">m</label>`) : "") +
@@ -5221,6 +5246,7 @@ details.sec > * + * { margin-top: 8px; }
     const br = host.querySelector("[data-br]"); if (br) br.addEventListener("input", () => { mbBrush.r = +br.value; host.querySelector("[data-brv]").textContent = fmt(mbBrush.r, 1) + " km"; });
     const bs = host.querySelector("[data-bs]"); if (bs) bs.addEventListener("change", () => { mbBrush.s = Math.max(0.1, +bs.value); });
     const bset = host.querySelector("[data-bset]"); if (bset) bset.addEventListener("change", () => { mbBrush.set = Math.max(1, +bset.value); });
+    const mr = host.querySelector("[data-mreset]"); if (mr) mr.addEventListener("click", () => { MB.resetMap(m.id); mbOpen(); });
     host.querySelector("[data-mn]").addEventListener("change", (e) => { const mm = mbEditable(); mm.name = e.target.value.trim() || "Unnamed map"; MB.saveMap(mm); mbList(); });
     mbWireSide(host, render);
     // painting
@@ -5624,7 +5650,7 @@ details.sec > * + * { margin-top: 8px; }
     document.getElementById("tree-toggle").setAttribute("aria-expanded", app.classList.contains("tree-open") ? "true" : "false");
   });
   document.getElementById("app").addEventListener("click", (e) => { if (e.target.id === "app") e.target.classList.remove("tree-open"); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !bldEl.hidden) { bldEl.hidden = true; return; } if (e.key === "Escape" && !setEl.hidden) { setEl.hidden = true; return; } if (e.key === "Escape") { document.getElementById("app").classList.remove("tree-open"); if (drawerOpen) { drawerOpen = false; drawDrawer(); } } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !bldEl.hidden) { closeBuilder(); return; } if (e.key === "Escape" && !setEl.hidden) { setEl.hidden = true; return; } if (e.key === "Escape") { document.getElementById("app").classList.remove("tree-open"); if (drawerOpen) { drawerOpen = false; drawDrawer(); } } });
   const info = document.getElementById("vp-info"), cap = document.getElementById("vp-cap");
   info.addEventListener("click", () => { cap.hidden = !cap.hidden; });
 
