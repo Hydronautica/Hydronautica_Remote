@@ -1739,7 +1739,7 @@ details.sec > * + * { margin-top: 8px; }
       uF: { value: Array.from({ length: NF }, () => new THREE.Vector4()) }, uFPh: { value: new Array(NF).fill(0) },
       uFpos: { value: new THREE.Vector2() }, uFt0: { value: -1e6 }, uFon: { value: 0 },
       uDeep: { value: new THREE.Color() }, uShallow: { value: new THREE.Color() }, uFoam: { value: new THREE.Color() }, uSky: { value: new THREE.Color() },
-      uSun: { value: new THREE.Vector3(-0.5, 0.65, 0.35).normalize() }, uHs: { value: 1 }, uFogFar: { value: 1500 }, uClear: { value: 1 },
+      uSun: { value: new THREE.Vector3(-0.5, 0.65, 0.35).normalize() }, uHs: { value: 1 }, uFogFar: { value: 1500 }, uFogNear: { value: 700 }, uClear: { value: 1 },
     };
     const mat = new THREE.ShaderMaterial({
       uniforms: uni,
@@ -1766,7 +1766,7 @@ details.sec > * + * { margin-top: 8px; }
           gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
         }`,
       fragmentShader: `
-        uniform vec3 uDeep, uShallow, uFoam, uSky, uSun; uniform float uHs, uFogFar, uClear;
+        uniform vec3 uDeep, uShallow, uFoam, uSky, uSun; uniform float uHs, uFogFar, uFogNear, uClear;
         varying vec3 vPos; varying vec3 vNrm; varying float vH;
         void main() {
           vec3 n = normalize(vNrm); vec3 v = normalize(cameraPosition - vPos);
@@ -1779,11 +1779,11 @@ details.sec > * + * { margin-top: 8px; }
           float foam = smoothstep(0.62, 0.95, vH / max(uHs, 0.1)) + smoothstep(0.32, 0.5, slope) * 0.6;
           col = mix(col, uFoam, clamp(foam, 0.0, 0.85));
           float dist = length(cameraPosition - vPos);
-          float fog = smoothstep(uFogFar * 0.45, uFogFar, dist);
+          float fog = smoothstep(uFogNear, uFogFar, dist);
           col = mix(col, uSky, fog);
           // see-through water: the seabed and piles show from above, the surface turns mirror-like at grazing angles
           float alpha = mix(1.0, clamp(0.16 + 0.6 * fres + 0.35 * clamp(foam, 0.0, 1.0), 0.0, 1.0), uClear);
-          gl_FragColor = vec4(col, mix(alpha, 1.0, max(fog, smoothstep(0.0, uFogFar * 0.5, dist) * 0.35)));
+          gl_FragColor = vec4(col, mix(alpha, 1.0, max(fog, smoothstep(0.0, uFogNear, dist) * 0.3)));
         }`,
     });
     mat.transparent = true;
@@ -1932,7 +1932,7 @@ details.sec > * + * { margin-top: 8px; }
       const size = extent * 2.6 + 600; prepBed(size);
       turbines = T.map((t, i) => buildTurbine(t, i));
       ocean.scale.set(size, 1, size);
-      uni.uFogFar.value = size * 0.55; buildBed(); scene.fog = new THREE.Fog(uni.uSky.value, size * 0.25, size * 0.55);
+      buildBed(); scene.fog = new THREE.Fog(uni.uSky.value, 700, 1500); fogFit();
       sea(); recolour(); resetView(false);
     }
     // sea state -> wave components
@@ -2093,10 +2093,19 @@ details.sec > * + * { margin-top: 8px; }
       renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
     }
     new ResizeObserver(resize).observe(host);
+    // haze starts past the far side of the farm from wherever the camera is, so every turbine and the seabed under them stay clear
+    function fogFit() {
+      if (!scene.fog) return;
+      const reach = camera.position.distanceTo(controls.target) + extent * 0.85 + 120, dark = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      const cd = camera.position.distanceTo(controls.target), edge = cd + (extent * 2.6 + 600) * 0.48;   // fully hazy by the edge of the sea
+      const far = Math.max(reach + 250, edge), near = Math.min(reach * (dark ? 1.12 : 1), far - 250);
+      scene.fog.near = near; scene.fog.far = far; uni.uFogNear.value = near; uni.uFogFar.value = far;
+    }
     function frame(now) {
       requestAnimationFrame(frame);
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       if (!visible || !bldEl.hidden) return;          // hidden, or covered by the builder
+      fogFit();
       if (playing) {
         uni.uTime.value += dt;
         turbines.forEach((o) => { o.rotor.rotation.z -= (o.rpm || 0.3) / 60 * 2 * Math.PI * dt; });
