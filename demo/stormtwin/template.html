@@ -520,6 +520,10 @@ details.sec > * + * { margin-top: 8px; }
 .mb-canvas canvas { width: 100%; display: block; border-radius: 8px; cursor: crosshair; touch-action: none; }
 .mb-canvas .bl-3dp { height: 460px; }
 .mb-side { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.ff-yaw { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 4px 8px; font-size: 0.8rem; }
+.ff-yaw label { display: flex; align-items: center; gap: 4px; } .ff-yaw input { width: 3.4rem; }
+.ff-key i { display: inline-block; width: 90px; height: 8px; border-radius: 4px; vertical-align: middle; margin-right: 4px; }
+.ff-tbl tr { cursor: pointer; } .ff-tbl tr.on { background: var(--accent-soft); }
 .pk-av { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 5px; font-size: 0.82rem; }
 .pk-cmd { white-space: pre-wrap; word-break: break-all; background: var(--surface-2, var(--bg)); border: 1px solid var(--line); border-radius: 6px; padding: 8px; font-size: 0.75rem; margin: 6px 0; }
 .cl-row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--grid); font-size: 0.82rem; }
@@ -714,7 +718,7 @@ details.sec > * + * { margin-top: 8px; }
           <summary class="btn" aria-label="View settings"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>View</summary>
           <div class="vp-tools">
           <label class="sel">Colour<select id="vp-color" aria-label="Colour turbines by"><option value="verdict">Verdict</option><option value="life">Life used</option><option value="alarms">Frequency alarms</option></select></label>
-          <label class="sel">Wakes<select id="vp-wake" aria-label="Wake display"><option value="both">Rings + map</option><option value="rings">Rings</option><option value="map">Map</option><option value="off">Off</option></select></label>
+          <label class="sel">Wakes<select id="vp-wake" aria-label="Wake display"><option value="both">Rings + map</option><option value="rings">Rings</option><option value="map">Map</option><option value="dyn">Dynamic (farm flow)</option><option value="off">Off</option></select></label>
           <label class="sel">Sea<select id="vp-sea" aria-label="Sea state shown"><option value="live">Live</option><option value="storm">Storm replay</option><option value="whatif">What-if</option></select></label>
           <label class="sel">Water<select id="vp-water" aria-label="Water surface"><option value="clear">See-through</option><option value="off">Hidden (seabed only)</option><option value="opaque">Opaque</option></select></label>
           <label class="sel">Relief<select id="vp-relief" aria-label="Vertical exaggeration of the seabed"><option value="1">True scale</option><option value="4" selected>×4</option><option value="8">×8</option><option value="15">×15</option></select></label>
@@ -940,6 +944,7 @@ details.sec > * + * { margin-top: 8px; }
 <script type="application/json" id="rnadata">__RNADATA__</script>
 <script type="application/json" id="livedata">__LIVEDATA__</script>
 <script type="application/json" id="geodata">__GEODATA__</script>
+<script>/*__FARMFLOW__*/</script>
 <script>
 (function () {
   const ALL = JSON.parse(document.getElementById("data").textContent).farms;
@@ -2149,10 +2154,36 @@ details.sec > * + * { margin-top: 8px; }
         }`,
     });
     const wakeMap = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), wakeMat); wakeMap.rotation.x = -Math.PI / 2; wakeMap.renderOrder = 5; scene.add(wakeMap);
+    // dynamic wakes: a FarmFlow run for the shown wind, played as a texture on the hub-height plane (group turned to the wind)
+    const dynTex = new THREE.DataTexture(new Uint8Array(4), 1, 1, THREE.RGBAFormat), dynMat = new THREE.MeshBasicMaterial({ map: dynTex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const dynMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), dynMat), dynGrp = new THREE.Group(); dynMesh.rotation.x = -Math.PI / 2; dynMesh.renderOrder = 5; dynGrp.add(dynMesh); dynGrp.visible = false; scene.add(dynGrp);
+    let dyn = null, dynBusy = null;
+    function dynPaint() {
+      const r = dyn.res, { FW, FH } = r.frame, n = r.frames.length, a = Math.floor(dyn.k) % n, b = (a + 1) % n, f = dyn.k - Math.floor(dyn.k), A = r.frames[a].f, B = r.frames[b].f;
+      if (!dyn.data) { dyn.data = new Uint8Array(FW * FH * 4); dynMat.map = new THREE.DataTexture(dyn.data, FW, FH, THREE.RGBAFormat); dynMat.map.magFilter = THREE.LinearFilter; dynMat.map.minFilter = THREE.LinearFilter; dynMat.needsUpdate = true; }
+      const c0 = new THREE.Color(css("--wake-lo")), c1 = new THREE.Color(css("--wake-hi")), d = dyn.data;
+      for (let q = 0; q < FW * FH; q++) { const v = A[q] * (1 - f) + B[q] * f, def = 1 - v, w = Math.max(0, Math.min(1, def / 0.4)), o = 4 * q;
+        d[o] = 255 * (c0.r + (c1.r - c0.r) * w); d[o + 1] = 255 * (c0.g + (c1.g - c0.g) * w); d[o + 2] = 255 * (c0.b + (c1.b - c0.b) * w); d[o + 3] = 255 * (def > 0 ? Math.min(0.85, 0.08 + 2.2 * def) : Math.min(0.25, -1.2 * def)); }
+      dynMat.map.needsUpdate = true;
+      const ki = Math.min(r.out.n - 1, Math.round(dyn.k * r.cfg.frameDt / r.cfg.outDt)); turbines.forEach((o, j) => { if (r.per[j]) o.rpm = Math.max(0.3, r.per[j].rpm[ki]); });
+    }
+    function dynStart(q) {
+      const key = FK() + ":" + q.U.toFixed(1) + ":" + q.udir; if ((dyn && dyn.key === key) || dynBusy === key || typeof FarmFlow === "undefined") return;
+      dynBusy = key; document.getElementById("vp-cap").textContent = "Simulating the farm flow for this wind…";
+      setTimeout(() => {
+        const tb = T.map((t, i) => { const ref = TT.typeOf(i), o = turbines[i]; return { name: t.spec.name, x: o.g.position.x * U, y: -o.g.position.z * U, ty: ffTy(ref) }; });
+        const res = FarmFlow.run({ turbines: tb, U: Math.max(1, q.U), dir: q.udir, TI: ffSiteTI(TT.typeOf(0), Math.max(3, q.U)), T: 600, frameDt: 4, frameN: [220, 120], seed: 3 + FI });
+        dyn = { res, key, k: 0, data: null }; dynBusy = null;
+        const fm = res.frame, sc = 0.5 * (fm.sMin + fm.sMax), nc = 0.5 * (fm.nMin + fm.nMax), E = sc * fm.es[0] + nc * fm.en[0], N = sc * fm.es[1] + nc * fm.en[1];
+        dynGrp.position.set(E / U, D.meta.turbine.z_hub / U * TS, -N / U); dynGrp.rotation.y = Math.atan2(fm.es[1], fm.es[0]); dynMesh.scale.set((fm.sMax - fm.sMin) / U, (fm.nMax - fm.nMin) / U, 1);
+        dynPaint(); sea();
+      }, 40);
+    }
     function wakes(q) {
       while (ringGroup.children.length) { const c = ringGroup.children.pop(); c.geometry.dispose(); c.material.dispose(); }
       const m = D.meta.turbine, hub = m.z_hub / U * TS, show = SEA !== "storm" && wakeMode !== "off";
-      wakeMap.visible = show && wakeMode !== "rings"; ringGroup.visible = show && wakeMode !== "map";
+      wakeMap.visible = show && wakeMode !== "rings" && wakeMode !== "dyn"; ringGroup.visible = show && wakeMode !== "map" && wakeMode !== "dyn"; dynGrp.visible = show && wakeMode === "dyn" && !!dyn;
+      if (show && wakeMode === "dyn") dynStart(q);
       document.getElementById("vp-wake").closest(".sel").hidden = SEA === "storm";
       if (!show || !turbines.length) { legend(); return null; }
       const W = wakeField(q.U, q.udir), Dr = W.Dr;
@@ -2190,7 +2221,7 @@ details.sec > * + * { margin-top: 8px; }
       const yawA = (wind.from) * Math.PI / 180;
       turbines.forEach((o, j) => { o.yaw.rotation.y = Math.PI - yawA; o.rpm = rpmOf(W ? W.P[j].u : q.U, metaFor(j)); });
       const cap = document.getElementById("vp-cap");
-      cap.textContent = `${{ live: "Live", storm: "Storm replay", whatif: "What-if sea" }[SEA]}: Hs ${fmt(q.Hs, 1)} m, Tp ${fmt(q.Tp, 1)} s, waves from ${q.wdir}°, wind ${fmt(q.U, 0)} m/s from ${q.udir}° (rotors ${op ? "operating" : "idling"}). Waves drawn ${VE}× taller, turbines ${TS}× larger; wakes from a Gaussian wake model, widths drawn at turbine scale. Drag to orbit, scroll to zoom, right-drag to pan. Click a turbine to analyse it; click it again on a part (blade, nacelle, tower, flange, platform) to open that component.`;
+      cap.textContent = `${{ live: "Live", storm: "Storm replay", whatif: "What-if sea" }[SEA]}: Hs ${fmt(q.Hs, 1)} m, Tp ${fmt(q.Tp, 1)} s, waves from ${q.wdir}°, wind ${fmt(q.U, 0)} m/s from ${q.udir}° (rotors ${op ? "operating" : "idling"}). Waves drawn ${VE}× taller, turbines ${TS}× larger; ${wakeMode === "dyn" ? "wakes from a farm-flow simulation of this wind (meandering, wake-added turbulence, each turbine under control), played 8× faster" : "wakes from a Gaussian wake model, widths drawn at turbine scale"}. Drag to orbit, scroll to zoom, right-drag to pan. Click a turbine to analyse it; click it again on a part (blade, nacelle, tower, flange, platform) to open that component.`;
     }
     // camera
     let fly = null;
@@ -2291,6 +2322,7 @@ details.sec > * + * { margin-top: 8px; }
         }
         streakGeo.attributes.position.needsUpdate = true;
         turbines.forEach((o, i) => { if (i === sel) o.ring.scale.setScalar(1.35 + 0.08 * Math.sin(now / 300)); });
+        if (dyn && dynGrp.visible) { dyn.k = (dyn.k + dt * 8 / dyn.res.cfg.frameDt) % dyn.res.frames.length; dynPaint(); }
       }
       if (fly) {
         const u = Math.min(1, (now - fly.t0) / 900), e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
@@ -4929,6 +4961,10 @@ details.sec > * + * { margin-top: 8px; }
     let ct = 1.3 * 4 * a * (1 - a); if (lam > 1) ct += 0.05 * Math.max(0, lam - HEIER_MAX.lam) / 4; return Math.min(1.1, ct);
   }
   function simWind(o, ty, rnd) {            // returns hub(t), eff(t), yaw(t) in m/s and degrees
+    if (o.wind === "record" && o.windRec && o.windRec.u.length > 4) {   // rotor inflow from a farm-flow run (repeats if the run is longer)
+      const r = o.windRec, n = r.u.length, dtr = (r.t[n - 1] - r.t[0]) / (n - 1), mean = r.u.reduce((a, b) => a + b, 0) / n, sig = Math.sqrt(r.u.reduce((a, b) => a + (b - mean) ** 2, 0) / n);
+      return { U: mean, sig, Vg: 0, thcg: 0, at(t) { const x = ((t / dtr) % (n - 1) + (n - 1)) % (n - 1), i = Math.floor(x), f = x - i, u = r.u[i] * (1 - f) + r.u[i + 1] * f; return { hub: u, eff: u, yaw: o.yaw }; } };
+    }
     const Vref = IEC_CLASS[o.cls] || 50, Iref = IEC_IREF[o.turb] || 0.14, R = ty.rotor_D / 2, L1 = 42, Lu = 8.1 * L1;
     let U = o.U, sig = 0;
     if (o.wind === "ewm50") { U = Vref; sig = 0.11 * U; } else if (o.wind === "ewm1") { U = 0.8 * Vref; sig = 0.11 * U; }
@@ -5093,7 +5129,7 @@ details.sec > * + * { margin-top: 8px; }
       `<p class="cap">Time-domain run of ${ty.name} at ${t.spec.name} (${fmt(t.spec.depth, 1)} m): wind, waves, controller and structure coupled, outputs you choose. Settings are kept for the next run.</p>` +
       `<details class="bl-more" open><summary>Run</summary>` + numIn("T", "Simulation length", o.T, "s", 10) + numIn("tTrans", "Discard start-up transient", o.tTrans, "s", 5) + numIn("seed", "Random seed", o.seed, "", 1) +
       `<details class="bl-more"><summary>Solver</summary>` + numIn("dt", "Time step", o.dt, "s", 0.01) + numIn("outDt", "Output step", o.outDt, "s", 0.05) + numIn("nm", "Structural modes", o.nm, "", 1) + numIn("kappa", "Soil stiffness factor", o.kappa, "×", 0.1) + `</details></details>` +
-      `<details class="bl-more" open><summary>Wind</summary>` + sel2("wind", "Wind model", o.wind, WIND_MODELS) +
+      `<details class="bl-more" open><summary>Wind</summary>` + sel2("wind", "Wind model", o.wind === "record" && !FFREC ? "ntm" : o.wind, WIND_MODELS.concat(FFREC ? [["record", "Farm-flow inflow: " + FFREC.name]] : [])) +
       `<div data-dep="U"${/ewm/.test(o.wind) ? " hidden" : ""}>` + numIn("U", "Mean wind at hub", o.U, "m/s", 0.5) + `</div>` +
       sel2("cls", "Turbine class (V<sub>ref</sub>)", o.cls, [["I", "I (50 m/s)"], ["II", "II (42.5 m/s)"], ["III", "III (37.5 m/s)"]]) + sel2("turb", "Turbulence category", o.turb, [["A", "A (I<sub>ref</sub> 0.16)"], ["B", "B (0.14)"], ["C", "C (0.12)"]]) +
       `<div data-dep="gust"${/eog|ecd/.test(o.wind) ? "" : " hidden"}>` + numIn("tGust", "Gust starts at", o.tGust, "s", 5) + `</div>` +
@@ -5128,7 +5164,9 @@ details.sec > * + * { margin-top: 8px; }
       if (!SIMOUT.length) { msg.textContent = "Choose at least one output channel."; e.target.disabled = false; return; }
       msg.textContent = `Running ${SIMCFG.T} s at ${SIMCFG.dt} s steps…`;
       if (SIMCFG.sea === "record" && !seaRecProbe(SIMCFG, T[bSite] || T[0])) { msg.textContent = "Load a HOS-Ocean results file first."; e.target.disabled = false; return; }
-      const res = await SOLVERS.sim(TT.get(bSel), (T[bSite] || T[0]).spec.depth, SIMCFG.sea === "record" ? Object.assign({}, SIMCFG, { rec: seaRecProbe(SIMCFG, T[bSite] || T[0]) }) : SIMCFG, (p) => { bar.style.width = (100 * p).toFixed(0) + "%"; });
+      if (SIMCFG.wind === "record" && !FFREC) SIMCFG.wind = "ntm";
+      const runO = Object.assign({}, SIMCFG, SIMCFG.sea === "record" ? { rec: seaRecProbe(SIMCFG, T[bSite] || T[0]) } : {}, SIMCFG.wind === "record" ? { windRec: FFREC } : {});
+      const res = await SOLVERS.sim(TT.get(bSel), (T[bSite] || T[0]).spec.depth, runO, (p) => { bar.style.width = (100 * p).toFixed(0) + "%"; });
       bar.style.width = "100%"; msg.textContent = `Done in ${fmt(res.ms / 1000, 1)} s of compute: ${res.nOut} output steps, first frequencies ${res.f.slice(0, 2).map((f) => fmt(f, 3)).join(", ")} Hz.`;
       RUNS.set(bSel + ":sim", { key: runKey(), input: Object.assign({}, SIMCFG), result: res }); e.target.disabled = false; simResults(host);
     });
@@ -6634,6 +6672,121 @@ details.sec > * + * { margin-top: 8px; }
       chart(C("daily"), { series: [{ x: yr, y: d.hs_max, color: "--accent", width: 0.6 }, { x: yr, y: d.hs_mean, color: "--ink", width: 0.6 }], xl: "year", yl: "Hs (m)", w: Math.min(940, el.clientWidth || 900), h: 200, label: "Daily wave height over the whole record", legend: [{ label: "daily max", color: "--accent" }, { label: "daily mean", color: "--ink" }] }); }
   }
 
+  // ----- farm flow: dynamic wakes, meandering and wake-added turbulence across a farm (FarmFlow, farmflow.js) -----
+  const ffTy = (ty) => ({ D: ty.rotor_D, P: ty.rated_P, Cp: ty.Cp, rpm: ty.rated_rpm, rpmMin: ty.min_rpm || 4, bladeMass: ty.blade_mass, hubMass: ty.hub_mass || 0, cutIn: ty.cut_in, cutOut: ty.cut_out });
+  const FFCFG = { U: 10, dir: null, TI: 0, T: 900, seed: 1, meander: true, addTI: true, superpose: "rss", Lu: 340, speed: 10 };
+  try { Object.assign(FFCFG, JSON.parse(localStorage.getItem("stormtwin-ff-v1") || "{}")); } catch (e) { /* storage unavailable */ }
+  const ffKeep = () => { try { localStorage.setItem("stormtwin-ff-v1", JSON.stringify(FFCFG)); } catch (e) { /* storage unavailable */ } };
+  let FFRES = null, FFREC = null, sbFlow = false;
+  const ffSiteTI = (ty, U) => tiFun({ model: "table" }, ty.z_hub)(U / Math.pow(ty.z_hub / 10, 0.11));
+  function ffSteady(tb, U, dir) {                // StormTwin's steady model for comparison: fixed wake growth, steady thrust
+    const to = rad(dir + 180), fx = Math.sin(to), fz = Math.cos(to), P = tb.map((t, i) => ({ i, s: t.x * fx + t.y * fz, n: -t.x * fz + t.y * fx }));
+    [...P].sort((a, b) => a.s - b.s).forEach((p) => { let sum = 0; P.forEach((q) => { if (q.ct === undefined || q.s >= p.s - 1) return; sum += (WAKE_ROTOR * wakeDeficit(q.ct, p.s - q.s, Math.abs(p.n - q.n), tb[q.i].ref.rotor_D)) ** 2; });
+      p.u = U * (1 - Math.min(0.9, Math.sqrt(sum))); p.ct = ctAt(tb[p.i].ref, p.u); });
+    const per = P.map((p) => LIVE.power(p.u, TT.meta(tb[p.i].ref))), free = tb.map((t) => LIVE.power(U, TT.meta(t.ref))), a = per.reduce((x, y) => x + y, 0), b = free.reduce((x, y) => x + y, 0);
+    return { per, eff: b > 0 ? a / b : 1 };
+  }
+  const FF_STOPS = [[0.45, [11, 37, 69]], [0.7, [19, 49, 92]], [0.85, [62, 124, 177]], [0.97, [205, 222, 235]], [1.03, [236, 240, 243]], [1.15, [244, 162, 89]]];
+  function ffColor(v) { const S = FF_STOPS; if (v <= S[0][0]) return S[0][1]; for (let i = 1; i < S.length; i++) if (v <= S[i][0]) { const f = (v - S[i - 1][0]) / (S[i][0] - S[i - 1][0]); return S[i - 1][1].map((c, k) => c + f * (S[i][1][k] - c)); } return S[S.length - 1][1]; }
+  function ffFrameImage(res, k) {                 // the hub-height field of frame k (fractional: blended) as an offscreen canvas
+    const { FW, FH } = res.frame, fr = res.frames, n = fr.length, a = Math.floor(k) % n, b = (a + 1) % n, f = k - Math.floor(k), A = fr[a].f, B = fr[b].f;
+    const cv = res._off || (res._off = document.createElement("canvas")); cv.width = FW; cv.height = FH;
+    const g = cv.getContext("2d"), img = g.createImageData(FW, FH);
+    for (let j = 0; j < FH; j++) for (let i = 0; i < FW; i++) { const v = A[j * FW + i] * (1 - f) + B[j * FW + i] * f, c = ffColor(v), o = 4 * ((FH - 1 - j) * FW + i);
+      img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255; }
+    g.putImageData(img, 0, 0); return cv;
+  }
+  function ffDraw(cv, res, k, tb, sel) {
+    const W = cv.clientWidth || 700, H = Math.round(Math.min(560, Math.max(320, W * 0.58))), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.style.height = H + "px"; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    const g = cv.getContext("2d"), fm = res.frame, es = fm.es, en = fm.en, pt = (s, n) => [s * es[0] + n * en[0], s * es[1] + n * en[1]];
+    const cs = [pt(fm.sMin, fm.nMin), pt(fm.sMax, fm.nMin), pt(fm.sMin, fm.nMax), pt(fm.sMax, fm.nMax)], xs = cs.map((c) => c[0]), ys = cs.map((c) => c[1]);
+    const e0 = Math.min(...xs), e1 = Math.max(...xs), n0 = Math.min(...ys), n1 = Math.max(...ys), sc = Math.min(W / (e1 - e0), H / (n1 - n0)), ox = (W - (e1 - e0) * sc) / 2 - e0 * sc, oy = (H - (n1 - n0) * sc) / 2 + n1 * sc;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#0b1e2d"; g.fillRect(0, 0, cv.width, cv.height);
+    const img = ffFrameImage(res, k), ds = (fm.sMax - fm.sMin) / fm.FW, dn = (fm.nMax - fm.nMin) / fm.FH, A = pt(fm.sMin, fm.nMax);
+    // image row 0 is n = nMax (drawn flipped above), columns run along s
+    g.setTransform(dpr * ds * es[0] * sc, -dpr * ds * es[1] * sc, -dpr * dn * en[0] * sc, dpr * dn * en[1] * sc, dpr * (ox + A[0] * sc), dpr * (oy - A[1] * sc));
+    g.imageSmoothingEnabled = true; g.drawImage(img, 0, 0);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const X = (e) => ox + e * sc, Y = (nn) => oy - nn * sc, ki = Math.min(res.out.n - 1, Math.round(k * res.cfg.frameDt / res.cfg.outDt));
+    tb.forEach((t, i) => { const yw = (res.cfg.yaw ? res.cfg.yaw[i] : 0) * Math.PI / 180, R = t.ty.D / 2, ax = Math.cos(yw) * en[0] - Math.sin(yw) * es[0], ay = Math.cos(yw) * en[1] - Math.sin(yw) * es[1];
+      const p = res.per[i].P[ki] / t.ty.P, cx = X(t.x), cy = Y(t.y);
+      g.strokeStyle = "rgba(0,0,0,0.55)"; g.lineWidth = 5; g.beginPath(); g.moveTo(cx - ax * R * sc, cy + ay * R * sc); g.lineTo(cx + ax * R * sc, cy - ay * R * sc); g.stroke();
+      g.strokeStyle = i === sel ? "#ffd166" : `rgb(255,${Math.round(255 - 120 * (1 - p))},${Math.round(255 - 200 * (1 - p))})`; g.lineWidth = 2.6; g.stroke();
+      g.fillStyle = "rgba(255,255,255,0.9)"; g.font = "10px IBM Plex Sans, sans-serif"; g.fillText(t.name, cx + 5, cy - 5); });
+    // wind arrow and time
+    const ax2 = W - 46, ay2 = 40, L = 22; g.strokeStyle = "#fff"; g.lineWidth = 2; g.beginPath(); g.moveTo(ax2 - es[0] * L, ay2 + es[1] * L); g.lineTo(ax2 + es[0] * L, ay2 - es[1] * L); g.stroke();
+    g.beginPath(); g.arc(ax2 + es[0] * L, ay2 - es[1] * L, 3, 0, 2 * Math.PI); g.fillStyle = "#fff"; g.fill(); g.font = "10px IBM Plex Mono, monospace"; g.fillText("wind", ax2 - 14, ay2 + 34);
+    g.fillText(`t = ${fmt(k * res.cfg.frameDt, 0)} s`, 10, 16);
+    const km = (e1 - e0) > 6000 ? 2000 : 1000; g.fillStyle = "rgba(255,255,255,0.85)"; g.fillRect(10, H - 18, km * sc, 3); g.fillText(km / 1000 + " km", 14 + km * sc, H - 13);
+  }
+  // inputs for a list of turbines {name, x (m east), y (m north), ref: type}; back() leaves the view
+  function ffView(host, tb, title, back, dirDefault) {
+    if (FFCFG.dir === null) FFCFG.dir = dirDefault;
+    const o = FFCFG, ty0 = tb[0].ref, ti0 = ffSiteTI(ty0, o.U), yawK = "stormtwin-ff-yaw:" + title, yaw = (() => { try { return JSON.parse(localStorage.getItem(yawK) || "{}"); } catch (e) { return {}; } })();
+    const num = (k, l, v, u, st, extra = "") => `<label class="bl-f"><span>${l}</span><span class="bl-in"><input type="number" data-ff="${k}" value="${v}" step="${st}"${extra}><i>${u}</i></span></label>`;
+    host.innerHTML = `<div class="bl-hd2"><h3>Farm flow: ${title}</h3><button class="btn" type="button" data-ffback>Back</button></div>` +
+      `<p class="cap">Dynamic wakes across the farm: a turbulent wind field drifts through, every turbine runs its own controller, and its wake meanders, deflects with yaw and adds turbulence downstream, in the manner of FAST.Farm's dynamic wake meandering. Each turbine also runs without wakes, so losses are measured directly.</p>` +
+      `<div class="mb-grid"><div><div class="mb-canvas"><canvas data-ffc></canvas></div><div class="sim-ctl"><button class="btn sm" data-ffplay>▶</button><input type="range" data-ffscrub min="0" max="0" value="0" aria-label="Time"><span class="mono" data-ffnow></span><select data-ffspd aria-label="Playback speed">${[2, 5, 10, 20, 40].map((v) => `<option value="${v}"${v === o.speed ? " selected" : ""}>${v}×</option>`).join("")}</select></div>` +
+      `<p class="muted" style="font-size:0.78rem">Hub-height wind speed as a fraction of the free stream: <span class="ff-key"><i style="background:linear-gradient(90deg,#0b2545,#3e7cb1,#ecf0f3,#f4a259)"></i> 0.45 → 1.15</span>. Rotor lines are drawn at their yaw and shaded by power.</p></div>` +
+      `<div class="mb-side"><h4 class="bl-h" style="margin-top:0">Wind</h4>` + num("U", "Wind at hub height", o.U, "m/s", 0.5) + num("dir", "Wind from", o.dir, "°", 5) +
+      num("TI", "Ambient turbulence (0 = site model)", o.TI, "%", 0.5) + `<p class="cap" style="margin-top:-4px">Site model at ${fmt(o.U, 1)} m/s: ${fmt(100 * ti0, 1)} %</p>` +
+      `<label class="bl-f"><span>Simulated time</span><span class="bl-in"><select data-ff="T">${[300, 600, 900, 1800].map((v) => `<option value="${v}"${+o.T === v ? " selected" : ""}>${v / 60} min</option>`).join("")}</select></span></label>` +
+      `<details class="bl-more"><summary>Wake steering (yaw offsets)</summary><div class="ff-yaw">${tb.map((t) => `<label>${t.name}<input type="number" step="1" data-ffyaw="${t.name}" value="${yaw[t.name] || 0}">°</label>`).join("")}</div><p class="cap">Positive turns the rotor anticlockwise seen from above; the wake is pushed the same way.</p></details>` +
+      `<details class="bl-more"><summary>Model</summary>` + num("seed", "Random seed", o.seed, "", 1) + num("Lu", "Turbulence length scale", o.Lu, "m", 10) +
+      `<label class="bl-f"><span>Wake meandering</span><span class="bl-in"><input type="checkbox" data-ffc2="meander"${o.meander ? " checked" : ""}></span></label>` +
+      `<label class="bl-f"><span>Wake-added turbulence</span><span class="bl-in"><input type="checkbox" data-ffc2="addTI"${o.addTI ? " checked" : ""}></span></label>` +
+      `<label class="bl-f"><span>Wake superposition</span><span class="bl-in"><select data-ff="superpose">${[["rss", "Sum of squares"], ["linear", "Linear"], ["max", "Largest"]].map(([k, l]) => `<option value="${k}"${o.superpose === k ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>` +
+      `<p class="cap">Wakes: Gaussian deficit (Bastankhah & Porté-Agel) growing with the local turbulence (Niayifar & Porté-Agel), meandering with the crosswind averaged over 1.9 wake radii, Jiménez yaw deflection, Crespo–Hernández added turbulence from the dominant upstream wake. Turbines: the simulator's rotor, torque and pitch control.</p></details>` +
+      `<div class="bl-row"><button class="btn primary" type="button" data-ffrun>Run the farm</button></div><p class="muted" data-ffmsg style="font-size:0.8rem"></p></div></div><div data-ffres></div>`;
+    const cv = host.querySelector("[data-ffc]"), scrub = host.querySelector("[data-ffscrub]"), nowEl = host.querySelector("[data-ffnow]"), playB = host.querySelector("[data-ffplay]");
+    let k = 0, playing = false, last = 0, sel = -1, raf = 0;
+    const show = () => { if (!FFRES || FFRES._title !== title) { const g = cv.getContext("2d"); cv.style.height = "320px"; cv.width = cv.clientWidth; cv.height = 320; g.fillStyle = "#0b1e2d"; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = "#cfe0ea"; g.font = "13px IBM Plex Sans"; g.fillText("Run the farm to see its wakes.", 20, 30); return; }
+      ffDraw(cv, FFRES, k, tb, sel); scrub.value = Math.floor(k); nowEl.textContent = fmt(k * FFRES.cfg.frameDt, 0) + " s"; };
+    const tick = (now) => { if (!host.isConnected) return; raf = requestAnimationFrame(tick); if (!playing || !FFRES) { last = now; return; } const dt = Math.min(0.1, (now - last) / 1000); last = now; k = (k + dt * FFCFG.speed / FFRES.cfg.frameDt) % FFRES.frames.length; show(); };
+    raf = requestAnimationFrame(tick);
+    host.querySelector("[data-ffback]").addEventListener("click", () => { cancelAnimationFrame(raf); back(); });
+    playB.addEventListener("click", () => { playing = !playing; playB.textContent = playing ? "❚❚" : "▶"; });
+    scrub.addEventListener("input", () => { k = +scrub.value; playing = false; playB.textContent = "▶"; show(); });
+    host.querySelector("[data-ffspd]").addEventListener("change", (e) => { FFCFG.speed = +e.target.value; ffKeep(); });
+    host.querySelectorAll("[data-ff]").forEach((x) => x.addEventListener("change", () => { FFCFG[x.dataset.ff] = x.tagName === "SELECT" && x.dataset.ff === "superpose" ? x.value : +x.value; ffKeep(); }));
+    host.querySelectorAll("[data-ffc2]").forEach((x) => x.addEventListener("change", () => { FFCFG[x.dataset.ffc2] = x.checked; ffKeep(); }));
+    host.querySelectorAll("[data-ffyaw]").forEach((x) => x.addEventListener("change", () => { yaw[x.dataset.ffyaw] = +x.value || 0; try { localStorage.setItem(yawK, JSON.stringify(yaw)); } catch (e) { /* storage unavailable */ } }));
+    host.querySelector("[data-ffrun]").addEventListener("click", () => {
+      const msg = host.querySelector("[data-ffmsg]"); msg.textContent = `Running ${tb.length} turbines for ${o.T / 60} minutes…`;
+      setTimeout(() => {
+        const t0 = performance.now(), TI = o.TI > 0 ? o.TI / 100 : ffSiteTI(ty0, o.U), yw = tb.map((t) => yaw[t.name] || 0);
+        const res = FarmFlow.run({ turbines: tb, U: o.U, dir: o.dir, TI, T: +o.T, seed: o.seed, meander: o.meander, addTI: o.addTI, superpose: o.superpose, Lu: o.Lu, yaw: yw, frameDt: 5, frameN: [200, 110] });
+        res._title = title; res._steady = ffSteady(tb, o.U, o.dir); FFRES = res; k = 0; scrub.max = res.frames.length - 1;
+        msg.textContent = `${fmt((performance.now() - t0) / 1000, 1)} s of compute, ambient TI ${fmt(100 * TI, 1)} %, grid ${fmt(res.grid.h, 0)} m.`;
+        playing = true; playB.textContent = "❚❚"; show(); ffResults(host.querySelector("[data-ffres]"), res, tb, (i) => { sel = i; show(); });
+      }, 30);
+    });
+    show(); if (FFRES && FFRES._title === title) { scrub.max = FFRES.frames.length - 1; ffResults(host.querySelector("[data-ffres]"), FFRES, tb, (i) => { sel = i; show(); }); }
+  }
+  function ffResults(el, res, tb, onSel) {
+    const f = res.farm, st = res.stats, sd = res._steady, pill = (v) => (v < 0.08 ? "green" : v < 0.18 ? "amber" : "red");
+    el.innerHTML = `<div class="wv-sum">` + [["Farm power", `${fmt(f.P, 1)} MW`], ["Without wakes", `${fmt(f.Pfree, 1)} MW`], ["Wake loss", `<span class="pill ${pill(f.loss)}">${fmt(100 * f.loss, 1)} %</span>`], ["Steady model, same wind", `${fmt(100 * (1 - sd.eff), 1)} % loss`]].map(([a, b]) => `<div><span class="muted">${a}</span><b class="mono">${b}</b></div>`).join("") + `</div>` +
+      `<div class="tbl-wrap"><table class="list ff-tbl"><thead><tr><th>Turbine</th><th class="r">Power</th><th class="r">Wake loss</th><th class="r">Inflow</th><th class="r">Effective TI</th><th class="r">Rotor TI</th><th class="r">Thrust</th><th class="r">Thrust std</th><th></th></tr></thead><tbody>` +
+      st.map((s, i) => `<tr data-ffsel="${i}"><td>${s.name}</td><td class="r mono">${fmt(s.P, 2)} MW</td><td class="r"><span class="pill ${pill(s.loss)}">${fmt(100 * s.loss, 1)} %</span></td><td class="r mono">${fmt(s.u, 2)} m/s</td><td class="r mono">${fmt(100 * s.TIeff, 1)} %</td><td class="r mono">${fmt(100 * s.TIrotor, 1)} %</td><td class="r mono">${fmt(s.Th, 2)} MN</td><td class="r mono">${fmt(s.ThStd, 2)} MN</td><td><button class="btn sm" type="button" data-ffsim="${i}">Simulate loads</button></td></tr>`).join("") + `</tbody></table></div>` +
+      `<p class="cap">Effective TI: ambient plus the dominant wake's added turbulence at the rotor. Rotor TI: the variation of the rotor-averaged inflow over the run, which is what loads the turbine. Thrust std is a quick fatigue indicator; "Simulate loads" runs the full turbine model with that turbine's inflow from this run.</p>` +
+      `<div class="wv-charts"><div data-ffch="farm"></div><div data-ffch="t"></div></div><div class="bl-row"><button class="btn sm" type="button" data-ffcsv>Export CSV</button></div>`;
+    const t = Array.from(res.out.t.slice(0, res.out.n)), W2 = Math.max(300, Math.min(460, (el.clientWidth || 900) / 2 - 12));
+    chart(el.querySelector('[data-ffch="farm"]'), { series: [{ x: t, y: Array.from(res.out.Pfree.slice(0, res.out.n)), color: "--muted", dash: "4 3", width: 1.2 }, { x: t, y: Array.from(res.out.Pfarm.slice(0, res.out.n)), color: "--accent", width: 1.6 }], xl: "time (s)", yl: "farm power (MW)", w: W2, h: 200, label: "Farm power with and without wakes", legend: [{ label: "with wakes", color: "--accent" }, { label: "no wakes", color: "--muted", dash: "4 3" }] });
+    const pick = (i) => { const p = res.per[i]; chart(el.querySelector('[data-ffch="t"]'), { series: [{ x: t, y: Array.from(p.ufree.slice(0, res.out.n)), color: "--muted", dash: "4 3", width: 1 }, { x: t, y: Array.from(p.u.slice(0, res.out.n)), color: "--warn", width: 1.4 }], xl: "time (s)", yl: "rotor inflow (m/s)", w: W2, h: 200, label: "Rotor inflow of " + st[i].name, legend: [{ label: st[i].name + " in the farm", color: "--warn" }, { label: "alone", color: "--muted", dash: "4 3" }] });
+      el.querySelectorAll("[data-ffsel]").forEach((r) => r.classList.toggle("on", +r.dataset.ffsel === i)); onSel(i); };
+    el.querySelectorAll("[data-ffsel]").forEach((r) => r.addEventListener("click", (e) => { if (e.target.closest("button")) return; pick(+r.dataset.ffsel); }));
+    pick(st.reduce((b, s, i) => (s.loss > st[b].loss ? i : b), 0));
+    el.querySelectorAll("[data-ffsim]").forEach((b) => b.addEventListener("click", () => { const i = +b.dataset.ffsim, p = res.per[i];
+      FFREC = { name: st[i].name + " in " + res._title, t: Array.from(res.out.t.slice(0, res.out.n)), u: Array.from(p.u.slice(0, res.out.n)) };
+      const tyR = tb[i].ref; if (TT.get(tyR.id)) bSel = tyR.id; bShowMode("turbine"); bOpenSel(); bShowTab("sim");
+      simView({ wind: "record", U: +st[i].u.toFixed(2), T: Math.min(600, Math.floor(FFREC.t[FFREC.t.length - 1])), tTrans: 20 }); }));
+    el.querySelector("[data-ffcsv]").addEventListener("click", () => {
+      const head = ["time_s", "farm_MW", "farm_nowake_MW"].concat(...st.map((s) => [s.name + "_u_ms", s.name + "_P_MW", s.name + "_thrust_MN", s.name + "_TIeff"]));
+      const rows = [head.join(",")]; for (let q = 0; q < res.out.n; q++) rows.push([res.out.t[q], res.out.Pfarm[q].toFixed(3), res.out.Pfree[q].toFixed(3)].concat(...res.per.map((p) => [p.u[q].toFixed(3), p.P[q].toFixed(3), p.Th[q].toFixed(3), p.ti[q].toFixed(4)])).join(","));
+      saveFile("farm_flow.csv", `# ${res._title}: U ${res.cfg.U} m/s from ${res.cfg.dir} deg, TI ${(100 * res.cfg.TI).toFixed(1)} %, seed ${res.cfg.seed}\n` + rows.join("\n"), "text/csv"); });
+  }
+
   // ----- site builder -----
   function sbList() {
     const host = document.getElementById("sb-list");
@@ -6644,7 +6797,13 @@ details.sec > * + * { margin-top: 8px; }
     host.querySelectorAll("[data-st]").forEach((b) => b.addEventListener("click", () => { sbPick = b.dataset.st; sbOpen(); }));
     document.getElementById("sb-del").disabled = !MB.site(sbSel) || !!MB.site(sbSel).builtin;
   }
-  function sbOpen() { if (!MB.site(sbSel)) sbSel = MB.sites()[0].id; sbList(); sbMain(); }
+  function sbOpen() { if (!MB.site(sbSel)) sbSel = MB.sites()[0].id; sbList(); if (sbFlow) sbFlowView(); else sbMain(); }
+  function sbFlowView() {
+    const ss = MB.site(sbSel), m = MB.map(ss.mapId) || MB.maps()[0];
+    if (!ss.turbines.length) { sbFlow = false; sbMain(); return; }
+    const tb = ss.turbines.map((t) => { const ref = TT.get(t.typeId) || TT.get(TT.farmDefault()); return { name: t.name, x: t.x * 1000, y: -t.y * 1000, ty: ffTy(ref), ref }; });
+    ffView(document.getElementById("sb-main"), tb, ss.name, () => { sbFlow = false; sbOpen(); }, m.meta.windDir || 240);
+  }
   function sbEditable() {
     let s = MB.site(sbSel); if (!s.builtin) return s;
     const c = clone(s); c.id = uid(); c.builtin = false; c.name = s.name.replace(/ \(as built\)$/, "") + " (copy)"; MB.saveSite(c); sbSel = c.id; return c;
@@ -6750,8 +6909,9 @@ details.sec > * + * { margin-top: 8px; }
           kv([["Position", `${fmt(t.x, 2)}, ${fmt(t.y, 2)} km`], ["Water depth", fmt(ck.d, 1) + " m"], ["Soil", profAt(m, t.x, t.y).name], ["Nearest turbine", isFinite(ck.nn) ? fmt(ck.nn, 1) + " D" : "–"], ["Rotor · hub", `${fmt(ty.rotor_D, 0)} m · +${fmt(ty.z_hub, 0)} m`]]) +
           (ck.list.length ? `<ul class="sb-ck">${ck.list.map(([c, txt, fx]) => `<li class="${c}">${txt}${fx ? `<div class="sb-fix">${sbFixBtn(fx, ss, m, t, ty)}</div>` : ""}</li>`).join("")}</ul>` : `<p class="cap" style="color:var(--ok)">No issues at this position.</p>`) +
           `<div class="bl-row"><button class="btn" type="button" data-tone>Edit this turbine only</button><button class="btn" type="button" data-topen>Edit its type</button><button class="btn" type="button" data-tdel>Remove</button></div><hr class="sb-hr">`; }
-      html += `<h4 class="bl-h"${t ? "" : ' style="margin-top:0"'}>Site</h4><div class="sb-farm" data-sfarm>${sbFarmHTML(ss)}</div><div data-sum><p class="muted">Computing the energy yield…</p></div>`;
+      html += `<h4 class="bl-h"${t ? "" : ' style="margin-top:0"'}>Site</h4>${ss.turbines.length > 1 ? `<button class="btn primary" type="button" data-sff style="width:100%;margin-bottom:6px">Farm flow simulation</button>` : ""}<div class="sb-farm" data-sfarm>${sbFarmHTML(ss)}</div><div data-sum><p class="muted">Computing the energy yield…</p></div>`;
       side.innerHTML = html;
+      const sff = side.querySelector("[data-sff]"); if (sff) sff.addEventListener("click", () => { sbFlow = true; sbOpen(); });
       side.querySelectorAll("[data-sfa]").forEach((b) => b.addEventListener("click", () => {
         const a = b.dataset.sfa;
         if (a === "open") sbToFarm(MB.site(sbSel), m);

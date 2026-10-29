@@ -41,6 +41,8 @@ with open(os.path.join(HERE, "..", "..", "sitedata", "wis_stations.json")) as fh
     wis = [[s[0], round(s[2], 3), round(s[3], 3)] for s in json.load(fh)["stations"]]
 enc = lambda o: json.dumps(o, separators=(",", ":")).replace("</", "<\\/")
 page = page.replace("__DATA__", enc({"farms": farms})).replace("__RNADATA__", enc(rna)).replace("__LIVEDATA__", enc(live)).replace("__GEODATA__", enc({"land": land, "q": 0.02, "wis": wis}))
+with open(os.path.join(HERE, "farmflow.js")) as fh:          # the farm-flow engine, also testable on its own in Node
+    page = page.replace("/*__FARMFLOW__*/", fh.read().replace("</", "<\\/"))
 with open(os.path.join(HERE, "index.html"), "w") as fh:
     fh.write(page)
 print("wrote index.html with", len(farms), "farms,", os.path.getsize(os.path.join(HERE, "index.html")) // 1024, "kB")
