@@ -231,6 +231,15 @@ button.tab { font: inherit; }
 .node .meta { flex: none; font-family: var(--font-data); font-size: 0.72rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
 .node .sd { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px var(--surface); }
 .node.farm-n .nm { font-weight: 600; }
+.bl-grp { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin: 10px 4px 4px; } .bl-grp:first-child { margin-top: 2px; }
+.bl-ty { display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left; font: inherit; border: 1px solid transparent; border-radius: 7px; background: none; color: var(--ink); padding: 7px 10px; cursor: pointer; margin-bottom: 2px; }
+.bl-ty:hover { background: var(--grid); } .bl-ty.on { background: var(--accent-soft); border-color: var(--accent); } .bl-ty .nm { font-weight: 600; font-size: 0.88rem; } .bl-ty .mt { font-size: 0.72rem; color: var(--muted); }
+.bl-secchips { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 10px; } .bl-secchips button, .bl-subtabs button { font: inherit; font-size: 0.78rem; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); cursor: pointer; }
+.bl-secchips button.on, .bl-subtabs button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+.bl-subtabs { display: flex; gap: 4px; flex-wrap: wrap; margin: -4px 0 10px; }
+.dlc-sum { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 0.84rem; padding: 4px 0; } .dlc-pos { margin-top: 8px; } .dlc-pos .row > span { font-size: 0.84rem; }
+.scr-bar { position: relative; height: 18px; background: var(--grid); border-radius: 4px; min-width: 160px; } .scr-bar i { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 4px; } .scr-bar span { position: relative; padding-left: 6px; font-size: 0.76rem; line-height: 18px; }
+.dlc-fatcard { margin-bottom: 12px; }
 .pj-btn { display: inline-flex; gap: 6px; align-items: center; max-width: 220px; } .pj-btn .ico, .pj-btn svg { width: 15px; height: 15px; flex: none; } .pj-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pj-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex: none; }
 .pj-card { width: min(980px, 100%); height: auto; max-height: min(760px, 100%); } .pj-b { overflow: auto; padding: 14px 16px; }
@@ -804,7 +813,7 @@ details.sec > * + * { margin-top: 8px; }
           <div class="bl-acts"><button class="btn" type="button" id="bl-new">New from this</button><button class="btn" type="button" id="bl-del">Delete</button><button class="btn" type="button" id="bl-export">Export</button><label class="btn" style="text-align:center">Import<input type="file" id="bl-import" accept=".json,application/json" hidden></label></div>
         </nav>
         <div class="bl-main">
-          <div class="bl-tabs" role="tablist" aria-label="Builder sections"><button type="button" role="tab" data-btab="design" class="on" aria-selected="true">Design</button><button type="button" role="tab" data-btab="pile" aria-selected="false">Soil–pile 3D</button><button type="button" role="tab" data-btab="uls" aria-selected="false">ULS</button><button type="button" role="tab" data-btab="fat" aria-selected="false">Fatigue</button><button type="button" role="tab" data-btab="dt" aria-selected="false">Drivetrain</button><button type="button" role="tab" data-btab="sim" aria-selected="false">Simulate</button><button type="button" role="tab" data-btab="dlc" aria-selected="false">Load cases</button><button type="button" role="tab" data-btab="cmp" aria-selected="false">Compare</button></div>
+          <div class="bl-tabs" role="tablist" aria-label="Builder sections"><button type="button" role="tab" data-btab="design" class="on" aria-selected="true">Design</button><button type="button" role="tab" data-btab="sim" aria-selected="false">Simulate</button><button type="button" role="tab" data-btab="dlc" aria-selected="false">Load cases</button><button type="button" role="tab" data-bgrp="det" aria-selected="false">Detailed analyses</button><button type="button" role="tab" data-btab="cmp" aria-selected="false">Compare</button></div><div class="bl-subtabs" id="bl-subtabs" hidden></div>
           <div class="bl-pane" id="bl-pane-design"><div class="bl-cols"><div id="bl-form"></div><div class="bl-out" id="bl-out"></div></div><div class="panel" id="bl-farm"></div></div>
           <div class="bl-pane" id="bl-pane-pile" hidden></div><div class="bl-pane" id="bl-pane-uls" hidden></div><div class="bl-pane" id="bl-pane-fat" hidden></div><div class="bl-pane" id="bl-pane-dt" hidden></div><div class="bl-pane" id="bl-pane-sim" hidden></div><div class="bl-pane" id="bl-pane-dlc" hidden></div><div class="bl-pane" id="bl-pane-cmp" hidden></div>
         </div>
@@ -4011,9 +4020,14 @@ details.sec > * + * { margin-top: 8px; }
   const TSUB = {};
   function showPane(name) { PANES.forEach((n) => { document.getElementById("pane-" + n).hidden = n !== name; }); }
   function foldCaps(root) {           // long method notes collapse to one line; the numbers and charts stay in view
-    root.querySelectorAll("p.cap").forEach((p) => { if (p.closest("details") || p.textContent.length < 150) return;
+    root.querySelectorAll("p.cap").forEach((p) => { if (p.closest("details") || p.closest(".no-fold") || p.textContent.length < 150) return;
       const d = document.createElement("details"); d.className = "cap-more"; d.innerHTML = "<summary>How this is calculated</summary>"; p.replaceWith(d); d.append(p); });
   }
+  (() => {                            // fold new long notes wherever the builder or the analysis panel renders them
+    let pend = 0; const run = () => { pend = 0; ["builder", "drawer"].forEach((id) => { const el2 = document.getElementById(id); if (el2) foldCaps(el2); }); };
+    const mo = new MutationObserver(() => { if (!pend) pend = setTimeout(run, 60); });
+    ["builder", "drawer"].forEach((id) => { const el2 = document.getElementById(id); if (el2) mo.observe(el2, { childList: true, subtree: true }); });
+  })();
   function showTab(name) {
     NAV.tab = name;
     const grp = groupOf(name), sub = document.getElementById("dr-sub"); TSUB[grp[0]] = name;
@@ -4845,11 +4859,15 @@ details.sec > * + * { margin-top: 8px; }
   let bTab = "design";
   const RUNS = new Map();                 // `${type id}:${tab}` -> { key, input, result }
   const runKey = () => TT.key(TT.get(bSel)) + "@" + bSite;
+  const BDET = [["pile", "Soil–pile 3D"], ["uls", "Ultimate storm (ULS)"], ["fat", "Fatigue"], ["dt", "Drivetrain"]];
+  let bDetLast = "fat";
   function bShowTab(name) {
-    bTab = name;
-    document.querySelectorAll("#builder [data-btab]").forEach((b) => { b.classList.toggle("on", b.dataset.btab === name); b.setAttribute("aria-selected", b.dataset.btab === name ? "true" : "false"); });
+    bTab = name; const det = BDET.some(([k]) => k === name); if (det) bDetLast = name;
+    document.querySelectorAll("#builder .bl-tabs [data-btab], #builder .bl-tabs [data-bgrp]").forEach((b) => { const on = b.dataset.btab === name || (b.dataset.bgrp === "det" && det); b.classList.toggle("on", on); b.setAttribute("aria-selected", on ? "true" : "false"); });
+    const st = document.getElementById("bl-subtabs"); st.hidden = !det;
+    if (det) { st.innerHTML = BDET.map(([k, l]) => `<button type="button" data-bsub="${k}" class="${k === name ? "on" : ""}">${l}</button>`).join(""); st.querySelectorAll("[data-bsub]").forEach((b) => b.addEventListener("click", () => bShowTab(b.dataset.bsub))); }
     document.querySelectorAll("#builder .bl-pane").forEach((p) => { p.hidden = p.id !== "bl-pane-" + name; });
-    if (name === "pile") pileView(); else if (name === "uls") ulsView(); else if (name === "fat") fatView(); else if (name === "dt") dtView(); else if (name === "sim") simView(); else if (name === "dlc") dlcView(); else if (name === "cmp") cmpView();
+    if (name === "pile") pileView(); else if (name === "uls") ulsView(); else if (name === "fat") { fatView(); dlcFatCard(); } else if (name === "dt") dtView(); else if (name === "sim") simView(); else if (name === "dlc") dlcView(); else if (name === "cmp") cmpView();
     if (typeof bList === "function" && TT.get(bSel)) bList();
   }
   const stale = (r) => (r && r.key !== runKey() ? `<p class="hint bl-stale">The type or site has changed since this run. Run again to update.</p>` : "");
@@ -4936,6 +4954,7 @@ details.sec > * + * { margin-top: 8px; }
     for (let i = 0; i < st.length - 1; i++) out.push([Math.abs(st[i + 1] - st[i]), 0.5]);
     return out;
   }
+  const RF_DL = Math.log(1.08), RF_BINS = Array.from({ length: 120 }, (_, i) => 0.05 * Math.exp(i * RF_DL));   // moment-range bins, MN·m
   const delOf = (x, m, T) => { const c = rainflow(x); let s = 0; c.forEach(([r, n]) => { s += n * r ** m; }); return Math.pow(s / Math.max(T, 1), 1 / m); };   // 1 Hz equivalent
   SOLVERS.sim = async function (ty, depth, o, onProg) {
     const rnd = (() => { let s = (o.seed * 2654435761) >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; })();
@@ -4951,7 +4970,7 @@ details.sec > * + * { margin-top: 8px; }
     const iTB = zcIdx(ty.z_interface + 0.5), iMud = zcIdx(-depth + 0.5), iPile = B.z[0] < -depth - 6 ? zcIdx(-depth - 6) : -1;
     const wet = []; for (let i = 0; i < n; i++) if (B.z[i] > -depth - 0.01 && B.z[i] < 15) wet.push(i);
     const tribZ = (i) => (i === 0 ? (B.z[1] - B.z[0]) / 2 : i === n - 1 ? (B.z[n - 1] - B.z[n - 2]) / 2 : (B.z[i + 1] - B.z[i - 1]) / 2);
-    const zeta = md.w.map((w, j) => 0.01 + 0.004 * j), cw = Math.cos(o.waveDir * dPh), sw = Math.sin(o.waveDir * dPh);
+    const zeta = md.w.map((w, j) => (j === 0 ? 0.02 : 0.012 + 0.004 * j)), cw = Math.cos(o.waveDir * dPh), sw = Math.sin(o.waveDir * dPh);
     const dt = Math.min(0.1, Math.max(0.01, o.dt)), nT = Math.round(o.T / dt), every = Math.max(1, Math.round(o.outDt / dt));
     const nOut = Math.floor(nT / every) + 1, ch = {}; SIM_CH.forEach(([k]) => { ch[k] = new Float32Array(nOut); });
     const tArr = new Float32Array(nOut), dispFA = new Float32Array(nOut * n), dispSS = new Float32Array(nOut * n);
@@ -4959,7 +4978,12 @@ details.sec > * + * { margin-top: 8px; }
     // controller and rotor state
     let Om = o.mode === "parked" ? 0.05 : Math.min(Omr, Math.max(Ommin, lamOpt * W.U / R)), beta = o.mode === "parked" ? 90 : (W.U > der.rated_U ? 4 + 1.2 * (W.U - der.rated_U) : 0), I = beta * dPh, psi = 0;
     let state = o.mode === "parked" ? "parked" : "run", tripAt = -1, prevE = 0, Qg = 0;
-    const Kp = 0.9, Ki = 0.11;
+    {                                     // start the structure at its static deflection under the opening thrust and torque, so no start-up jolt
+      const w0 = W.at(0), U0 = Math.max(0.1, w0.eff * Math.cos(w0.yaw * dPh)), l0 = Om * R / U0, cp0 = Cp(l0, beta), ct0 = state === "parked" || beta > 60 ? 0.008 + 0.0015 * (90 - beta) : ctFromCp(cp0, l0);
+      const Th0 = 0.5 * rhoA * A * ct0 * U0 * U0 + 0.5 * rhoA * (0.8 * R) * w0.eff * w0.eff * 0.25, Q0 = 0.5 * rhoA * A * cp0 * U0 ** 3 / Math.max(Om, 0.02) * (state === "parked" ? 0.2 : 1);
+      for (let j = 0; j < nm; j++) { q.fa[j] = phT[j] * Th0 / md.w[j] ** 2; q.ss[j] = phR[j] * Q0 / md.w[j] ** 2; }
+    }
+    const Kp = o.Kp || 2, Ki = o.Ki || 0.3, gsB = o.gsB || 6, q3 = o.q3 || "torque";
     let k2 = 0;
     for (let k = 0; k <= nT; k++) {
       const t = k * dt, w = W.at(t);
@@ -4971,16 +4995,16 @@ details.sec > * + * { margin-top: 8px; }
       const yawE = w.yaw * dPh, Ur = Math.max(0.1, w.eff * Math.cos(yawE) - vTop), lam = Om * R / Ur;
       // pitch control
       if (state === "run") {
-        const e = Om - Omr, gs = 1 / (1 + beta / 6);
+        const e = Om - Omr, gs = 1 / (1 + beta / gsB);
         I = Math.min(1.5, Math.max(0, I + Ki * e * gs * dt)); const cmd = Math.max(0, Math.min(90, (Kp * e * gs + I) / dPh)), rate = 8 * dt;
         beta += Math.max(-rate, Math.min(rate, cmd - beta)); prevE = e;
       } else if (state === "gridloss") beta = Math.min(90, beta + 8 * dt);
       else if (state === "shutdown") beta = Math.min(90, beta + 5 * dt);
       else if (state === "parked") beta = 90;
-      const cp = Cp(lam, beta), Pa = 0.5 * rhoA * A * cp * Ur ** 3, Qa = Pa / Math.max(Om, 0.02), ct = state === "parked" || beta > 60 ? 0.008 + 0.0015 * (90 - beta) : ctFromCp(cp, lam) * Math.max(0.15, 1 - beta / 40);
+      const cp = Cp(lam, beta), Pa = 0.5 * rhoA * A * cp * Ur ** 3, Qa = Pa / Math.max(Om, 0.02), ct = state === "parked" || beta > 60 ? 0.008 + 0.0015 * (90 - beta) : ctFromCp(cp, lam);
       const Th = 0.5 * rhoA * A * ct * Ur * Ur + 0.5 * rhoA * 1.0 * (0.8 * ty.rotor_D / 2) * w.eff * w.eff * 0.25;      // feathered rotor plus nacelle drag
       // generator torque
-      if (state === "run") { Qg = Om < Omr * 0.995 && beta < 1 ? Kg * Om * Om : Pr / eta / Math.max(Om, 0.1); if (Om < Ommin) Qg *= Math.max(0, (Om - 0.8 * Ommin) / (0.2 * Ommin)); Qg = Math.min(Qg, 1.1 * Pr / eta / Omr); }
+      if (state === "run") { Qg = Om < Omr * 0.995 && beta < 1 ? Kg * Om * Om : q3 === "torque" ? Pr / eta / Omr : Pr / eta / Math.max(Om, 0.1); if (Om < Ommin) Qg *= Math.max(0, (Om - 0.8 * Ommin) / (0.2 * Ommin)); Qg = Math.min(Qg, 1.1 * Pr / eta / Omr); }
       else if (state === "seized") Qg = Math.min(Pr / eta / Math.max(Om, 0.1), 1.1 * Pr / eta / Omr);
       else if (state === "shutdown") Qg = Om > 0.3 * Omr ? 0.4 * Pr / eta / Omr : 0;
       else Qg = 0;
@@ -5018,7 +5042,8 @@ details.sec > * + * { margin-top: 8px; }
     }
     const i0 = tArr.findIndex((v) => v >= o.tTrans), stats = {};
     SIM_CH.forEach(([kk]) => { const a = ch[kk].subarray(Math.max(0, i0), k2); let mn = Infinity, mx = -Infinity, s = 0, s2 = 0; for (const v of a) { mn = Math.min(mn, v); mx = Math.max(mx, v); s += v; s2 += v * v; }
-      const mean = s / a.length; stats[kk] = { min: mn, max: mx, mean, std: Math.sqrt(Math.max(0, s2 / a.length - mean * mean)), del: SIM_LOADS.has(kk) ? delOf(Array.from(a), 4, (o.T - o.tTrans)) : null }; });
+      const mean = s / a.length; stats[kk] = { min: mn, max: mx, mean, std: Math.sqrt(Math.max(0, s2 / a.length - mean * mean)), del: SIM_LOADS.has(kk) ? delOf(Array.from(a), 4, (o.T - o.tTrans)) : null };
+      if (kk === "TwrBsMyt" || kk === "MudMy") { const h = new Float64Array(RF_BINS.length); rainflow(Array.from(a)).forEach(([r, n]) => { const b = Math.min(RF_BINS.length - 1, Math.max(0, Math.round(Math.log(Math.max(r, 1e-3) / RF_BINS[0]) / RF_DL))); h[b] += n; }); stats[kk].cyc = Array.from(h); stats[kk].secs = o.T - o.tTrans; } });
     return { t: tArr.subarray(0, k2), ch, stats, dispFA, dispSS, z: Array.from(B.z), n, nOut: k2, sea, wind: { U: W.U, sig: W.sig, Vg: W.Vg }, f: md.w.map((w) => w / (2 * Math.PI)), depth, ms: performance.now() - t0w, input: Object.assign({}, o) };
   };
   // ----- Simulate: one turbine, chosen inputs, outputs, animation and export -----
@@ -5184,10 +5209,10 @@ details.sec > * + * { margin-top: 8px; }
     { id: "6.2", cat: "A", name: "Parked, 50-year storm, grid loss", wind: "ewm50", sea: "ess50", mode: "parked", Us: "one", seeds: 1, yaws: [-90, -30, 30, 90], note: "Yaw drive lost: any misalignment" },
     { id: "6.3", cat: "N", name: "Parked, 1-year wind, extreme misalignment", wind: "ewm1", sea: "ess1", mode: "parked", Us: "one", seeds: 1, yaws: [-20, 20], note: "Yaw misalignment ±20°" },
   ];
-  let DLCCFG = { std: "iec", cls: "I", turb: "B", T: 120, tTrans: 20, sel: DLC_DEFS.map((x) => x.id), hs50: 9.5, wA: 10.5, wk: 2.1, binStep: 4 };
+  let DLCCFG = { std: "iec", cls: "I", turb: "B", fti: "site", T: 120, tTrans: 20, sel: DLC_DEFS.map((x) => x.id), hs50: 9.5, wA: 10.5, wk: 2.1, binStep: 4 };
   try { Object.assign(DLCCFG, JSON.parse(localStorage.getItem("stormtwin-dlc-v1") || "{}")); } catch (e) { /* storage unavailable */ }
   const dlcKeep = () => { try { localStorage.setItem("stormtwin-dlc-v1", JSON.stringify(DLCCFG)); } catch (e) { /* storage unavailable */ } };
-  const hsNSS = (U) => 0.4 + 0.016 * U * U / 1.3, tpOf = (hs) => tpTyp(hs) + 0.6;
+  const hsNSS = (U) => 0.3 + 0.011 * (U / 1.36) ** 2, tpOf = (hs) => tpTyp(hs) + 0.6;     // expected Hs given the hub wind (U10 ≈ U/1.36)
   function dlcRuns(ty, def, c) {
     const der = TT.derived(ty), Vr = Math.round(der.rated_U), vin = ty.cut_in, vout = ty.cut_out;
     let Us = [];
@@ -5196,27 +5221,34 @@ details.sec > * + * { margin-top: 8px; }
     else if (def.Us === "near") Us = [Vr - 2, Vr, Vr + 2];
     else if (def.Us === "gust") Us = [Vr - 2, Vr + 2, vout - 1];
     else Us = [0];
-    const runs = [];
+    const runs = [], hubF = Math.pow(ty.z_hub / 10, 0.11), siteTI = tiFun({ model: c.fti === "charnock" ? "charnock" : "table" }, ty.z_hub), sm = siteMetocean(ty), dir = sm ? sm.windDir : 240;
+    const fatTI = (U) => (def.cat === "F" && c.fti !== "class" ? 100 * siteTI(U / hubF) * ((wakeAt(bSite, dir, Math.max(U, 3)) || {}).F || 1) : 0);
     Us.forEach((U) => (def.yaws || [0]).forEach((yaw) => { for (let s = 1; s <= def.seeds; s++) {
       const sea = def.sea, Hs = sea === "nss" ? hsNSS(U) : sea === "sss" ? c.hs50 * 0.9 : sea === "ess50" ? c.hs50 : 0.8 * c.hs50;
-      runs.push(Object.assign({}, SIM0, { T: c.T, tTrans: c.tTrans, dt: 0.08, outDt: 0.2, nm: 3, seed: 100 * s + Math.round(U) + yaw, wind: def.wind, U: U || 11, cls: c.cls, turb: c.turb, yaw,
-        sea: "irregular", Hs: +Hs.toFixed(2), Tp: +tpOf(Hs).toFixed(1), gamma: sea === "nss" ? 2 : 3.3, waveDir: yaw ? 15 : 0, cur: /ess/.test(sea) ? 1.2 : 0.5, mode: def.mode, event: def.event || "none",
+      runs.push(Object.assign({}, SIM0, { T: def.cat === "F" ? Math.max(c.T, 600) : c.T, tTrans: c.tTrans, dt: def.cat === "F" ? 0.1 : 0.08, outDt: 0.2, nm: 3, seed: 100 * s + Math.round(U) + yaw, wind: def.wind, U: U || 11, cls: c.cls, turb: c.turb, yaw, TI: +fatTI(U).toFixed(2),
+        sea: "irregular", Hs: +Hs.toFixed(2), Tp: +tpOf(Hs).toFixed(1), gamma: sea === "nss" ? 2 : 3.3, waveDir: def.cat === "F" ? [0, 30, -30][(s - 1) % 3] : yaw ? 15 : 0, cur: /ess/.test(sea) ? 1.2 : 0.5, mode: def.mode, event: def.event || "none",
         tEvent: def.wind === "eog" ? Math.min(c.T * 0.5, c.T - 30) + 5 : c.T * 0.4, tGust: Math.min(c.T * 0.5, c.T - 30), label: `U ${U || "EWM"} m/s${yaw ? `, yaw ${yaw}°` : ""}, seed ${s}` })); } }));
     return runs;
   }
   const DLC_KEYS = [["TwrBsM", "Tower base"], ["MudM", "Mudline"], ["PileM", "Pile, −6 m"], ["RootMflp1", "Blade root, flap"], ["RotThrust", "Thrust"], ["TTAccFA", "Tower-top acc."]];
   function dlcView() {
-    const host = document.getElementById("bl-pane-dlc"), ty = TT.get(bSel), t = T[bSite] || T[0], r = RUNS.get(bSel + ":dlc"), c = DLCCFG, std = DLC_STD[c.std];
+    const host = document.getElementById("bl-pane-dlc"), ty = TT.get(bSel), t = T[bSite] || T[0], r = RUNS.get(bSel + ":dlc"), { c, sm } = dlcSite(ty), std = DLC_STD[c.std], fromMap = !!sm;
     const rowsHtml = DLC_DEFS.map((d) => { const n = dlcRuns(ty, d, c).length;
-      return `<tr><td><input type="checkbox" data-dsel="${d.id}"${c.sel.includes(d.id) ? " checked" : ""} aria-label="Run DLC ${d.id}"></td><td class="mono">${d.id}</td><td>${d.name}<div class="muted" style="font-size:0.72rem">${d.note}</div></td><td class="mono">${d.wind.toUpperCase()}</td><td class="mono">${d.sea.toUpperCase()}</td><td><span class="pill ${d.cat === "F" ? "" : d.cat === "A" ? "amber" : "green"}">${d.cat === "F" ? "fatigue" : d.cat === "A" ? "abnormal" : "normal"}</span></td><td class="r mono">${std.psf[d.cat]}</td><td class="r mono">${n}</td></tr>`; }).join("");
+      return `<tr><td><input type="checkbox" data-dsel="${d.id}"${c.sel.includes(d.id) ? " checked" : ""} aria-label="Run DLC ${d.id}"></td><td class="mono">${d.id}</td><td>${d.name}<div class="muted" style="font-size:0.72rem">${d.note}</div></td><td class="mono">${d.wind.toUpperCase()}</td><td class="mono">${d.sea.toUpperCase()}</td><td><span class="pill ${d.cat === "F" ? "" : d.cat === "A" ? "amber" : "green"}">${d.cat === "F" ? "fatigue" : d.cat === "A" ? "abnormal" : "normal"}</span></td><td class="r mono">${std.psf[d.cat]}</td><td class="r mono">${n}${d.cat === "F" ? ' <span class="muted">× 600 s</span>' : ""}</td></tr>`; }).join("");
     const total = DLC_DEFS.filter((d) => c.sel.includes(d.id)).reduce((a, d) => a + dlcRuns(ty, d, c).length, 0);
-    host.innerHTML = `<div class="bl-hd2"><h3>Design load cases</h3>${PLACEHOLDER}</div><p class="cap">The load cases a certification body expects for a fixed-bottom offshore turbine, run on the simulation engine for ${ty.name} at ${t.spec.name} (${fmt(t.spec.depth, 1)} m). Extreme loads get the partial safety factor of their category; DLC 1.2 gives damage-equivalent loads weighted over the site's wind.</p>` +
-      `<div class="dlc-set bl-g"><div class="dlc-grid">` + sel2("std", "Standard", c.std, Object.entries(DLC_STD).map(([k, v]) => [k, v.name])) + sel2("cls", "Turbine class", c.cls, [["I", "I (V<sub>ref</sub> 50 m/s)"], ["II", "II (42.5)"], ["III", "III (37.5)"]]) + sel2("turb", "Turbulence category", c.turb, [["A", "A"], ["B", "B"], ["C", "C"]]) +
-      numIn("hs50", "50-year H<sub>s</sub>", c.hs50, "m", 0.1) + numIn("wA", "Site Weibull A at hub", c.wA, "m/s", 0.1) + numIn("wk", "Site Weibull k", c.wk, "", 0.05) + numIn("T", "Length of each run", c.T, "s", 10) + numIn("binStep", "Fatigue wind bins every", c.binStep, "m/s", 1) +
-      `</div><p class="cap" style="margin:4px 0 0">The standards ask for 10-minute runs (1 hour for some sea states) and six seeds per bin; shorter runs here keep the placeholder engine quick. Normal sea state: H<sub>s</sub> rising with wind; severe and extreme sea states from the 50-year H<sub>s</sub>.</p></div>` +
+    const dis = (k) => (fromMap && ["hs50", "wA", "wk"].includes(k) ? " disabled" : "");
+    const numD = (k, lab, v, u, step) => numIn(k, lab, v, u, step).replace("<input ", `<input${dis(k)} `);
+    host.innerHTML = `<div class="bl-hd2"><h3>Design load cases</h3>${PLACEHOLDER}</div><p class="cap">The load cases a certification body expects for a fixed-bottom offshore turbine, run on the simulation engine for ${ty.name} at ${t.spec.name} (${fmt(t.spec.depth, 1)} m). Extreme loads get the partial safety factor of their category; DLC 1.2 gives damage-equivalent loads weighted over the site's wind and a fatigue check at the hot spots.</p>` +
+      `<div class="dlc-set bl-g"><div class="dlc-sum"><span><b>${std.name.split(" with")[0]}</b> · class ${c.cls}${c.turb} · H<sub>s,50</sub> ${fmt(c.hs50, 1)} m · fatigue TI ${c.fti === "class" ? "class " + c.turb : "site + wakes"} · Weibull ${fmt(c.wA, 1)} m/s, k ${fmt(c.wk, 2)}${fromMap ? ` <span class="pill info" title="From ${sm.map}">from the map</span>` : ""} · ${c.T} s runs</span><span class="muted">at ${t.spec.name}, ${fmt(t.spec.depth, 1)} m</span></div>` +
+      `<details class="bl-more"><summary>Settings</summary><div class="dlc-grid">` + sel2("std", "Standard", c.std, Object.entries(DLC_STD).map(([k, v]) => [k, v.name])) + sel2("cls", "Turbine class", c.cls, [["I", "I (V<sub>ref</sub> 50 m/s)"], ["II", "II (42.5)"], ["III", "III (37.5)"]]) + sel2("turb", "Turbulence category", c.turb, [["A", "A"], ["B", "B"], ["C", "C"]]) +
+      sel2("src", "Site conditions", c.src || "map", [["map", "From the farm's map"], ["manual", "Enter by hand"]]) + sel2("fti", "Turbulence for fatigue (DLC 1.2)", c.fti || "site", [["site", "Site: offshore TI table, plus wakes here"], ["charnock", "Site: Charnock sea surface, plus wakes here"], ["class", "Turbine class (conservative)"]]) + numD("hs50", "50-year H<sub>s</sub>", c.hs50, "m", 0.1) + numD("wA", "Weibull A at hub", c.wA, "m/s", 0.1) + numD("wk", "Weibull k", c.wk, "", 0.05) + numIn("T", "Length of each run", c.T, "s", 10) + numIn("binStep", "Fatigue wind bins every", c.binStep, "m/s", 1) +
+      `</div><p class="cap" style="margin:4px 0 0">The standards ask for 10-minute runs (1 hour for some sea states) and six seeds per bin; shorter runs keep the placeholder engine quick. With "From the farm's map", the 50-year wave height and the wind distribution come from the Map builder's metocean settings, scaled to hub height.</p></details></div>` +
+      `<div class="dlc-pos bl-g"><div class="row" style="justify-content:space-between"><span><b>Which position?</b> <span class="muted">Loads depend on water depth and wake turbulence. Screen the farm to find the worst position, then run the full set there.</span></span><button class="btn" type="button" data-screen>Screen all ${T.length} positions</button></div><div data-scr></div></div>` +
       `<div class="tbl-wrap"><table class="list bl-ltt dlc-tbl"><thead><tr><th></th><th>DLC</th><th>Design situation</th><th>Wind</th><th>Sea</th><th>Type</th><th class="r">γ<sub>f</sub></th><th class="r">Runs</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` +
       `<div class="row" style="margin-top:8px"><button class="btn bl-go" style="margin:0" data-drun>Run ${total} simulations</button><span class="muted" data-dmsg></span></div><div class="bl-prog" style="margin-top:6px"><i data-dbar></i></div><div data-dres></div>`;
-    host.querySelectorAll("[data-o]").forEach((x) => x.addEventListener("change", () => { Object.assign(DLCCFG, readO(host.querySelector(".dlc-set"))); dlcKeep(); dlcView(); }));
+    host.querySelectorAll("[data-o]").forEach((x) => x.addEventListener("change", () => { const v = readO(host.querySelector(".dlc-set")); if (fromMap && v.src !== "manual") { delete v.hs50; delete v.wA; delete v.wk; } Object.assign(DLCCFG, v); dlcKeep(); dlcView(); }));
+    host.querySelector("[data-screen]").addEventListener("click", async (e) => { e.target.disabled = true; const res = await dlcScreen(host, ty); e.target.disabled = false; DLCSCR = { key: TT.key(ty), res }; dlcScrTable(host); });
+    if (DLCSCR && DLCSCR.key === TT.key(ty)) dlcScrTable(host);
     host.querySelectorAll("[data-dsel]").forEach((x) => x.addEventListener("change", () => { DLCCFG.sel = [...host.querySelectorAll("[data-dsel]")].filter((y) => y.checked).map((y) => y.dataset.dsel); dlcKeep(); dlcView(); }));
     host.querySelector("[data-drun]").addEventListener("click", async (e) => {
       e.target.disabled = true; const defs = DLC_DEFS.filter((d) => c.sel.includes(d.id)), all = []; defs.forEach((d) => dlcRuns(ty, d, c).forEach((inp) => all.push([d, inp])));
@@ -5227,6 +5259,15 @@ details.sec > * + * { margin-top: 8px; }
       RUNS.set(bSel + ":dlc", { key: runKey(), input: JSON.parse(JSON.stringify(c)), result: out }); e.target.disabled = false; dlcResults(host);
     });
     if (r) dlcResults(host);
+  }
+  let DLCSCR = null;
+  window.__stormtwin = { sim: (ty, depth, o) => SOLVERS.sim(ty, depth, Object.assign({}, SIM0, o)), type: (id) => TT.get(id), depth: () => (T[bSite] || T[0]).spec.depth };   // for automated checks
+  function dlcScrTable(host) {
+    const res = DLCSCR.res, worst = res.reduce((a, b) => (b.mud > a.mud ? b : a)), box = host.querySelector("[data-scr]"), mx = Math.max(...res.map((x) => x.mud));
+    box.innerHTML = `<div class="tbl-wrap" style="margin-top:6px"><table class="list bl-ltt"><thead><tr><th>Position</th><th class="r">Depth</th><th class="r">Wake turbulence</th><th>Mudline design moment</th><th class="r">Tower base</th><th></th></tr></thead><tbody>` +
+      res.slice().sort((a, b) => b.mud - a.mud).map((x) => `<tr${x.i === bSite ? ' style="font-weight:600"' : ""}><td>${x.name}${x === worst ? ' <span class="pill red">worst</span>' : ""}</td><td class="r mono">${fmt(x.depth, 1)} m</td><td class="r mono">×${fmt(x.F, 2)}</td><td><div class="scr-bar"><i style="width:${(100 * x.mud / mx).toFixed(0)}%"></i><span class="mono">${fmt(x.mud, 0)} MN·m</span></div></td><td class="r mono">${fmt(x.tb, 0)}</td><td>${x.i === bSite ? '<span class="muted">checking here</span>' : `<button class="btn sm" data-at="${x.i}">Check here</button>`}</td></tr>`).join("") + `</tbody></table></div>` +
+      `<p class="cap">Screening: an operating run in the severe sea and a parked 50-year storm at each position, 80 s each, with the position's depth and wake-added turbulence for the prevailing wind. Mudline moments include γ<sub>f</sub> 1.35.</p>`;
+    box.querySelectorAll("[data-at]").forEach((b) => b.addEventListener("click", () => { bSite = +b.dataset.at; const s2 = document.getElementById("bl-site"); s2.value = bSite; bResults(TT.get(bSel)); dlcView(); }));
   }
   function dlcResults(host) {
     const r = RUNS.get(bSel + ":dlc"), out = r.result, c = r.input, std = DLC_STD[c.std], ty = TT.get(bSel), t = T[bSite] || T[0], box = host.querySelector("[data-dres]");
@@ -5248,11 +5289,66 @@ details.sec > * + * { margin-top: 8px; }
       const del = (u, k) => Math.pow(byU[u].reduce((s2, x) => s2 + x.stats[k].del ** m, 0) / byU[u].length, 1 / m);
       const life = (k) => Math.pow(Us.reduce((s2, u) => s2 + wb(u) * del(u, k) ** m, 0) / Math.max(1e-9, Us.reduce((s2, u) => s2 + wb(u), 0)), 1 / m);
       h += `<h3 style="margin:14px 0 4px;font-size:1rem">Fatigue, DLC 1.2: damage-equivalent loads (1 Hz, m = ${m})</h3><div class="grid2"><div data-fch></div><div class="tbl-wrap"><table class="list bl-ltt"><thead><tr><th>Location</th><th class="r">Lifetime DEL</th></tr></thead><tbody>${keysF.map(([k, l]) => `<tr><td>${l}</td><td class="r mono">${cbv(life(k))} ${SIM_UNIT[k]}</td></tr>`).join("")}</tbody></table>` +
-        `<p class="cap">Weighted over the site's wind (Weibull A ${c.wA} m/s, k ${c.wk}); time outside the operating range is not counted. Feed these into the Fatigue tab's S-N check, or replace them with the real engine's rainflow results.</p></div></div>`;
+        `<p class="cap">Weighted over the site's wind (Weibull A ${c.wA} m/s, k ${c.wk}); time outside the operating range is not counted.</p></div></div>` +
+        `<h3 style="margin:12px 0 4px;font-size:1rem">Fatigue check at the hot spots</h3>${dlcFatigueTable(dlcFatigue(ty, r))}<p class="cap">Rainflow cycles of every DLC 1.2 run, scaled to 25 years over the site wind, turned into stress ranges (moment range / section modulus × SCF × thickness correction) and summed with Miner's rule on DNV-RP-C203 curve D: in air for the tower, in seawater with cathodic protection at the mudline. Design fatigue factor 2 where inspectable, 3 where not; wind–wave misalignment 0° and ±30° across the seeds. Operating time only (idling and storms are in the Fatigue tab's long-term analysis). With the placeholder engine, use these numbers to compare designs and positions rather than as a final result.</p>`;
       box.innerHTML = h;
       chart(box.querySelector("[data-fch]"), { series: keysF.map(([k], i) => ({ x: Us, y: Us.map((u) => del(u, k)), color: ["--accent", "--warn", "--ok"][i], width: 2, points: false })), xl: "wind at hub (m/s)", yl: "DEL (MN·m)", h: 200, label: "Damage-equivalent load by wind bin", legend: keysF.map(([, l], i) => ({ label: l, color: ["--accent", "--warn", "--ok"][i] })) });
     } else box.innerHTML = h;
     box.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => { const d = DLC_DEFS.find((x) => x.id === b.dataset.open), p = peak(d, "MudM"); bShowTab("sim"); simView(Object.assign({}, p.run.inp, { T: Math.max(p.run.inp.T, 180), dt: 0.05, outDt: 0.1, nm: 4 })); }));
+  }
+  // ----- connections: site data into the load cases, load-case fatigue into the checks, farm screening -----
+  function farmMapNow() { const m = D.custom ? (D.custom.mapId ? MB.map(D.custom.mapId) : null) : MB.map("map-" + D.meta.farm.id); return m || null; }
+  function siteMetocean(ty) {             // 50-year Hs and the hub-height Weibull from the farm's map
+    const m = farmMapNow(); if (!m) return null; const M = m.meta, hubF = Math.pow(ty.z_hub / 10, 0.11);
+    return { hs50: +M.hs50.toFixed(1), wA: +(M.A * hubF).toFixed(2), wk: +M.k.toFixed(2), windDir: M.windDir, map: m.name };
+  }
+  function dlcSite(ty) {                  // the settings the load cases use: from the map unless the user chose manual
+    const c = Object.assign({}, DLCCFG), sm = c.src !== "manual" ? siteMetocean(ty) : null;
+    if (sm) Object.assign(c, { hs50: sm.hs50, wA: sm.wA, wk: sm.wk }); return { c, sm };
+  }
+  // fatigue from DLC 1.2: rainflow cycles of each run, scaled to the lifetime over the site wind, as stress ranges at the hot spots
+  // (moment range / section modulus × SCF × thickness correction), Miner's sum on DNV-RP-C203 curve D: in air for the tower,
+  // in seawater with cathodic protection at the mudline; design fatigue factor 2 (inspectable) or 3 (not inspectable)
+  const SN_DLC = { air: { a1: 12.164, m1: 3, a2: 15.606, m2: 5, Nk: 1e7 }, sea: { a1: 11.764, m1: 3, a2: 15.606, m2: 5, Nk: 1e6 } };
+  const snDLC = (ds, c) => { const N1 = Math.pow(10, c.a1 - c.m1 * Math.log10(ds)); return N1 <= c.Nk ? N1 : Math.pow(10, c.a2 - c.m2 * Math.log10(ds)); };
+  function dlcFatigue(ty, r) {
+    if (!r || !r.result["1.2"]) return null;
+    const c = r.input, runs = r.result["1.2"], byU = {}; runs.forEach((x) => { (byU[x.inp.U] = byU[x.inp.U] || []).push(x); });
+    const Us = Object.keys(byU).map(Number).sort((a, b) => a - b), F = (v) => 1 - Math.exp(-((Math.max(0, v) / c.wA) ** c.wk)), wb = (u) => F(u + c.binStep / 2) - F(u - c.binStep / 2);
+    const t = T[bSite] || T[0], B = TFE.build(ty, t.spec.depth, 0), hs = TFE.hotSpots(ty, B, t.spec.depth), L = 25, secs = L * 365.25 * 86400;
+    const life = (k) => { const m = 4; return Math.pow(Us.reduce((s2, u) => s2 + wb(u) * (byU[u].reduce((a, x) => a + x.stats[k].del ** m, 0) / byU[u].length), 0) / Math.max(1e-9, Us.reduce((s2, u) => s2 + wb(u), 0)), 1 / m); };
+    return [["Tower base weld", "TwrBsMyt", hs.tower_base, 2, "air"], ["Door frame", "TwrBsMyt", hs.door, 2, "air"], ["Monopile weld at the mudline", "MudMy", hs.mudline, 3, "sea"]].map(([lab, k, h, dff, env]) => {
+      const scf = Math.max(1, h.scf), tk = Math.pow(Math.max(1, h.t * 1e3 / 25), 0.2), curve = SN_DLC[env]; let dmg = 0, dsMax = 0;
+      Us.forEach((u) => { const w = wb(u); byU[u].forEach((x) => { const st = x.stats[k]; if (!st.cyc) return; st.cyc.forEach((n, b) => { if (!n) return; const ds = RF_BINS[b] * 1e6 / h.W / 1e6 * scf * tk; dsMax = Math.max(dsMax, ds); dmg += n / st.secs * secs * w / byU[u].length / snDLC(ds, curve); }); }); });
+      dmg *= dff; return { lab, k, DEL: life(k), scf: scf * tk, ds: dsMax, dff, dmg, life: L / Math.max(dmg, 1e-9) };
+    });
+  }
+  function dlcFatigueTable(rows) {
+    return `<div class="tbl-wrap"><table class="list bl-ltt"><thead><tr><th>Hot spot</th><th class="r">Lifetime DEL</th><th class="r">SCF × thickness</th><th class="r">Largest stress range</th><th class="r">DFF</th><th class="r">Damage, 25 y</th><th class="r">Fatigue life</th></tr></thead><tbody>` +
+      rows.map((x) => `<tr><td>${x.lab}</td><td class="r mono">${fmt(x.DEL, 0)} MN·m</td><td class="r mono">${fmt(x.scf, 2)}</td><td class="r mono">${fmt(x.ds, 1)} MPa</td><td class="r mono">${x.dff}</td><td class="r"><span class="pill ${x.dmg < 0.8 ? "green" : x.dmg < 1 ? "amber" : "red"}">${fmt(x.dmg, 2)}</span></td><td class="r mono">${x.life > 200 ? "> 200" : fmt(x.life, 0)} y</td></tr>`).join("") + `</tbody></table></div>`;
+  }
+  function dlcFatCard() {                 // the Fatigue tab shows the load-case result when there is one
+    const host = document.getElementById("bl-pane-fat"), ty = TT.get(bSel), r = RUNS.get(bSel + ":dlc"), old = host.querySelector(".dlc-fatcard"); if (old) old.remove();
+    const rows = r && r.key === runKey() ? dlcFatigue(ty, r) : null, card = document.createElement("div"); card.className = "bl-g dlc-fatcard";
+    card.innerHTML = rows ? `<div class="bl-hd2"><h3>From the load cases (DLC 1.2)</h3><span class="muted" style="font-size:0.78rem">site wind, 25 years</span></div>${dlcFatigueTable(rows)}<p class="cap">Damage-equivalent loads from the DLC 1.2 runs, weighted over the site wind, turned into stress ranges at each hot spot and summed on DNV-RP-C203 curve D with the design fatigue factor. The analysis below uses the long-term sea and wind record instead.</p>`
+      : `<div class="row" style="justify-content:space-between"><span class="muted">Run DLC 1.2 in Load cases to check fatigue from the design load cases here too.</span><button class="btn sm" type="button" data-goload>Open Load cases</button></div>`;
+    host.prepend(card); const g = card.querySelector("[data-goload]"); if (g) g.addEventListener("click", () => bShowTab("dlc"));
+  }
+  // farm screening: two short design-driving runs at every position with its depth and wake turbulence, to find where to run the full set
+  async function dlcScreen(host, ty) {
+    const { c, sm } = dlcSite(ty), der = TT.derived(ty), Vr = Math.round(der.rated_U), dir = sm ? sm.windDir : 240, out = [], bar = host.querySelector("[data-dbar]"), msg = host.querySelector("[data-dmsg]");
+    const base = (U, sig) => Object.assign({}, SIM0, { T: 80, tTrans: 15, dt: 0.1, outDt: 0.25, nm: 3, cls: c.cls, turb: c.turb, seed: 7 });
+    for (let i = 0; i < T.length; i++) {
+      msg.textContent = `Screening ${T[i].spec.name} (${i + 1} of ${T.length})`;
+      const F = (wakeAt(i, dir, Vr) || {}).F || 1, Iref = IEC_IREF[c.turb], ti = 100 * Iref * (0.75 * Vr + 5.6) / Vr * F, Hs = c.hs50 * 0.9;
+      const a = await SOLVERS.sim(ty, T[i].spec.depth, Object.assign(base(), { wind: "ntm", U: Vr, TI: ti, sea: "irregular", Hs, Tp: +tpOf(Hs).toFixed(1), gamma: 3.3, mode: "power" }));
+      const b = await SOLVERS.sim(ty, T[i].spec.depth, Object.assign(base(), { wind: "ewm50", sea: "irregular", Hs: c.hs50, Tp: +tpOf(c.hs50).toFixed(1), gamma: 3.3, cur: 1.2, mode: "parked", yaw: 8 }));
+      const mx = (r, k) => Math.max(Math.abs(r.stats[k].max), Math.abs(r.stats[k].min)) * 1.35;
+      out.push({ i, name: T[i].spec.name, depth: T[i].spec.depth, F, mud: Math.max(mx(a, "MudM"), mx(b, "MudM")), tb: Math.max(mx(a, "TwrBsM"), mx(b, "TwrBsM")), del: a.stats.MudMy.del });
+      bar.style.width = (100 * (i + 1) / T.length).toFixed(0) + "%";
+    }
+    msg.textContent = `Screened ${T.length} positions.`;
+    return out;
   }
   // ----- Compare: two to four turbine types side by side at the check position -----
   let CMPSEL = null;
@@ -5688,16 +5784,16 @@ details.sec > * + * { margin-top: 8px; }
         ["rna", `rotor Ø${fmt(ty.rotor_D, 0)} m · RNA ${fmt(TFE.rnaMass(ty) / 1e3, 0)} t`], ["power", `${fmt(ty.rated_P, 1)} MW · ${fmt(ty.rated_rpm, 1)} rpm`],
         ["flange", `${ty.n_bolts} × M${ty.bolt_d} ${ty.bolt_grade}`], ["mats", `${mMp.id} monopile · ${mTw.id} tower`]];
       return `<div class="bl-cards">${rows.map(([k, v]) => { const sc = BSECS.find((q) => q[0] === k); return `<button type="button" class="bl-card2" data-gosec="${k}">${ICO[sc[2]] || ""}<b>${sc[1]}</b><span>${v}</span></button>`; }).join("")}</div>`; };
-    host.innerHTML = `<h3 class="bl-sech">${BSECS[Math.max(0, secIdx)][1]}</h3>` +
+    host.innerHTML = `<div class="bl-secchips" role="tablist" aria-label="Design sections">${BSECS.map(([k, l]) => `<button type="button" data-gosec="${k}" class="${k === bSec ? "on" : ""}">${l.replace(" and soil", "").replace(" and monopile", "").replace(" and nacelle", "").replace(" and rotor speed", "").replace("Tower-base flange", "Flange")}</button>`).join("")}</div>` +
       (ro ? `<p class="hint bl-ro">Built-in types are read-only. <button class="btn" type="button" data-dup>Duplicate to edit</button></p>` : "") +
-      `<div data-sec="overview"><label class="bl-f bl-name"><span>Name</span><input type="text" data-k="name" value="${ty.name.replace(/"/g, "&quot;")}"${dis}></label>${sumry()}<p class="cap">Pick a group here or in the tree to edit it. Results on the right update as you go.</p></div>` +
+      `<div data-sec="overview"><label class="bl-f bl-name"><span>Name</span><input type="text" data-k="name" value="${ty.name.replace(/"/g, "&quot;")}"${dis}></label>${sumry()}<p class="cap">Pick a group to edit it. Results on the right update as you go.</p></div>` +
       `<div data-sec="fdn">` + fdnHTML(ty, ro) +
       (ty.fdn.mode === "soil" ? `<fieldset class="bl-g"><legend>Soil layers (from the seabed down)</legend>${soilBody}</fieldset>` : `<fieldset class="bl-g bl-g0">${more("soil", "Soil layers (used by the 3D soil-pile analysis)", soilBody)}</fieldset>`) + `</div>` +
       `<div data-sec="mats">${matsHTML()}</div>` + BF.map(([g, fs]) => { const basic = fs.filter((f) => !f[7]).concat(fs.every((f) => f[7]) ? fs : []), adv = fs.every((f) => f[7]) ? [] : fs.filter((f) => f[7]);
         const extraHere = g === "Tower-base flange";
         const extra = (g === "Tower-base flange" ? `<label class="bl-f"><span>Bolt size</span><span class="bl-in"><select data-k="bolt_d"${dis}>${Object.keys(TFE.BOLT_AS).map((b) => `<option value="${b}"${+b === ty.bolt_d ? " selected" : ""}>M${b} 10.9</option>`).join("")}</select></span></label>` : "") +
           (g === "Rotor and nacelle" && !ro ? `<button class="btn" type="button" data-jest>Estimate inertia from the masses</button>` : "");
-        return `<div data-sec="${BSEC_OF[g]}"><fieldset class="bl-g"><legend>${g}</legend>${shape(g)}${basic.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("")}${extraHere ? extra : ""}${adv.length || (extra && !extraHere) ? more(g, "More settings", adv.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("") + (extraHere ? "" : extra)) : ""}</fieldset></div>`; }).join("") + secNav;
+        return `<div data-sec="${BSEC_OF[g]}"><fieldset class="bl-g"><legend>${g}</legend>${shape(g)}${basic.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("")}${extraHere ? extra : ""}${adv.length || (extra && !extraHere) ? more(g, "More settings", adv.map(([k, lab, u, sc, st]) => inp(k, lab, u, sc, st)).join("") + (extraHere ? "" : extra)) : ""}</fieldset></div>`; }).join("") ;
     host.querySelectorAll("[data-sec]").forEach((el2) => { el2.hidden = el2.dataset.sec !== bSec; });
     host.querySelectorAll("[data-gosec]").forEach((b) => b.addEventListener("click", () => { bSec = b.dataset.gosec; bList(); bForm(); host.scrollIntoView({ block: "nearest" }); }));
     host.querySelectorAll("details[data-more]").forEach((d) => d.addEventListener("toggle", () => { if (d.open) bMore.add(d.dataset.more); else bMore.delete(d.dataset.more); }));
@@ -5748,6 +5844,12 @@ details.sec > * + * { margin-top: 8px; }
   function bList() {
     const host = document.getElementById("bl-list"), use = {};
     T.forEach((t, i) => { const id = TT.typeOf(i).id; use[id] = (use[id] || 0) + 1; });
+    const card = (ty) => `<button type="button" class="bl-ty${ty.id === bSel ? " on" : ""}" data-id="${ty.id}"><span class="nm">${ty.name.replace(/ \(as built\)$/, "")}</span><span class="mt">${fmt(ty.rated_P, 0)} MW · rotor ${fmt(ty.rotor_D, 0)} m${use[ty.id] ? ` · <b>${use[ty.id]}</b> in farm` : ""}</span></button>`;
+    const bi = TT.all().filter((ty) => ty.builtin), mine = TT.all().filter((ty) => !ty.builtin);
+    host.innerHTML = `<div class="bl-grp">Built-in</div>${bi.map(card).join("")}<div class="bl-grp">Your types</div>${mine.length ? mine.map(card).join("") : `<p class="cap" style="margin:2px 4px 8px">None yet: "New from this" copies the selected type.</p>`}`;
+    host.querySelectorAll("[data-id]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.id === bSel) return; bSel = b.dataset.id; bSec = "overview"; bOpenSel(); }));
+    document.getElementById("bl-del").disabled = !!TT.get(bSel).builtin;
+    return;
     host.innerHTML = TT.all().map((ty) => { const on = ty.id === bSel, open = on && !bCollapsed.has(ty.id);
       return `<button type="button" class="bl-tn${on ? " on" : ""}${open ? " open" : ""}" data-id="${ty.id}"><span class="tw">${ICO.chev}</span><span class="nm">${ty.name}</span><span class="mt">${ty.builtin ? "built-in" : "custom"} · ${fmt(ty.rated_P, 0)} MW · Ø${fmt(ty.D_pile, 1)} m${use[ty.id] ? ` · ${use[ty.id]} in ${D.meta.farm.name}` : ""}</span></button>` +
         (open ? BSECS.map(([k, l, ic]) => `<button type="button" class="bl-tc${bSec === k && bTab === "design" ? " on" : ""}" data-sec="${k}">${ICO[ic] || ""}<span>${l}</span></button>`).join("") : ""); }).join("");
@@ -5765,7 +5867,8 @@ details.sec > * + * { margin-top: 8px; }
     host.querySelector("[data-all]").addEventListener("click", () => { T.forEach((t, i) => TT.assign(i, bSel)); bList(); bFarm(); });
   }
   function bOpenSel() { bList(); bForm(); document.getElementById("bl-out").innerHTML = `<p class="muted">Solving the model…</p>`; setTimeout(() => bResults(TT.get(bSel)), 20); bFarm(); if (bTab !== "design") bShowTab(bTab); }
-  document.querySelectorAll("#builder [data-btab]").forEach((b) => b.addEventListener("click", () => bShowTab(b.dataset.btab)));
+  document.querySelectorAll("#builder .bl-tabs [data-btab]").forEach((b) => b.addEventListener("click", () => bShowTab(b.dataset.btab)));
+  document.querySelector('#builder .bl-tabs [data-bgrp="det"]').addEventListener("click", () => bShowTab(bDetLast));
   function openBuilder(ti) {
     bldEl.hidden = false; bSite = ti !== undefined && ti >= 0 ? ti : (current >= 0 ? current : 0);
     bSel = bSel && TT.get(bSel) ? bSel : TT.typeOf(bSite).id;
