@@ -1,6 +1,8 @@
 """Build index.html: the farm datasets (demo_data_A/B/C.json), the drivetrain FE chain (rna_chain.json,
 from build_rna.py) and the live structural models (live_struct_*.json, from build_live.py), all inline
-so the page needs no network requests for its data."""
+so the page needs no network requests for its data. The area picker also gets a world coastline
+(Natural Earth 1:50m land via world-atlas, quantised to 0.02 degrees, rings as [lon0, lat0, dlon, dlat, ...])
+and the WIS station list from sitedata/wis_stations.json."""
 
 import glob
 import json
@@ -33,8 +35,12 @@ for p in rna["parts"].values():                       # displacements are not us
     p.pop("D", None); p.pop("d_scale", None)
 with open(os.path.join(HERE, "template.html")) as fh:
     page = fh.read()
+with open(os.path.join(HERE, "world_land_50m.json")) as fh:
+    land = json.load(fh)
+with open(os.path.join(HERE, "..", "..", "sitedata", "wis_stations.json")) as fh:
+    wis = [[s[0], round(s[2], 3), round(s[3], 3)] for s in json.load(fh)["stations"]]
 enc = lambda o: json.dumps(o, separators=(",", ":")).replace("</", "<\\/")
-page = page.replace("__DATA__", enc({"farms": farms})).replace("__RNADATA__", enc(rna)).replace("__LIVEDATA__", enc(live))
+page = page.replace("__DATA__", enc({"farms": farms})).replace("__RNADATA__", enc(rna)).replace("__LIVEDATA__", enc(live)).replace("__GEODATA__", enc({"land": land, "q": 0.02, "wis": wis}))
 with open(os.path.join(HERE, "index.html"), "w") as fh:
     fh.write(page)
 print("wrote index.html with", len(farms), "farms,", os.path.getsize(os.path.join(HERE, "index.html")) // 1024, "kB")

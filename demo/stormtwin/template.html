@@ -520,6 +520,12 @@ details.sec > * + * { margin-top: 8px; }
 .mb-canvas canvas { width: 100%; display: block; border-radius: 8px; cursor: crosshair; touch-action: none; }
 .mb-canvas .bl-3dp { height: 460px; }
 .mb-side { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.pk-av { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 5px; font-size: 0.82rem; }
+.pk-cmd { white-space: pre-wrap; word-break: break-all; background: var(--surface-2, var(--bg)); border: 1px solid var(--line); border-radius: 6px; padding: 8px; font-size: 0.75rem; margin: 6px 0; }
+.cl-row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--grid); font-size: 0.82rem; }
+.cl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: start; margin-bottom: 8px; }
+.cl-rose { width: 100%; max-width: 230px; height: auto; }
+.cl-sc { width: 100%; max-width: 480px; height: auto; }
 .wv-res { margin-top: 12px; }
 .wv-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 6px 0; }
 .wv-sum > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; font-size: 0.8rem; }
@@ -828,7 +834,7 @@ details.sec > * + * { margin-top: 8px; }
       </div>
       <div class="bl-body" id="bl-mode-map" hidden>
         <nav class="bl-side" aria-label="Maps"><div class="bl-list" id="mb-list"></div>
-          <div class="bl-acts"><button class="btn" type="button" id="mb-new">New map</button><button class="btn" type="button" id="mb-dup">Duplicate</button><button class="btn" type="button" id="mb-del">Delete</button><button class="btn" type="button" id="mb-export">Export</button><label class="btn" style="text-align:center;grid-column:1 / -1">Import map<input type="file" id="mb-import" accept=".json,application/json" hidden></label></div></nav>
+          <div class="bl-acts"><button class="btn" type="button" id="mb-new">New map</button><button class="btn" type="button" id="mb-dup">Duplicate</button><button class="btn" type="button" id="mb-del">Delete</button><button class="btn" type="button" id="mb-export">Export</button><label class="btn" style="text-align:center;grid-column:1 / -1">Import map<input type="file" id="mb-import" accept=".json,application/json" hidden></label><button class="btn primary" type="button" id="mb-area" style="grid-column:1 / -1">New map from an area</button></div></nav>
         <div class="bl-main" id="mb-main"></div>
       </div>
       <div class="bl-body" id="bl-mode-site" hidden>
@@ -933,6 +939,7 @@ details.sec > * + * { margin-top: 8px; }
 <script type="application/json" id="data">__DATA__</script>
 <script type="application/json" id="rnadata">__RNADATA__</script>
 <script type="application/json" id="livedata">__LIVEDATA__</script>
+<script type="application/json" id="geodata">__GEODATA__</script>
 <script>
 (function () {
   const ALL = JSON.parse(document.getElementById("data").textContent).farms;
@@ -6028,7 +6035,9 @@ details.sec > * + * { margin-top: 8px; }
     for (let py = 0; py < ph; py++) for (let px = 0; px < pw; px++) {
       const x = (px + 0.5) / pw * m.W, y = (py + 0.5) / ph * m.H, d = depthAt(m, x, y), k = py * pw + px; let [r, gg, b] = depthCol(d);
       if (o.layer === "soil" || o.soil) { const s2 = soilIdx(m, x, y), c = (mapProfiles(m)[s2] || {}).color || SOILCOL[s2 % SOILCOL.length], cr = parseInt(c.slice(1, 3), 16), cg = parseInt(c.slice(3, 5), 16), cb = parseInt(c.slice(5, 7), 16), al = o.layer === "soil" ? 0.6 : 0.18; r = r * (1 - al) + cr * al; gg = gg * (1 - al) + cg * al; b = b * (1 - al) + cb * al; }
-      if (exclAt(m, x, y) && ((px + py) % 6 < 2 || o.layer === "excl")) { const al = o.layer === "excl" ? 0.55 : 0.7; r = r * (1 - al) + 209 * al; gg = gg * (1 - al) + 73 * al; b = b * (1 - al) + 91 * al; }
+      const onLand = m.land && m.land[mapCell(m, x, y)[1] * m.nx + mapCell(m, x, y)[0]];
+      if (onLand) { r = 224; gg = 214; b = 186; }
+      else if (exclAt(m, x, y) && ((px + py) % 6 < 2 || o.layer === "excl")) { const al = o.layer === "excl" ? 0.55 : 0.7; r = r * (1 - al) + 209 * al; gg = gg * (1 - al) + 73 * al; b = b * (1 - al) + 91 * al; }
       if ((px + 1 < pw && band[k + 1] !== band[k]) || (py + 1 < ph && band[k + pw] !== band[k])) { r *= 0.62; gg *= 0.62; b *= 0.62; }
       img.data.set([r, gg, b, 255], 4 * k);
     }
@@ -6060,14 +6069,14 @@ details.sec > * + * { margin-top: 8px; }
     const host = document.getElementById("mb-list");
     host.innerHTML = MB.maps().map((m) => { const on = m.id === mbSel;
       return `<button type="button" class="bl-tn${on ? " on" : ""}" data-m="${m.id}"><span class="tw">${ICO.chev}</span><span class="nm">${m.name}</span><span class="mt">${m.builtin ? "built-in" : "custom"} · ${fmt(m.W, 1)} × ${fmt(m.H, 1)} km</span></button>` +
-        (on ? MB_LAYERS.map(([k, l]) => `<button type="button" class="bl-tc${mbLayer === k ? " on" : ""}" data-ml="${k}">${l}</button>`).join("") : ""); }).join("");
-    host.querySelectorAll("[data-m]").forEach((b) => b.addEventListener("click", () => { mbSel = b.dataset.m; mbOpen(); }));
-    host.querySelectorAll("[data-ml]").forEach((b) => b.addEventListener("click", () => { mbLayer = b.dataset.ml; mbOpen(); }));
+        (on ? MB_LAYERS.concat(m.climate ? [["climate", "Site climate"]] : []).map(([k, l]) => `<button type="button" class="bl-tc${mbLayer === k ? " on" : ""}" data-ml="${k}">${l}</button>`).join("") : ""); }).join("");
+    host.querySelectorAll("[data-m]").forEach((b) => b.addEventListener("click", () => { mbSel = b.dataset.m; mbPick = false; if (mbLayer === "climate" && !MB.map(mbSel).climate) mbLayer = "depth"; mbOpen(); }));
+    host.querySelectorAll("[data-ml]").forEach((b) => b.addEventListener("click", () => { mbLayer = b.dataset.ml; mbPick = false; mbOpen(); }));
     document.getElementById("mb-del").disabled = !MB.map(mbSel) || !!MB.map(mbSel).builtin;
   }
   function mbOpen() {
     if (!MB.map(mbSel)) mbSel = MB.maps()[0].id;
-    mbList(); mbMain();
+    mbList(); if (mbPick) mbPickView(); else mbMain();
   }
   function mbEditable() {                     // the selected map; a farm's own map is edited in place and can be reset
     const m = MB.map(mbSel); if (m.builtin) m.edited = true; return m;
@@ -6077,7 +6086,8 @@ details.sec > * + * { margin-top: 8px; }
     const ds = m.depth, dmin = Math.min(...ds), dmax = Math.max(...ds);
     const tools = mbLayer === "depth" ? [["raise", "Shallower"], ["lower", "Deeper"], ["smooth", "Smooth"], ["set", "Set depth"]] : mbLayer === "soil" ? [["soil", "Paint"], ["soilerase", "Erase"]] : mbLayer === "excl" ? [["excl", "Paint"], ["exclerase", "Erase"]] : [];
     if (tools.length && !tools.some(([k]) => k === mbTool)) mbTool = tools[0][0];
-    const side = mbLayer === "meta" ? mbMetaForm(m, false) : mbLayer === "waves" ? mbWavePanel(m) : mbLayer === "depth" ? mbDepthPanel(m) : mbLayer === "soil" ? mbSoilPanel(m) : `<p class="cap">Paint areas turbines must avoid: export cables, pipelines, wrecks, shipping lanes, unexploded ordnance. The site builder flags turbines placed inside them.</p>`;
+    if (mbLayer === "climate" && !m.climate) mbLayer = "depth";
+    const side = mbLayer === "meta" ? mbMetaForm(m, false) + (m.sources ? `<h4 class="bl-h">Sources</h4>` + mbSourcesNote(m) : "") : mbLayer === "climate" ? mbClimatePanel(m) : mbLayer === "waves" ? mbWavePanel(m) : mbLayer === "depth" ? mbDepthPanel(m) : mbLayer === "soil" ? mbSoilPanel(m) : `<p class="cap">Paint areas turbines must avoid: export cables, pipelines, wrecks, shipping lanes, unexploded ordnance. The site builder flags turbines placed inside them.</p>`;
     host.innerHTML = `<div class="mb-top"><label class="bl-f bl-name"><span>Name</span><input type="text" data-mn value="${m.name.replace(/"/g, "&quot;")}"${ro ? " disabled" : ""}></label>` +
       (ro ? `<p class="hint bl-ro">${m.edited ? "Edited survey of the farm. The farm's turbines and the 3D viewer use this seabed." : "The farm's surveyed seabed. Edits change the depths the farm's turbines and the 3D viewer use."}${m.edited ? ` <button class="btn" type="button" data-mreset>Reset to the survey</button>` : ""}</p>` : "") + `</div>` +
       `<div class="mb-grid"><div><div class="bl-row mb-bar">${tools.length ? `<span class="seg">${tools.map(([k, l]) => `<button type="button" data-tool="${k}" class="${mbTool === k ? "on" : ""}">${l}</button>`).join("")}</span>` : ""}` +
@@ -6099,6 +6109,7 @@ details.sec > * + * { margin-top: 8px; }
     host.querySelector("[data-mn]").addEventListener("change", (e) => { const mm = mbEditable(); mm.name = e.target.value.trim() || "Unnamed map"; MB.saveMap(mm); mbList(); });
     mbWireSide(host, render);
     if (mbLayer === "waves") { wvWire(host, m, cv, () => tf, render); wvResults(host, m); }
+    if (mbLayer === "climate") mbClimateBelow(host, m);
     // painting
     let painting = false, dirty = false, raf = 0;
     const apply = (ev) => {
@@ -6404,9 +6415,162 @@ details.sec > * + * { margin-top: 8px; }
   const saveFile = (filename, data, type) => { const use = window.claude && window.claude.use, fallback = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type })); a.download = filename; document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); };
     if (!use) { fallback(); return; } Promise.resolve(use("downloads")).then((dl) => (dl ? dl.save({ filename, data }) : fallback())).catch(() => {}); };
   document.getElementById("mb-export").addEventListener("click", () => { const m = clone(MB.map(mbSel)); delete m.builtin; saveFile((m.name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "map") + ".json", JSON.stringify(m), "application/json"); });
-  document.getElementById("mb-import").addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (!f) return;
-    f.text().then((txt) => { const v = JSON.parse(txt); if (!Array.isArray(v.depth) || !v.nx || !v.ny || v.depth.length !== v.nx * v.ny) throw new Error("not a map file"); const m = Object.assign(MB.blank(v.name || "Imported map", +v.W || 10, +v.H || 8, 30), v, { id: uid(), builtin: false }); m.meta = Object.assign({}, MB.META0, v.meta || {}); m.soil = m.soil || new Array(m.nx * m.ny).fill(255); m.excl = m.excl || new Array(m.nx * m.ny).fill(0); MB.saveMap(m); mbSel = m.id; mbOpen(); })
-      .catch((err) => { document.getElementById("mb-main").insertAdjacentHTML("afterbegin", `<p class="hint">Could not import: ${err.message}</p>`); }); e.target.value = ""; });
+  document.getElementById("mb-import").addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (f) mbImportFile(f); e.target.value = ""; });
+  document.getElementById("mb-area").addEventListener("click", () => { mbPick = true; mbOpen(); });
+
+  // ----- new map from an area: pick a box on a world map, fetch its data with `python -m sitedata`, import the file -----
+  let GEO = null, mbPick = false;
+  const geoData = () => GEO || (GEO = JSON.parse(document.getElementById("geodata").textContent));
+  const PK = { lat: 37.5, lon: -74, s: 9, box: null, name: "", mode: "draw" };      // s: pixels per degree of latitude
+  const KM_DEG = 111.195;
+  function hav(a, b, c, d) { const p = rad(a), q = rad(c), x = Math.sin((q - p) / 2) ** 2 + Math.cos(p) * Math.cos(q) * Math.sin(rad(d - b) / 2) ** 2; return 2 * 6371 * Math.asin(Math.sqrt(x)); }
+  function pkRings() {
+    const G = geoData(); if (G.rings) return G.rings;
+    G.rings = G.land.map((r) => { const pts = []; let x = r[0], y = r[1]; pts.push([x * G.q, y * G.q]); for (let i = 2; i < r.length; i += 2) { x += r[i]; y += r[i + 1]; pts.push([x * G.q, y * G.q]); }
+      const lo = pts.map((p) => p[0]), la = pts.map((p) => p[1]); return { pts, bb: [Math.min(...lo), Math.max(...lo), Math.min(...la), Math.max(...la)] }; });
+    return G.rings;
+  }
+  function pkInfo(b) {
+    const lat0 = (b.s + b.n) / 2, lon0 = (b.w + b.e) / 2, W = (b.e - b.w) * KM_DEG * Math.cos(rad(lat0)), H = (b.n - b.s) * KM_DEG;
+    let wis = null; geoData().wis.forEach(([id, la, lo]) => { if (Math.abs(la - lat0) > 3) return; const d = hav(lat0, lon0, la, lo); if (!wis || d < wis.d) wis = { id, la, lo, d }; });
+    return { lat0, lon0, W, H, wis, eu: b.s >= 15 && b.w >= -36 && b.e <= 43, us: !!(wis && wis.d <= 60) };
+  }
+  function pkDraw(cv) {
+    const W = cv.clientWidth || 700, H = Math.round(Math.min(540, Math.max(320, W * 0.6))), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.style.height = H + "px"; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    PK.lat = Math.max(-80, Math.min(80, PK.lat)); const cx = Math.cos(rad(PK.lat)), sx = PK.s * cx;
+    const X = (lo) => W / 2 + (lo - PK.lon) * sx, Y = (la) => H / 2 - (la - PK.lat) * PK.s;
+    const v = { w: PK.lon - W / 2 / sx, e: PK.lon + W / 2 / sx, s: PK.lat - H / 2 / PK.s, n: PK.lat + H / 2 / PK.s };
+    g.fillStyle = "#b9d4e3"; g.fillRect(0, 0, W, H);
+    // graticule
+    const step = [30, 10, 5, 2, 1, 0.5, 0.25, 0.1].find((st) => st * PK.s < 140) || 0.1;
+    g.strokeStyle = "rgba(14,27,39,0.12)"; g.lineWidth = 1; g.fillStyle = "rgba(14,27,39,0.55)"; g.font = "10px IBM Plex Mono, monospace";
+    for (let lo = Math.ceil(v.w / step) * step; lo <= v.e; lo += step) { g.beginPath(); g.moveTo(X(lo), 0); g.lineTo(X(lo), H); g.stroke(); g.fillText(`${+lo.toFixed(2)}°`, X(lo) + 3, H - 4); }
+    for (let la = Math.ceil(v.s / step) * step; la <= v.n; la += step) { g.beginPath(); g.moveTo(0, Y(la)); g.lineTo(W, Y(la)); g.stroke(); g.fillText(`${+la.toFixed(2)}°`, 3, Y(la) - 3); }
+    // land
+    g.fillStyle = "#efe8d6"; g.strokeStyle = "#8d856f"; g.lineWidth = 0.8;
+    pkRings().forEach((r) => { const [a, b, c, d] = r.bb; if (b < v.w || a > v.e || d < v.s || c > v.n) return;
+      g.beginPath(); r.pts.forEach(([lo, la], i) => (i ? g.lineTo(X(lo), Y(la)) : g.moveTo(X(lo), Y(la)))); g.closePath(); g.fill(); g.stroke(); });
+    // EMODnet coverage and WIS stations
+    if (v.e > -36 && v.w < 43 && v.n > 15) { g.setLineDash([5, 4]); g.strokeStyle = "rgba(46,107,160,0.7)"; g.strokeRect(X(-36), Y(90), X(43) - X(-36), Y(15) - Y(90)); g.setLineDash([]); }
+    g.fillStyle = "#d1803a"; const r0 = PK.s > 40 ? 2.6 : PK.s > 8 ? 1.8 : 1.1;
+    geoData().wis.forEach(([, la, lo]) => { if (la < v.s || la > v.n || lo < v.w || lo > v.e) return; g.beginPath(); g.arc(X(lo), Y(la), r0, 0, 2 * Math.PI); g.fill(); });
+    if (PK.box) { const b = PK.box; g.fillStyle = "rgba(209,73,91,0.18)"; g.strokeStyle = "#d1495b"; g.lineWidth = 2; g.fillRect(X(b.w), Y(b.n), X(b.e) - X(b.w), Y(b.s) - Y(b.n)); g.strokeRect(X(b.w), Y(b.n), X(b.e) - X(b.w), Y(b.s) - Y(b.n));
+      const inf = pkInfo(b); if (inf.wis && PK.s > 20) { g.strokeStyle = "#d1803a"; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(X(inf.lon0), Y(inf.lat0)); g.lineTo(X(inf.wis.lo), Y(inf.wis.la)); g.stroke(); g.setLineDash([]); } }
+    return { inv: (px, py) => [PK.lat - (py - H / 2) / PK.s, PK.lon + (px - W / 2) / sx] };
+  }
+  function pkCommand(b, name) { return `python -m sitedata fetch --bbox ${b.s.toFixed(4)} ${b.w.toFixed(4)} ${b.n.toFixed(4)} ${b.e.toFixed(4)} --name "${(name || "New site").replace(/"/g, "'")}" -o site.json`; }
+  function mbPickView() {
+    const host = document.getElementById("mb-main"), b = PK.box, inf = b ? pkInfo(b) : null;
+    const yes = (t) => `<span class="pill green">${t}</span>`, no = (t) => `<span class="pill amber">${t}</span>`;
+    const avail = inf ? `<ul class="pk-av">` +
+      `<li>${yes("Bathymetry")} ${inf.eu ? "EMODnet (about 115 m) in European waters" : "NOAA NCEI best available model (high resolution on US coasts, about 450 m elsewhere)"}</li>` +
+      `<li>${inf.us ? yes("Wave and wind climate") : no("Wave and wind climate")} ${inf.wis ? `nearest WIS station ${inf.wis.id}, ${fmt(inf.wis.d, 0)} km away${inf.us ? ", hourly since 1980" : " (WIS covers US coasts and the Great Lakes; enter the climate by hand here)"}` : "no WIS station nearby"}</li>` +
+      `<li>${inf.us ? yes("Tides and currents") : no("Tides and currents")} ${inf.us ? "nearest NOAA tide and current stations" : "NOAA stations cover US waters only"}</li></ul>` +
+      (inf.W > 60 || inf.H > 60 ? `<p class="hint">That is ${fmt(inf.W, 0)} × ${fmt(inf.H, 0)} km. A farm area is usually 5–30 km across; large areas make coarse maps.</p>` : "") : "";
+    host.innerHTML = `<div class="bl-hd2"><h3>New map from an area</h3><button class="btn" type="button" data-pkback>Back to maps</button></div>` +
+      `<div class="mb-grid"><div><div class="bl-row mb-bar"><span class="seg">${[["draw", "Draw area"], ["pan", "Pan"]].map(([k, l]) => `<button type="button" data-pkm="${k}" class="${PK.mode === k ? "on" : ""}">${l}</button>`).join("")}</span>` +
+      `<span class="seg"><button type="button" data-pkz="1.6" aria-label="Zoom in">+</button><button type="button" data-pkz="0.625" aria-label="Zoom out">−</button></span>` +
+      `<label class="sel">Go to<input type="text" data-pkgo placeholder="lat, lon" style="width:9rem"></label></div>` +
+      `<div class="mb-canvas"><canvas data-pkc style="cursor:${PK.mode === "draw" ? "crosshair" : "grab"}"></canvas></div>` +
+      `<p class="muted" style="font-size:0.78rem">Orange dots: WIS wave hindcast stations. Dashed: EMODnet bathymetry coverage. Scroll to zoom; drag with Draw area to pick the area.</p></div>` +
+      `<div class="mb-side"><h4 class="bl-h" style="margin-top:0">Area</h4>` +
+      `<label class="bl-f"><span>Name</span><span class="bl-in"><input type="text" data-pkname value="${(PK.name || "").replace(/"/g, "&quot;")}" placeholder="New site"></span></label>` +
+      ["n", "s", "w", "e"].map((k) => `<label class="bl-f"><span>${{ n: "North", s: "South", w: "West", e: "East" }[k]}</span><span class="bl-in"><input type="number" step="0.001" data-pkb="${k}" value="${b ? b[k].toFixed(4) : ""}"><i>°</i></span></label>`).join("") +
+      (inf ? `<p class="mono" style="font-size:0.8rem">${fmt(inf.W, 1)} × ${fmt(inf.H, 1)} km around ${fmt(inf.lat0, 3)}°, ${fmt(inf.lon0, 3)}°</p>` + avail +
+        `<h4 class="bl-h">Get the data</h4><p class="cap">The page can't reach these databases itself, so a small tool in the repository downloads them (about a minute) and writes a map file:</p>` +
+        `<pre class="pk-cmd mono" data-pkcmd>${pkCommand(b, PK.name)}</pre><div class="bl-row"><button class="btn" type="button" data-pkcopy>Copy command</button><button class="btn" type="button" data-pkreq>Download area request</button></div>` +
+        `<p class="cap">Or ask Claude in the repository to run it. Then bring the file in:</p><label class="btn primary">Import the site file<input type="file" data-pkimp accept=".json" hidden></label>`
+        : `<p class="cap">Draw a box on the map around the area you want to study, or type its edges.</p>`) + `</div></div>`;
+    const cv = host.querySelector("[data-pkc]"); let tf = pkDraw(cv);
+    const redraw = () => { tf = pkDraw(cv); };
+    host.querySelector("[data-pkback]").addEventListener("click", () => { mbPick = false; mbOpen(); });
+    host.querySelectorAll("[data-pkm]").forEach((x) => x.addEventListener("click", () => { PK.mode = x.dataset.pkm; mbPickView(); }));
+    host.querySelectorAll("[data-pkz]").forEach((x) => x.addEventListener("click", () => { PK.s = Math.max(0.6, Math.min(4000, PK.s * +x.dataset.pkz)); redraw(); }));
+    host.querySelector("[data-pkgo]").addEventListener("change", (e) => { const m2 = e.target.value.split(/[,\s]+/).map(Number); if (m2.length >= 2 && m2.every(isFinite)) { PK.lat = m2[0]; PK.lon = m2[1]; PK.s = Math.max(PK.s, 60); redraw(); } });
+    host.querySelector("[data-pkname]").addEventListener("input", (e) => { PK.name = e.target.value; const c = host.querySelector("[data-pkcmd]"); if (c && PK.box) c.textContent = pkCommand(PK.box, PK.name); });
+    host.querySelectorAll("[data-pkb]").forEach((x) => x.addEventListener("change", () => { const v = Object.fromEntries([...host.querySelectorAll("[data-pkb]")].map((y) => [y.dataset.pkb, +y.value]));
+      if (["n", "s", "w", "e"].every((k) => isFinite(v[k])) && v.n > v.s && v.e > v.w) { PK.box = v; mbPickView(); } }));
+    cv.addEventListener("wheel", (e) => { e.preventDefault(); const rc = cv.getBoundingClientRect(), [la, lo] = tf.inv(e.clientX - rc.left, e.clientY - rc.top), f = e.deltaY < 0 ? 1.25 : 0.8;
+      PK.s = Math.max(0.6, Math.min(4000, PK.s * f)); const [la2, lo2] = pkDraw(cv).inv(e.clientX - rc.left, e.clientY - rc.top); PK.lat += la - la2; PK.lon += lo - lo2; redraw(); }, { passive: false });
+    let drag = null;
+    cv.addEventListener("pointerdown", (e) => { const rc = cv.getBoundingClientRect(); drag = { x: e.clientX, y: e.clientY, lat: PK.lat, lon: PK.lon, p0: tf.inv(e.clientX - rc.left, e.clientY - rc.top), mode: e.shiftKey ? "draw" : PK.mode }; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener("pointermove", (e) => { if (!drag) return; const rc = cv.getBoundingClientRect();
+      if (drag.mode === "pan") { const cx = Math.cos(rad(PK.lat)); PK.lon = drag.lon - (e.clientX - drag.x) / (PK.s * cx); PK.lat = drag.lat + (e.clientY - drag.y) / PK.s; redraw(); return; }
+      const p = tf.inv(e.clientX - rc.left, e.clientY - rc.top); PK.box = { n: Math.max(p[0], drag.p0[0]), s: Math.min(p[0], drag.p0[0]), w: Math.min(p[1], drag.p0[1]), e: Math.max(p[1], drag.p0[1]) }; redraw(); });
+    const end = () => { if (!drag) return; const d = drag; drag = null; if (d.mode === "draw") { if (PK.box && (PK.box.n - PK.box.s) * KM_DEG < 0.5) PK.box = null; mbPickView(); } };
+    cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+    const cp = host.querySelector("[data-pkcopy]"); if (cp) cp.addEventListener("click", () => { navigator.clipboard && navigator.clipboard.writeText(pkCommand(PK.box, PK.name)).then(() => { cp.textContent = "Copied"; }, () => { cp.textContent = "Select the text above to copy"; }); });
+    const rq = host.querySelector("[data-pkreq]"); if (rq) rq.addEventListener("click", () => saveFile("area_request.json", JSON.stringify({ name: PK.name || "New site", bbox: { south: PK.box.s, west: PK.box.w, north: PK.box.n, east: PK.box.e } }, null, 1), "application/json"));
+    const im = host.querySelector("[data-pkimp]"); if (im) im.addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (f) mbImportFile(f); e.target.value = ""; });
+  }
+  function mbImportFile(f) {
+    f.text().then((txt) => { const v = JSON.parse(txt); if (!Array.isArray(v.depth) || !v.nx || !v.ny || v.depth.length !== v.nx * v.ny) throw new Error("not a map file");
+      const m = Object.assign(MB.blank(v.name || "Imported map", +v.W || 10, +v.H || 8, 30), v, { id: uid(), builtin: false }); m.meta = Object.assign({}, MB.META0, v.meta || {});
+      m.soil = m.soil || new Array(m.nx * m.ny).fill(255); m.excl = m.excl || new Array(m.nx * m.ny).fill(0); MB.saveMap(m); mbSel = m.id; mbPick = false; mbLayer = m.climate ? "climate" : "depth"; mbOpen(); })
+      .catch((err) => { document.getElementById("mb-main").insertAdjacentHTML("afterbegin", `<p class="hint">Could not import: ${err.message}</p>`); });
+  }
+
+  // ----- site climate (maps made from an area with WIS data) -----
+  const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+  function mbSourcesNote(m) {
+    const s = m.sources; if (!s) return "";
+    const it = [];
+    if (s.bathymetry) it.push(`Seabed: ${s.bathymetry.description}`);
+    if (s.climate) it.push(s.climate.source ? `Climate: WIS station ${s.climate.station}, ${fmt(s.climate.distance_km, 1)} km away, ${s.climate.years[0]}–${s.climate.years[1]}` : `Climate: ${s.climate.note}`);
+    if (s.tide) it.push(s.tide.source ? `Tides: NOAA ${s.tide.name}, ${fmt(s.tide.distance_km, 0)} km away` : `Tides: ${s.tide.note}`);
+    if (s.current) it.push(s.current.source ? `Currents: NOAA ${s.current.name}, ${fmt(s.current.distance_km, 0)} km away` : `Currents: ${s.current.note}`);
+    return `<ul class="pk-av" style="font-size:0.78rem">${it.map((x) => `<li>${x}</li>`).join("")}</ul>`;
+  }
+  function mbClimatePanel(m) {
+    const c = m.climate, M = m.meta;
+    if (!c) return `<p class="cap">No long-term climate for this map. Maps made from an area in US waters get one from the Wave Information Studies hindcast.</p>`;
+    const row = (a, b) => `<div class="cl-row"><span class="muted">${a}</span><b class="mono">${b}</b></div>`;
+    return `<h4 class="bl-h" style="margin-top:0">Site climate, ${c.years[0]}–${c.years[1]}</h4>` +
+      row("Mean H<sub>s</sub> · T<sub>p</sub>", `${fmt(c.hs_mean, 2)} m · ${fmt(c.tp_mean, 1)} s`) + row("1 % exceeded H<sub>s</sub>", `${fmt(c.hs_p99, 2)} m`) +
+      row("Largest H<sub>s</sub> in the record", `${fmt(c.hs_max, 2)} m`) + row("50-year H<sub>s</sub>", `${fmt(c.hs50, 2)} m`) +
+      row("Wind at 10 m, Weibull", `A ${fmt(c.wind10_A, 2)} m/s · k ${fmt(c.wind10_k, 2)}`) + row("Mean wind at 10 m", `${fmt(c.wind10_mean, 2)} m/s`) +
+      row("Prevailing wind · waves from", `${fmt(c.wind_dir, 0)}° · ${fmt(c.wave_dir, 0)}°`) + row("Tidal range · peak current", `${fmt(M.tide, 2)} m · ${fmt(M.current, 2)} m/s`) +
+      `<details class="bl-more"><summary>How these are worked out</summary><p class="cap">Hourly WIS hindcast at the nearest station. The 50-year H<sub>s</sub> is the larger of a Gumbel fit to the annual maxima (${fmt(c.hs50_gumbel, 2)} m) and a peaks-over-threshold fit to ${c.pot_storms} storms above ${fmt(c.pot_threshold, 2)} m (${fmt(c.hs50_pot, 2)} m). Prevailing directions weight the wind by its power and the waves by H<sub>s</sub>²T<sub>p</sub>. These values fill the map's metocean settings, which the load cases and the farm use.</p></details>` +
+      `<h4 class="bl-h">Sources</h4>` + mbSourcesNote(m);
+  }
+  function roseSVG(r, title, unit) {
+    const S = 190, c = S / 2, n = r.sector_deg.length, cols = ["#c9dfe9", "#8fbcd4", "#5a97bd", "#2e6ba0", "#1d4a78", "#0e2a48"];
+    const tot = r.freq.map((row) => row.reduce((a, b) => a + b, 0)), mx = Math.max(...tot) || 1, R = (f) => (c - 18) * Math.sqrt(f / mx), w = Math.PI / n * 0.85;
+    let p = `<svg viewBox="0 0 ${S} ${S + 30}" class="cl-rose" role="img" aria-label="${title}"><circle cx="${c}" cy="${c}" r="${c - 18}" fill="none" stroke="var(--grid)"/><circle cx="${c}" cy="${c}" r="${(c - 18) / 2}" fill="none" stroke="var(--grid)"/>`;
+    r.sector_deg.forEach((d, i) => { let f0 = 0; r.freq[i].forEach((f, j) => { if (!f) return; const a0 = rad(d) - w, a1 = rad(d) + w, r0 = R(f0), r1 = R(f0 + f); f0 += f;
+      const P = (rr, a) => `${(c + rr * Math.sin(a)).toFixed(1)},${(c - rr * Math.cos(a)).toFixed(1)}`;
+      p += `<path d="M${P(r0, a0)} L${P(r1, a0)} A${r1.toFixed(1)},${r1.toFixed(1)} 0 0 1 ${P(r1, a1)} L${P(r0, a1)} A${r0.toFixed(1)},${r0.toFixed(1)} 0 0 0 ${P(r0, a0)}Z" fill="${cols[j % cols.length]}"/>`; }); });
+    p += ["N", "E", "S", "W"].map((t, i) => `<text x="${c + (c - 8) * Math.sin(i * Math.PI / 2)}" y="${c - (c - 8) * Math.cos(i * Math.PI / 2) + 4}" text-anchor="middle" font-size="10" fill="var(--muted)">${t}</text>`).join("");
+    const bins = r.bins; p += bins.slice(0, -1).map((b, j) => `<rect x="${6 + j * 30}" y="${S + 6}" width="10" height="10" fill="${cols[j]}"/><text x="${18 + j * 30}" y="${S + 15}" font-size="8.5" fill="var(--muted)">${b}${j === bins.length - 2 ? "+" : ""}</text>`).join("");
+    return `<div><h5 class="bl-h5">${title} (${unit}, from)</h5>${p}</svg></div>`;
+  }
+  function scatterSVG(sc) {
+    const he = sc.hs_edges, te = sc.tp_edges, C = sc.count, tot = C.flat().reduce((a, b) => a + b, 0);
+    let ri = C.length - 1; while (ri > 0 && !C[ri].some((v) => v)) ri--;
+    let tj0 = 0, tj1 = te.length - 2; while (tj0 < tj1 && !C.some((r) => r[tj0])) tj0++; while (tj1 > tj0 && !C.some((r) => r[tj1])) tj1--;
+    const cw = Math.max(12, Math.min(26, 420 / (tj1 - tj0 + 1))), ch = Math.max(9, Math.min(18, 200 / (ri + 1))), L = 34, B = 26, W2 = L + cw * (tj1 - tj0 + 1) + 6, H2 = ch * (ri + 1) + B + 6;
+    let s = `<svg viewBox="0 0 ${W2} ${H2}" class="cl-sc" role="img" aria-label="Joint distribution of Hs and Tp">`;
+    for (let i = 0; i <= ri; i++) for (let j = tj0; j <= tj1; j++) { const v = C[i][j]; if (!v) continue; const f = v / tot, a = Math.min(1, 0.12 + Math.log10(1 + 2000 * f) / 3.3);
+      s += `<rect x="${L + (j - tj0) * cw}" y="${(ri - i) * ch + 4}" width="${cw - 1}" height="${ch - 1}" fill="rgba(46,107,160,${a.toFixed(3)})"><title>Hs ${he[i]}–${he[i + 1]} m, Tp ${te[j]}–${te[j + 1]} s: ${(100 * f).toFixed(2)} %</title></rect>`; }
+    for (let i = 0; i <= ri + 1; i += Math.max(1, Math.round((ri + 1) / 6))) s += `<text x="${L - 4}" y="${(ri + 1 - i) * ch + 7}" text-anchor="end" font-size="9" fill="var(--muted)">${he[i]}</text>`;
+    for (let j = tj0; j <= tj1 + 1; j += Math.max(1, Math.round((tj1 - tj0 + 1) / 8))) s += `<text x="${L + (j - tj0) * cw}" y="${H2 - 12}" text-anchor="middle" font-size="9" fill="var(--muted)">${te[j]}</text>`;
+    s += `<text x="${L + (W2 - L) / 2}" y="${H2 - 1}" text-anchor="middle" font-size="9.5" fill="var(--muted)">T<tspan dy="2" font-size="7">p</tspan><tspan dy="-2"> (s)</tspan></text><text x="9" y="${H2 / 2}" font-size="9.5" fill="var(--muted)" transform="rotate(-90 9 ${H2 / 2})" text-anchor="middle">Hs (m)</text></svg>`;
+    return `<div><h5 class="bl-h5">How often each sea state occurs</h5>${s}</div>`;
+  }
+  function mbClimateBelow(host, m) {
+    const c = m.climate; if (!c) return;
+    const el = document.createElement("div"); el.className = "wv-res cl-res";
+    el.innerHTML = `<div class="cl-grid">${scatterSVG(c.scatter)}${roseSVG(c.wave_rose, "Waves", "Hs m")}${roseSVG(c.wind_rose, "Wind", "m/s at 10 m")}</div>` +
+      `<div class="wv-charts"><div data-clc="mon"></div><div data-clc="amax"></div></div>` + (m.daily ? `<div data-clc="daily"></div>` : "");
+    host.append(el);
+    const W2 = Math.max(300, Math.min(460, (el.clientWidth || 900) / 2 - 12)), C = (k) => el.querySelector(`[data-clc="${k}"]`), mo = c.monthly.map((x) => x.month);
+    chart(C("mon"), { series: [{ x: mo, y: c.monthly.map((x) => x.hs), color: "--accent", width: 1.8 }, { x: mo, y: c.monthly.map((x) => x.wind / 5), color: "--warn", width: 1.4, dash: "4 3" }], xd: [1, 12], xticks: 12, xl: "month", yl: "Hs (m) · wind / 5 (m/s)", w: W2, h: 190, label: "Monthly mean wave height and wind", legend: [{ label: "Hs", color: "--accent" }, { label: "wind ÷ 5", color: "--warn", dash: "4 3" }] });
+    chart(C("amax"), { series: [{ x: c.annual_max.map((x) => x.year), y: c.annual_max.map((x) => x.hs), color: "--crit", points: true, r: 2.6 }], hlines: [{ y: c.hs50, label: "50-year", color: "--crit" }], xl: "year", yl: "largest Hs (m)", w: W2, h: 190, label: "Largest Hs each year" });
+    if (m.daily) { const d = m.daily, t0 = new Date(d.start + "T00:00:00Z").getTime(), yr = d.hs_max.map((_, i) => 1970 + (t0 / 86400000 + i) / 365.25);
+      chart(C("daily"), { series: [{ x: yr, y: d.hs_max, color: "--accent", width: 0.6 }, { x: yr, y: d.hs_mean, color: "--ink", width: 0.6 }], xl: "year", yl: "Hs (m)", w: Math.min(940, el.clientWidth || 900), h: 200, label: "Daily wave height over the whole record", legend: [{ label: "daily max", color: "--accent" }, { label: "daily mean", color: "--ink" }] }); }
+  }
 
   // ----- site builder -----
   function sbList() {

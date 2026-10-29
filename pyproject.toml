@@ -11,9 +11,13 @@ dependencies = ["numpy>=1.22", "matplotlib>=3.5"]
 
 [project.optional-dependencies]
 test = ["pytest"]
+sitedata = ["pillow"]          # reads the GeoTIFF bathymetry
 
 [tool.setuptools]
-packages = ["nls", "scour", "rna", "twin"]
+packages = ["nls", "scour", "rna", "twin", "sitedata"]
+
+[tool.setuptools.package-data]
+sitedata = ["wis_stations.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
