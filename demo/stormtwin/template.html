@@ -869,7 +869,7 @@ details.sec > * + * { margin-top: 8px; }
     const turbines = sn.turbines.map((t, i) => { const q = pool[donorOf[i]];
       return Object.assign({}, q, { spec: Object.assign({}, q.spec, { name: t.name, x: t.x, y: t.y, depth: t.depth, scour: 0, typeId: t.typeId }),
         z_mudline_weld: q.z_mudline_weld - (t.depth - q.spec.depth), donor: q.spec.name }); });
-    return Object.assign({}, dn, { meta, turbines, custom: { siteId: sn.siteId, rev: sn.rev || 0, donorFarm: dn.meta.farm.name, donorOf } });
+    return Object.assign({}, dn, { meta, turbines, custom: { siteId: sn.siteId, mapId: sn.mapId, rev: sn.rev || 0, donorFarm: dn.meta.farm.name, donorOf } });
   }
   LIVESITES.forEach((sn) => { try { ALL.push(siteFarm(sn)); } catch (e) { /* a stale snapshot is skipped */ } });
   const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (html) e.innerHTML = html; return e; };
@@ -1766,11 +1766,57 @@ details.sec > * + * { margin-top: 8px; }
           float foam = smoothstep(0.62, 0.95, vH / max(uHs, 0.1)) + smoothstep(0.32, 0.5, slope) * 0.6;
           col = mix(col, uFoam, clamp(foam, 0.0, 0.85));
           float dist = length(cameraPosition - vPos);
-          col = mix(col, uSky, smoothstep(uFogFar * 0.45, uFogFar, dist));
-          gl_FragColor = vec4(col, 1.0);
+          float fog = smoothstep(uFogFar * 0.45, uFogFar, dist);
+          col = mix(col, uSky, fog);
+          // see-through water: the seabed and piles show from above, the surface turns mirror-like at grazing angles
+          float alpha = clamp(0.4 + 0.5 * fres + 0.35 * clamp(foam, 0.0, 1.0), 0.0, 1.0);
+          gl_FragColor = vec4(col, mix(alpha, 1.0, max(fog, smoothstep(0.0, uFogFar * 0.5, dist) * 0.35)));
         }`,
     });
-    const ocean = new THREE.Mesh(geo, mat); scene.add(ocean);
+    mat.transparent = true;
+    const ocean = new THREE.Mesh(geo, mat); ocean.renderOrder = -1; scene.add(ocean);
+    // seabed: the farm's bathymetry, drawn at the turbines' scale so each pile meets it at its own depth
+    const bedMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+    bedMat.extensions = { derivatives: true };            // depth contours every 2 m, a fifth darker every 10 m
+    bedMat.onBeforeCompile = (sh) => {
+      sh.uniforms.uStep = { value: 2 * TS / U };
+      sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying float vY;").replace("#include <begin_vertex>", "#include <begin_vertex>\nvY = position.y;");
+      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying float vY; uniform float uStep;").replace("#include <dithering_fragment>",
+        "#include <dithering_fragment>\nfloat q = -vY / uStep; float ln = abs(fract(q - 0.5) - 0.5) / max(fwidth(q), 1e-4); float q5 = q / 5.0; float l5 = abs(fract(q5 - 0.5) - 0.5) / max(fwidth(q5), 1e-4);\ngl_FragColor.rgb *= mix(0.8, 1.0, clamp(ln, 0.0, 1.0)) * mix(0.62, 1.0, clamp(l5 * 0.7, 0.0, 1.0));");
+    };
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x6f6a62, roughness: 1, flatShading: true });
+    let bed = null;
+    function farmBathy() {
+      const ts = T.map((t) => t.spec);
+      let m = null, ox = 0, oy = 0;
+      if (D.custom) m = D.custom.mapId ? MB.map(D.custom.mapId) : null;
+      else { m = MB.map("map-" + D.meta.farm.id); ox = Math.min(...ts.map((t) => t.x)) - 2.5; oy = Math.min(...ts.map((t) => t.y)) - 2.5; }
+      const raw = (x, y) => {
+        if (m) { const u = x - ox, v = y - oy, cu = Math.min(m.W, Math.max(0, u)), cv = Math.min(m.H, Math.max(0, v)); return depthAt(m, cu, cv) + 0.8 * Math.hypot(u - cu, v - cv); }
+        let sw = 0, sd = 0; ts.forEach((t) => { const w = 1 / (0.15 + (x - t.x) ** 2 + (y - t.y) ** 2); sw += w; sd += w * t.depth; });
+        return sd / sw + 1.4 * Math.sin(2 * Math.PI * (x * 0.8 + y * 0.6) / 2.2);
+      };
+      const corr = ts.map((t) => t.depth - raw(t.x, t.y));             // each turbine sits at its own recorded depth
+      return (x, y) => { let d = raw(x, y), sw = 0, sc = 0; ts.forEach((t, i) => { const w = Math.exp(-((x - t.x) ** 2 + (y - t.y) ** 2) / 0.09); sw += w; sc += w * corr[i]; }); return Math.max(2, d + sc / Math.max(sw, 1)); };
+    }
+    function buildBed(size) {
+      if (bed) { scene.remove(bed); bed.geometry.dispose(); }
+      const N = 180, g = new THREE.PlaneGeometry(size, size, N, N); g.rotateX(-Math.PI / 2);
+      const P = g.attributes.position, col = new Float32Array(P.count * 3), f = farmBathy();
+      const dep = new Float32Array(P.count);
+      for (let i = 0; i < P.count; i++) dep[i] = f((P.getX(i) + center.x) * U / 1000, (P.getZ(i) + center.z) * U / 1000);
+      const srt = Array.from(dep).sort((a, b) => a - b), dLo = srt[Math.floor(0.03 * srt.length)], dHi = Math.max(srt[Math.floor(0.97 * srt.length)], dLo + 4);
+      const sand = new THREE.Color(0xe6d3a3), mid = new THREE.Color(0x9fae8e), deep = new THREE.Color(0x2f5d6e), c = new THREE.Color();
+      for (let i = 0; i < P.count; i++) {
+        const xk = (P.getX(i) + center.x) * U / 1000, yk = (P.getZ(i) + center.z) * U / 1000, d = dep[i], u = Math.min(1, Math.max(0, (d - dLo) / (dHi - dLo)));
+        P.setY(i, -d * TS / U);
+        const ripple = 0.06 * Math.sin(xk * 41 + yk * 23) * Math.sin(xk * 17 - yk * 37);
+        (u < 0.5 ? c.copy(sand).lerp(mid, u / 0.5) : c.copy(mid).lerp(deep, (u - 0.5) / 0.5)).multiplyScalar(0.94 + ripple);
+        col.set([c.r, c.g, c.b], 3 * i);
+      }
+      g.setAttribute("color", new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+      bed = new THREE.Mesh(g, bedMat); scene.add(bed);
+    }
     // wind streaks
     const NS = 260, streakPos = new Float32Array(NS * 6), streakSeed = [];
     const streakGeo = new THREE.BufferGeometry(); streakGeo.setAttribute("position", new THREE.BufferAttribute(streakPos, 3));
@@ -1800,8 +1846,10 @@ details.sec > * + * { margin-top: 8px; }
     function buildTurbine(t, i) {
       const m = metaFor(i), g = new THREE.Group();
       const zh = m.z_hub / U, R = m.rotor_D / 2 / U, rp = m.D_pile / 2 / U;
-      const T3 = TM.build(m, { white, blade: bladeMat, grey, yellow, dark: darkMat }, -6);
+      const T3 = TM.build(m, { white, blade: bladeMat, grey, yellow, dark: darkMat }, -(t.spec.depth + 3));
       T3.g.scale.setScalar(1 / U); g.add(T3.g);
+      const rD = m.Dz(-t.spec.depth) / 2, apron = new THREE.Mesh(new THREE.CylinderGeometry(rD * 2.4, rD * 3.6, 1.6, 14, 1), rockMat);
+      apron.position.y = -t.spec.depth + 0.3; T3.g.add(apron);
       const { yaw, rotor, nac, hub, blades, tower, tp, plat, pile, door } = T3;
       const az = DOOR_AZ * Math.PI / 180, rd = m.Dz(m.z_door) / 2;
       door.position.set(Math.sin(az) * rd, m.z_door, -Math.cos(az) * rd); door.rotation.y = -az;
@@ -1856,7 +1904,7 @@ details.sec > * + * { margin-top: 8px; }
       extent = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs), 200);
       turbines = T.map((t, i) => buildTurbine(t, i));
       const size = extent * 2.6 + 600; ocean.scale.set(size, 1, size);
-      uni.uFogFar.value = size * 0.55;
+      uni.uFogFar.value = size * 0.55; buildBed(size);
       sea(); recolour(); resetView(false);
     }
     // sea state -> wave components
@@ -5406,7 +5454,7 @@ details.sec > * + * { margin-top: 8px; }
     for (let i = 0; i < N_BUILTIN; i++) { const d = ALL[i], md = d.turbines.reduce((a, t) => a + t.spec.depth, 0) / d.turbines.length, sc = ((d.meta.turbine.rotor_D > 220) === big ? 0 : 1e3) + Math.abs(md - mean); if (sc < best) { best = sc; donor = i; } }
     const old = sbFarmIdx(ss);
     let name = ss.name; while (ALL.some((d, i) => i !== old && d.meta.farm.name === name)) name += " (site)";
-    const sn = { siteId: ss.id, name, donor, label, rev: Date.now(), sig: sbSig(ss), turbines: ss.turbines.map((t, i) => ({ name: t.name, typeId: t.typeId, x: t.x, y: t.y, depth: +ds[i].toFixed(2) })) };
+    const sn = { siteId: ss.id, mapId: ss.mapId, name, donor, label, rev: Date.now(), sig: sbSig(ss), turbines: ss.turbines.map((t, i) => ({ name: t.name, typeId: t.typeId, x: t.x, y: t.y, depth: +ds[i].toFixed(2) })) };
     const k = LIVESITES.findIndex((x) => x.siteId === ss.id); if (k >= 0) LIVESITES[k] = sn; else LIVESITES.push(sn);
     saveLiveSites();
     if (old >= 0) { const on = ALL[old].meta.farm.name; TT.clearFarm(on); if (LVD) delete LVD[on]; }
