@@ -91,3 +91,7 @@ A playable browser vertical slice is in `demo/windsim/`:
 - `sim.js`: the simulation core (no DOM; runs in Node and the browser). This is the part to port.
 - `game.js`: three.js scene and interface.
 - `balance_test.js`: plays whole games headlessly with reactive and twin-guided maintenance, to check the economy.
+
+## Parked ideas (from play-testing the first slice)
+- **Put the engineering back in the loop.** The slice skips the most fun part: designing and analysing the turbine and foundation. Bring the Turbine builder into the game, so the player sizes the pile and tower, runs the analyses and lives with the consequences (fatigue, frequency, cost).
+- **Skill trees for analysis fidelity.** Analyses start simple and unlock deeper models: hand calculations, then the beam and p-y model, then nonlinear p-y and PISA, then 3D soil FE; spectral fatigue, then time-domain aero-elastic, then full design-load-case sets. Better models narrow the uncertainty bands, which lowers contingency, cuts overdesign and makes the twin's predictions sharper.
