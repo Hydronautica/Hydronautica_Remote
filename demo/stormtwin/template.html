@@ -6128,7 +6128,7 @@ details.sec > * + * { margin-top: 8px; }
     if (mbView === "3d") mb3d(host.querySelector("[data-m3]"), m);
   }
   // ----- storm waves along a line: spatial NLS over the map's seabed (the same model as nls/variable_depth.py) -----
-  const WG = 9.81, WV = { Hs: null, Tp: null, gamma: 3.3, dur: 1200, seed: 1, nl: true, line: {}, res: {}, st: null };
+  const WG = 9.81, WV = { Hs: null, Tp: null, gamma: 3.3, dur: 1200, seed: 1, nl: true, spread: 30, line: {}, res: {}, st: null, hos: {} };
   function wvK(w, h) { let k = w * w / WG; if (k * h < 1) k = w / Math.sqrt(WG * h);
     for (let i = 0; i < 40; i++) { const th = Math.tanh(k * h), kn = k - (WG * k * th - w * w) / (WG * th + WG * k * h * (1 - th * th)); if (Math.abs(kn - k) < 1e-12 * k) return kn; k = kn; } return k; }
   function wvCg(k, h) { const kh = k * h; return Math.sqrt(WG * k * Math.tanh(kh)) / k / 2 * (1 + (kh > 20 ? 0 : 2 * kh / Math.sinh(2 * kh))); }
@@ -6228,11 +6228,15 @@ details.sec > * + * { margin-top: 8px; }
       `<details class="bl-more"><summary>More settings</summary>` + f("gamma", "Peak enhancement γ", "", 0.1) + f("dur", "Record length", "s", 60) + f("seed", "Random seed", "", 1) +
       `<label class="bl-f"><span>Nonlinear evolution</span><span class="bl-in"><input type="checkbox" data-wvnl${WV.nl ? " checked" : ""}></span></label>` +
       `<p class="cap">Spatial nonlinear Schrödinger model with exact linear dispersion and shoaling for every frequency, the finite-depth nonlinear term (switched off where kh &lt; 0.7, where it no longer applies) and a depth-limited breaking cap H &lt; 0.78 h. Normal incidence, no refraction. The Python version is nls/variable_depth.py.</p></details>` +
-      `<div class="bl-row"><button class="btn primary" type="button" data-wvrun>Run waves along the line</button><button class="btn" type="button" data-wvdef>Reset the line</button></div><p class="muted" data-wvmsg style="font-size:0.8rem"></p>`;
+      `<div class="bl-row"><button class="btn primary" type="button" data-wvrun>Run waves along the line</button><button class="btn" type="button" data-wvdef>Reset the line</button></div><p class="muted" data-wvmsg style="font-size:0.8rem"></p>` +
+      `<details class="bl-more"><summary>Whole map in HOS-Ocean (directional, with refraction)</summary><p class="cap">For short-crested seas over the whole map, where shoals can bend and focus the waves, export a case for HOS-Ocean, run it, and bring the results back here. The waves come from the direction of your line.</p>` +
+      f("spread", "Directional spreading ±", "°", 5) +
+      `<div class="bl-row"><button class="btn" type="button" data-hosx>Export case</button><label class="btn">Import results<input type="file" data-hosi accept=".json" hidden></label></div>` +
+      `<p class="cap">Then: <span class="mono">python -m nls.hos_ocean prepare hos_case.json run1</span>, run HOS-Ocean in run1, and <span class="mono">python -m nls.hos_ocean results run1</span> writes hos_results.json to import.</p></details>`;
   }
   function wvResults(host, m) {
     const r = WV.res[m.id], el = host.querySelector("[data-wres]"); if (!el) return;
-    if (!r || r.stamp !== wvStamp(m)) { el.innerHTML = ""; return; }
+    if (!r || r.stamp !== wvStamp(m)) { el.innerHTML = ""; wvHosView(host, m); return; }
     const st = r.st, km = st.map((q) => q.x / 1000), near = wvNear(m), crit = 1.363, bands = [];
     let b0 = null; st.forEach((q, i) => { const on = q.kh >= crit; if (on && b0 === null) b0 = km[i]; if ((!on || i === st.length - 1) && b0 !== null) { bands.push({ x0: b0, x1: km[i], color: "--accent-soft", opacity: 0.6 }); b0 = null; } });
     const vl = near.map((t) => ({ x: t.s, label: t.name, color: "--muted" })), vl0 = near.map((t) => ({ x: t.s, color: "--muted" }));
@@ -6262,11 +6266,31 @@ details.sec > * + * { margin-top: 8px; }
       saveFile("storm_waves_along_line.csv", `# ${m.name}; Hs ${r.o.Hs} m, Tp ${r.o.Tp} s, gamma ${r.o.gamma}, ${r.o.dur} s, seed ${r.o.seed}, ${r.o.nl ? "nonlinear" : "linear"}\n` + rows.join("\n") + `\n\n# surface at ${x2(q.x)} m\n` + ser.join("\n"), "text/csv");
     });
     function x2(v) { return v.toFixed(0); }
+    wvHosView(host, m);
+  }
+  function wvHosView(host, m) {
+    const el = host.querySelector("[data-wres]"), h = WV.hos[m.id]; if (!el || !h) return;
+    const box = document.createElement("div"); box.className = "wv-hos";
+    const pill = (v, lo, hi) => (v < lo ? "green" : v < hi ? "amber" : "red"), sel = Math.min(h.sel || 0, h.probes.length - 1), q = h.probes[sel];
+    box.innerHTML = `<div class="bl-hd2"><h3>HOS-Ocean at the turbines</h3><span class="muted" style="font-size:0.78rem">H<sub>s</sub> ${fmt(h.sea.Hs, 1)} m · T<sub>p</sub> ${fmt(h.sea.Tp, 1)} s · from ${fmt(h.sea.direction_from, 0)}° · spread ±${fmt(h.sea.spread, 0)}°</span></div>` +
+      `<div class="tbl-wrap"><table class="list"><thead><tr><th>Turbine</th><th class="r">Hs</th><th class="r">Largest wave</th><th class="r">Highest crest</th><th class="r">Kurtosis</th></tr></thead><tbody>${h.probes.map((p, i) => `<tr data-hsel="${i}" style="cursor:pointer${i === sel ? ";background:var(--accent-soft)" : ""}"><td>${p.name}</td><td class="r mono">${fmt(p.hs, 2)} m</td><td class="r mono">${fmt(p.hmax, 1)} m</td><td class="r mono">${fmt(p.crest, 1)} m</td><td class="r"><span class="pill ${pill(p.kurtosis, 3.3, 4)}">${fmt(p.kurtosis, 2)}</span></td></tr>`).join("")}</tbody></table></div>` +
+      `<h4 class="bl-h">Surface at ${q.name}</h4><div data-hoseta></div>`;
+    const old = el.querySelector(".wv-hos"); if (old) old.remove(); el.append(box);
+    if (q.t && q.t.length) chart(box.querySelector("[data-hoseta]"), { series: [{ x: q.t, y: q.eta, color: "--accent", width: 1 }], hlines: [{ y: 0 }], xl: "time (s)", yl: "surface (m)", w: Math.min(900, el.clientWidth || 900), h: 200, label: "HOS-Ocean surface elevation at " + q.name });
+    box.querySelectorAll("[data-hsel]").forEach((r) => r.addEventListener("click", () => { h.sel = +r.dataset.hsel; wvHosView(host, m); }));
   }
   function wvWire(host, m, cv, getTf, render) {
     host._wvRender = render;
     host.querySelectorAll("[data-wv]").forEach((x) => x.addEventListener("change", () => { const v = +x.value; if (isFinite(v)) WV[x.dataset.wv] = x.dataset.wv === "seed" ? Math.round(v) : Math.max(x.dataset.wv === "dur" ? 120 : 0.1, v); }));
     const nl = host.querySelector("[data-wvnl]"); if (nl) nl.addEventListener("change", () => { WV.nl = nl.checked; });
+    host.querySelector("[data-hosx]").addEventListener("click", () => {
+      const [[x0, y0], [x1, y1]] = wvLine(m), from = (Math.atan2(x1 - x0, -(y1 - y0)) * 180 / Math.PI + 540) % 360;
+      saveFile("hos_case.json", JSON.stringify({ name: m.name, W: m.W, H: m.H, nx: m.nx, ny: m.ny, depth: Array.from(m.depth, (v) => +v.toFixed(2)), turbines: wvTurbines(m).map((t) => ({ name: t.name, x: +t.x.toFixed(4), y: +t.y.toFixed(4) })),
+        sea: { Hs: WV.Hs, Tp: WV.Tp, gamma: WV.gamma, from: +from.toFixed(1), spread: WV.spread, duration: 100, seed: WV.seed } }), "application/json");
+    });
+    host.querySelector("[data-hosi]").addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (!f) return;
+      f.text().then((txt) => { const d = JSON.parse(txt); if (!d.probes || !d.probes.length) throw new Error("no probes in the file"); WV.hos[m.id] = d; if (!host.querySelector("[data-wres]").children.length) host.querySelector("[data-wres]").innerHTML = ""; wvHosView(host, m); })
+        .catch((err) => { host.querySelector("[data-wvmsg]").textContent = "Could not read the HOS-Ocean results: " + err.message; }); });
     host.querySelector("[data-wvdef]").addEventListener("click", () => { delete WV.line[m.id]; WV.st = null; render(); wvResults(host, m); });
     host.querySelector("[data-wvrun]").addEventListener("click", () => {
       const msg = host.querySelector("[data-wvmsg]"); msg.textContent = "Running…";

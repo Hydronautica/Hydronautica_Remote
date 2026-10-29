@@ -20,6 +20,7 @@ from .kinematics import (LinearWave, NLSWave, SpectralWaveField, frequency,
 from .newwave import NewWave, jonswap
 from .stream_function import StreamFunctionWave, breaking_height
 from .variable_depth import Transect, TransectResult, VariableDepthNLS, irregular_over_transect
+from .hos_ocean import HOSCase, SeaState
 
 __all__ = [
     "NLSSolver", "Result",
@@ -31,4 +32,5 @@ __all__ = [
     "LinearWave", "NLSWave", "SpectralWaveField", "frequency", "wave_height",
     "wavenumber", "NewWave", "jonswap", "StreamFunctionWave", "breaking_height",
     "Transect", "TransectResult", "VariableDepthNLS", "irregular_over_transect",
+    "HOSCase", "SeaState",
 ]
