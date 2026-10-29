@@ -231,6 +231,15 @@ button.tab { font: inherit; }
 .node .meta { flex: none; font-family: var(--font-data); font-size: 0.72rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
 .node .sd { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px var(--surface); }
 .node.farm-n .nm { font-weight: 600; }
+.pj-btn { display: inline-flex; gap: 6px; align-items: center; max-width: 220px; } .pj-btn .ico, .pj-btn svg { width: 15px; height: 15px; flex: none; } .pj-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pj-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex: none; }
+.pj-card { width: min(980px, 100%); height: auto; max-height: min(760px, 100%); } .pj-b { overflow: auto; padding: 14px 16px; }
+.pj-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; align-items: start; } .pj-grid .bl-f { grid-template-columns: 8rem minmax(0, 1fr); }
+.pj-vn { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.pj-vers { list-style: none; padding: 0; margin: 8px 0 0; max-height: 380px; overflow: auto; } .pj-vers li { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 0.82rem; }
+.pj-va { display: flex; gap: 4px; align-items: flex-start; } .pj-diff { list-style: none; padding: 0; margin: 4px 0; font-size: 0.76rem; } .pj-diff li { padding: 1px 0; }
+.cmp-tbl td, .cmp-tbl th { vertical-align: top; } .cmp-tbl td:first-child { color: var(--muted); max-width: 260px; } .cmp-sec td { font-family: var(--font-display); font-weight: 600; font-size: 0.92rem; color: var(--ink) !important; padding-top: 12px; border-bottom: 1px solid var(--line); }
+.cmp-best { background: var(--ok-soft); font-weight: 600; } .cmp-pick { gap: 8px; margin: 6px 0 10px; flex-wrap: wrap; }
 .gear { font-size: 1rem; line-height: 1; padding: 4px 8px; }
 .settings { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.4); display: grid; place-items: center; padding: 16px; }
 .set-card { width: min(920px, 100%); height: min(680px, 100%); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
@@ -662,6 +671,7 @@ details.sec > * + * { margin-top: 8px; }
     <div class="brand"><b>StormTwin</b></div>
     <nav class="crumbs" id="crumbs" aria-label="Location"></nav>
     <span class="badge">Demo · synthetic data</span>
+    <button class="btn pj-btn" type="button" id="proj-open" title="Save, open and version the project"></button>
     <button class="btn" type="button" id="bl-open" title="Build turbine types, seabed maps and site layouts">Builder</button>
     <button class="btn icon gear" type="button" id="set-open" aria-label="Settings" title="Settings"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.4"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg></button>
   </header>
@@ -794,9 +804,9 @@ details.sec > * + * { margin-top: 8px; }
           <div class="bl-acts"><button class="btn" type="button" id="bl-new">New from this</button><button class="btn" type="button" id="bl-del">Delete</button><button class="btn" type="button" id="bl-export">Export</button><label class="btn" style="text-align:center">Import<input type="file" id="bl-import" accept=".json,application/json" hidden></label></div>
         </nav>
         <div class="bl-main">
-          <div class="bl-tabs" role="tablist" aria-label="Builder sections"><button type="button" role="tab" data-btab="design" class="on" aria-selected="true">Design</button><button type="button" role="tab" data-btab="pile" aria-selected="false">Soil–pile 3D</button><button type="button" role="tab" data-btab="uls" aria-selected="false">ULS</button><button type="button" role="tab" data-btab="fat" aria-selected="false">Fatigue</button><button type="button" role="tab" data-btab="dt" aria-selected="false">Drivetrain</button><button type="button" role="tab" data-btab="sim" aria-selected="false">Simulate</button><button type="button" role="tab" data-btab="dlc" aria-selected="false">Load cases</button></div>
+          <div class="bl-tabs" role="tablist" aria-label="Builder sections"><button type="button" role="tab" data-btab="design" class="on" aria-selected="true">Design</button><button type="button" role="tab" data-btab="pile" aria-selected="false">Soil–pile 3D</button><button type="button" role="tab" data-btab="uls" aria-selected="false">ULS</button><button type="button" role="tab" data-btab="fat" aria-selected="false">Fatigue</button><button type="button" role="tab" data-btab="dt" aria-selected="false">Drivetrain</button><button type="button" role="tab" data-btab="sim" aria-selected="false">Simulate</button><button type="button" role="tab" data-btab="dlc" aria-selected="false">Load cases</button><button type="button" role="tab" data-btab="cmp" aria-selected="false">Compare</button></div>
           <div class="bl-pane" id="bl-pane-design"><div class="bl-cols"><div id="bl-form"></div><div class="bl-out" id="bl-out"></div></div><div class="panel" id="bl-farm"></div></div>
-          <div class="bl-pane" id="bl-pane-pile" hidden></div><div class="bl-pane" id="bl-pane-uls" hidden></div><div class="bl-pane" id="bl-pane-fat" hidden></div><div class="bl-pane" id="bl-pane-dt" hidden></div><div class="bl-pane" id="bl-pane-sim" hidden></div><div class="bl-pane" id="bl-pane-dlc" hidden></div>
+          <div class="bl-pane" id="bl-pane-pile" hidden></div><div class="bl-pane" id="bl-pane-uls" hidden></div><div class="bl-pane" id="bl-pane-fat" hidden></div><div class="bl-pane" id="bl-pane-dt" hidden></div><div class="bl-pane" id="bl-pane-sim" hidden></div><div class="bl-pane" id="bl-pane-dlc" hidden></div><div class="bl-pane" id="bl-pane-cmp" hidden></div>
         </div>
       </div>
       <div class="bl-body" id="bl-mode-map" hidden>
@@ -812,6 +822,9 @@ details.sec > * + * { margin-top: 8px; }
     </div>
   </div>
 
+  <div class="settings" id="proj" role="dialog" aria-modal="true" aria-labelledby="pj-title" hidden>
+    <div class="set-card pj-card"><div class="set-h"><h2 id="pj-title">Project</h2><button class="btn icon" type="button" id="pj-close" aria-label="Close project">×</button></div><div class="pj-b" id="pj-body"></div></div>
+  </div>
   <div class="settings" id="settings" role="dialog" aria-modal="true" aria-labelledby="set-title" hidden>
     <div class="set-card">
       <div class="set-h"><h2 id="set-title">Settings</h2><button class="btn icon" type="button" id="set-close" aria-label="Close settings">×</button></div>
@@ -4836,7 +4849,7 @@ details.sec > * + * { margin-top: 8px; }
     bTab = name;
     document.querySelectorAll("#builder [data-btab]").forEach((b) => { b.classList.toggle("on", b.dataset.btab === name); b.setAttribute("aria-selected", b.dataset.btab === name ? "true" : "false"); });
     document.querySelectorAll("#builder .bl-pane").forEach((p) => { p.hidden = p.id !== "bl-pane-" + name; });
-    if (name === "pile") pileView(); else if (name === "uls") ulsView(); else if (name === "fat") fatView(); else if (name === "dt") dtView(); else if (name === "sim") simView(); else if (name === "dlc") dlcView();
+    if (name === "pile") pileView(); else if (name === "uls") ulsView(); else if (name === "fat") fatView(); else if (name === "dt") dtView(); else if (name === "sim") simView(); else if (name === "dlc") dlcView(); else if (name === "cmp") cmpView();
     if (typeof bList === "function" && TT.get(bSel)) bList();
   }
   const stale = (r) => (r && r.key !== runKey() ? `<p class="hint bl-stale">The type or site has changed since this run. Run again to update.</p>` : "");
@@ -5240,6 +5253,56 @@ details.sec > * + * { margin-top: 8px; }
       chart(box.querySelector("[data-fch]"), { series: keysF.map(([k], i) => ({ x: Us, y: Us.map((u) => del(u, k)), color: ["--accent", "--warn", "--ok"][i], width: 2, points: false })), xl: "wind at hub (m/s)", yl: "DEL (MN·m)", h: 200, label: "Damage-equivalent load by wind bin", legend: keysF.map(([, l], i) => ({ label: l, color: ["--accent", "--warn", "--ok"][i] })) });
     } else box.innerHTML = h;
     box.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => { const d = DLC_DEFS.find((x) => x.id === b.dataset.open), p = peak(d, "MudM"); bShowTab("sim"); simView(Object.assign({}, p.run.inp, { T: Math.max(p.run.inp.T, 180), dt: 0.05, outDt: 0.1, nm: 4 })); }));
+  }
+  // ----- Compare: two to four turbine types side by side at the check position -----
+  let CMPSEL = null;
+  const CMP_COST = { steelMp: 2.6, steelTw: 3.1, wtgPerMW: 1.05, install: 2.4, omPerMW: 0.075, crf: 0.0858 };   // €M per kt, €M per MW, €M per turbine, per year; CRF for 7 % over 25 years
+  function cmpRow(ty) {
+    const r = bCompute(ty), v = bVerdicts(ty, r), d = r.d, m = TT.meta(ty), wA = DLCCFG.wA, wk = DLCCFG.wk;
+    let aep = 0; for (let U = 0.25; U < 30; U += 0.5) { const p = wk / wA * (U / wA) ** (wk - 1) * Math.exp(-((U / wA) ** wk)) * 0.5; aep += p * LIVE.power(U, m) * 8766; }
+    const steel = (r.mPile + r.mMp) / 1e6, tower = r.mTow / 1e6, capex = steel * CMP_COST.steelMp + tower * CMP_COST.steelTw + ty.rated_P * CMP_COST.wtgPerMW + CMP_COST.install;
+    const lcoe = (capex * CMP_COST.crf + ty.rated_P * CMP_COST.omPerMW) * 1e6 / Math.max(aep, 1);
+    const dlc = RUNS.get(ty.id + ":dlc"), gov = (k) => { if (!dlc || dlc.key !== TT.key(ty) + "@" + bSite) return null; const std = DLC_STD[dlc.input.std]; let best = 0; DLC_DEFS.forEach((df) => { if (df.cat === "F" || !dlc.result[df.id]) return; dlc.result[df.id].forEach((x) => { const s2 = x.stats[k]; best = Math.max(best, Math.max(Math.abs(s2.max), Math.abs(s2.min)) * std.psf[df.cat]); }); }); return best; };
+    const fit = r.dep + ty.z_interface + ty.embedment <= ty.L_mp + 1e-6;
+    return { ty, r, v, aep, capex, lcoe, steel, tower, govTB: gov("TwrBsM"), govMud: gov("MudM"), fit };
+  }
+  function cmpView() {
+    const host = document.getElementById("bl-pane-cmp"), all = TT.all(), t = T[bSite] || T[0];
+    if (!CMPSEL || !CMPSEL.every((id) => TT.get(id))) CMPSEL = [bSel].concat(all.map((x) => x.id).filter((id) => id !== bSel)).slice(0, 3);
+    const rows = CMPSEL.map((id) => cmpRow(TT.get(id)));
+    // row definitions: label, value text, number for ranking, better = "lo" | "hi" | null
+    const R = (lab, f, num, better, unit = "") => ({ lab, f, num, better, unit });
+    const sections = [
+      ["Rotor and energy", [R("Rated power", (x) => fmt(x.ty.rated_P, 1) + " MW", (x) => x.ty.rated_P, null), R("Rotor diameter · hub height", (x) => `${fmt(x.ty.rotor_D, 0)} m · +${fmt(x.ty.z_hub, 0)} m`, null, null),
+        R("Energy, free stream", (x) => fmt(x.aep / 1e3, 1) + " GWh/yr", (x) => x.aep, "hi"), R("Capacity factor", (x) => fmt(100 * x.aep / (x.ty.rated_P * 8766), 1) + " %", (x) => x.aep / x.ty.rated_P, "hi")]],
+      ["Structure at " + t.spec.name + ` (${fmt(t.spec.depth, 1)} m)`, [R("First natural frequency", (x) => fmt(x.r.mod.f1, 3) + " Hz", null, null), R("With soil ½× to 2×", (x) => `${fmt(x.r.lo.f1, 3)}–${fmt(x.r.hi.f1, 3)} Hz`, null, null),
+        R("Pile and monopile steel", (x) => fmt(x.steel * 1000, 0) + " t", null, null), R("Tower steel", (x) => fmt(x.tower * 1000, 0) + " t", null, null), R("All steel per MW", (x) => fmt((x.steel + x.tower) * 1000 / x.ty.rated_P, 0) + " t/MW", (x) => (x.steel + x.tower) / x.ty.rated_P, "lo"), R("Rotor-nacelle mass", (x) => fmt(x.r.d.m_rna / 1e3, 0) + " t", null, null),
+        R("Monopile long enough here", (x) => `<span class="pill ${x.fit ? "green" : "red"}">${x.fit ? "yes" : "no"}</span> ${fmt(x.ty.L_mp, 0)} m`, null, null)]],
+      ["Design checks (quick)", null],
+      ["Load cases (if run)", [R("Tower base, governing design moment", (x) => (x.govTB ? fmt(x.govTB, 0) + " MN·m" : `<button class="btn sm" data-cmprun="${x.ty.id}">Run load cases</button>`), (x) => x.govTB, "lo"),
+        R("Mudline, governing design moment", (x) => (x.govMud ? fmt(x.govMud, 0) + " MN·m" : "–"), (x) => x.govMud, "lo")]],
+      ["Cost (indicative)", [R("Capital cost per turbine", (x) => "€" + fmt(x.capex, 1) + " M", (x) => x.capex, "lo"), R("Cost per MW", (x) => "€" + fmt(x.capex / x.ty.rated_P, 2) + " M", (x) => x.capex / x.ty.rated_P, "lo"),
+        R("Levelised cost of energy", (x) => "€" + fmt(x.lcoe, 1) + "/MWh", (x) => x.lcoe, "lo")]],
+    ];
+    const best = (rd) => { if (!rd.num || !rd.better) return null; const vals = rows.map((x) => rd.num(x)); if (vals.some((v) => v === null || !isFinite(v))) return null; const b = rd.better === "lo" ? Math.min(...vals) : Math.max(...vals); return vals.map((v) => Math.abs(v - b) < 1e-9 * Math.max(1, Math.abs(b))); };
+    let body = "";
+    sections.forEach(([sec, rds]) => {
+      body += `<tr class="cmp-sec"><td colspan="${rows.length + 1}">${sec}</td></tr>`;
+      if (!rds) { rows[0].v.forEach((vr, i) => { body += `<tr><td>${vr[0]}</td>${rows.map((x) => `<td title="${String(x.v[i][1]).replace(/<[^>]+>/g, "").replace(/"/g, "&quot;")}">${x.v[i][2]}</td>`).join("")}</tr>`; }); return; }
+      rds.forEach((rd) => { const bb = best(rd); body += `<tr><td>${rd.lab}</td>${rows.map((x, i) => `<td class="mono${bb && bb[i] && rows.length > 1 ? " cmp-best" : ""}">${rd.f(x)}</td>`).join("")}</tr>`; });
+    });
+    host.innerHTML = `<div class="bl-hd2"><h3>Compare turbine types</h3><span class="row" style="gap:6px"><button class="btn sm" data-cmpcsv>Export CSV</button></span></div>` +
+      `<p class="cap">Side by side at ${t.spec.name} (${fmt(t.spec.depth, 1)} m; change it with "Check at"). Best value in each row is highlighted. Energy uses the site wind from the Load cases tab (Weibull A ${DLCCFG.wA} m/s, k ${DLCCFG.wk}) without wakes. Costs are indicative and cover the turbine, its foundation and installation only: no cables, substation, development or financing.</p>` +
+      `<div class="row cmp-pick">${[0, 1, 2, 3].map((i) => `<label class="sel">${i === 0 ? "Types" : ""}<select data-cmp="${i}"><option value="">${i < 2 ? "Choose…" : "(none)"}</option>${all.map((x) => `<option value="${x.id}"${CMPSEL[i] === x.id ? " selected" : ""}>${x.name}</option>`).join("")}</select></label>`).join("")}</div>` +
+      `<div class="tbl-wrap"><table class="list cmp-tbl"><thead><tr><th></th>${rows.map((x) => `<th>${x.ty.name}${x.ty.id === bSel ? ' <span class="pill">selected</span>' : ""}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>` +
+      `<p class="cap">Quick design checks come from the Design tab's static model (1.35 × rated thrust with the design wave); the load-case rows appear once a type's load cases have been run at this position.</p>`;
+    host.querySelectorAll("[data-cmp]").forEach((s2) => s2.addEventListener("change", () => { const ids = [...host.querySelectorAll("[data-cmp]")].map((x) => x.value).filter(Boolean); CMPSEL = [...new Set(ids)].slice(0, 4); if (!CMPSEL.length) CMPSEL = [bSel]; cmpView(); }));
+    host.querySelectorAll("[data-cmprun]").forEach((b) => b.addEventListener("click", () => { bSel = b.dataset.cmprun; bOpenSel(); bShowTab("dlc"); }));
+    host.querySelector("[data-cmpcsv]").addEventListener("click", () => {
+      const strip = (h) => String(h).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().replace(/"/g, "'"), lines = [["", ...rows.map((x) => x.ty.name)].map((c) => `"${c}"`).join(",")];
+      host.querySelectorAll(".cmp-tbl tbody tr").forEach((tr) => { lines.push([...tr.children].map((td) => `"${strip(td.innerHTML)}"`).join(",")); });
+      saveFile("turbine_type_comparison.csv", lines.join("\n"), "text/csv");
+    });
   }
   // ----- 3D soil-pile -----
   function pileView() {
@@ -6239,6 +6302,88 @@ details.sec > * + * { margin-top: 8px; }
     saveFile((s.name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "site") + "_layout.csv", rows.join("\n"), "text/csv"); });
   document.addEventListener("keydown", (e) => { if (bldEl.hidden || bMode !== "site" || !sbPick || !(e.key === "Delete" || e.key === "Backspace") || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
     const s = MB.site(sbSel); if (s.builtin) return; s.turbines = s.turbines.filter((t) => t.id !== sbPick); MB.saveSite(s); sbPick = null; sbOpen(); });
+  // ---------- projects: everything the user makes, saved as one file, with named versions ----------
+  // A project is the user's turbine types and farm assignments, maps and sites, site-farms and the simulation and
+  // load-case settings. Results are not stored: they are recomputed from these inputs.
+  const PROJ_KEYS = ["stormtwin-types-v1", "stormtwin-maps-v1", "stormtwin-livesites-v1", "stormtwin-sim-v1", "stormtwin-sim-v1-ch", "stormtwin-dlc-v1"];
+  const PROJ_META = "stormtwin-project-v1", PROJ_VERS = "stormtwin-versions-v1";
+  const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+  const projMeta = () => Object.assign({ name: "Untitled project", note: "", created: new Date().toISOString(), exportedHash: null, exportedAt: null }, lsGet(PROJ_META, {}));
+  const projData = () => { const d = {}; PROJ_KEYS.forEach((k) => { const v = lsGet(k, undefined); if (v !== undefined) d[k] = v; }); return d; };
+  const hashOf = (o) => { const s = JSON.stringify(o); let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16); };
+  function projParts(d) {                // the named things in a project, for summaries and differences
+    const ty = (d["stormtwin-types-v1"] || {}).types || [], mp = d["stormtwin-maps-v1"] || {};
+    return { "turbine type": Object.fromEntries(ty.map((x) => [x.id, x])), map: Object.fromEntries((mp.maps || []).map((x) => [x.id, x])), site: Object.fromEntries((mp.sites || []).map((x) => [x.id, x])),
+      "site-farm": Object.fromEntries((d["stormtwin-livesites-v1"] || []).map((x) => [x.siteId, x])), setting: { assign: (d["stormtwin-types-v1"] || {}).assign || {}, sim: d["stormtwin-sim-v1"] || {}, out: d["stormtwin-sim-v1-ch"] || [], dlc: d["stormtwin-dlc-v1"] || {} } };
+  }
+  function projSummary(d) { const p = projParts(d); return `${Object.keys(p["turbine type"]).length} turbine types · ${Object.keys(p.map).length} maps · ${Object.keys(p.site).length} sites · ${Object.keys(p["site-farm"]).length} site-farms`; }
+  function projDiff(a, b) {              // what changed going from a to b
+    const A = projParts(a), Bp = projParts(b), out = [];
+    for (const kind of ["turbine type", "map", "site", "site-farm"]) {
+      const x = A[kind], y = Bp[kind], nm = (o) => o.name || o.id || o.siteId;
+      Object.keys(y).forEach((id) => { if (!x[id]) out.push(["added", kind, nm(y[id])]); else if (JSON.stringify(x[id]) !== JSON.stringify(y[id])) out.push(["changed", kind, nm(y[id])]); });
+      Object.keys(x).forEach((id) => { if (!y[id]) out.push(["removed", kind, nm(x[id])]); });
+    }
+    const sa = A.setting, sb = Bp.setting;
+    if (JSON.stringify(sa.assign) !== JSON.stringify(sb.assign)) out.push(["changed", "setting", "turbine assignments in farms"]);
+    if (JSON.stringify(sa.sim) !== JSON.stringify(sb.sim) || JSON.stringify(sa.out) !== JSON.stringify(sb.out)) out.push(["changed", "setting", "simulation inputs or outputs"]);
+    if (JSON.stringify(sa.dlc) !== JSON.stringify(sb.dlc)) out.push(["changed", "setting", "load-case settings"]);
+    return out;
+  }
+  const projFile = (meta, data) => ({ format: "stormtwin-project", version: 1, name: meta.name, note: meta.note, created: meta.created, saved: new Date().toISOString(), summary: projSummary(data), data });
+  function projRestore(data, meta) {
+    PROJ_KEYS.forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* storage unavailable */ } });
+    Object.entries(data).forEach(([k, v]) => { if (PROJ_KEYS.includes(k)) lsSet(k, v); });
+    if (meta) lsSet(PROJ_META, Object.assign(projMeta(), meta));
+    location.reload();
+  }
+  const projEl = document.getElementById("proj"), projBtn = document.getElementById("proj-open");
+  const dirtyNow = () => { const m = projMeta(), h = hashOf(projData()), vs = lsGet(PROJ_VERS, []); return h !== m.exportedHash && !vs.some((v) => v.hash === h); };
+  function projChip() { const m = projMeta(); projBtn.innerHTML = `${ICO.portfolio}<span class="pj-n">${m.name}</span>${dirtyNow() ? '<span class="pj-dot" title="Changes not yet saved as a version or downloaded"></span>' : ""}`; }
+  setInterval(projChip, 8000);
+  const ago = (iso) => { if (!iso) return "never"; const s = (Date.now() - new Date(iso).getTime()) / 1000; return s < 90 ? "just now" : s < 5400 ? Math.round(s / 60) + " min ago" : s < 129600 ? Math.round(s / 3600) + " h ago" : new Date(iso).toLocaleDateString(); };
+  function projOpen() {
+    const m = projMeta(), data = projData(), vs = lsGet(PROJ_VERS, []), dirty = dirtyNow(), storageOK = lsSet("stormtwin-probe", 1);
+    const diffList = (ch) => ch.length ? `<ul class="pj-diff">${ch.map(([a, k, n]) => `<li class="${a}"><span class="pill ${a === "added" ? "green" : a === "removed" ? "red" : "amber"}">${a}</span> ${k}: ${n}</li>`).join("")}</ul>` : `<p class="cap">No differences.</p>`;
+    document.getElementById("pj-body").innerHTML =
+      (storageOK ? "" : `<p class="hint bl-ro">This browser is not keeping data for the page, so work is lost on reload. Download the project file to keep it.</p>`) +
+      `<div class="pj-grid"><div class="bl-g"><label class="bl-f"><span>Project name</span><span class="bl-in"><input type="text" data-pn value="${m.name.replace(/"/g, "&quot;")}"></span></label>` +
+      `<label class="bl-f pj-note"><span>Description</span><span class="bl-in"><input type="text" data-pd value="${(m.note || "").replace(/"/g, "&quot;")}" placeholder="What this project is for"></span></label>` +
+      `<p class="cap">${projSummary(data)}. Kept in this browser as you work; downloaded ${ago(m.exportedAt)}.${dirty ? ` <b style="color:var(--warn)">There are changes not yet saved as a version or downloaded.</b>` : ""}</p>` +
+      `<div class="row" style="gap:6px;margin-top:6px"><button class="btn bl-go" style="margin:0" data-pdl>Download project file</button><label class="btn">Open project file<input type="file" accept=".json" data-pup hidden></label><button class="btn" data-pnew>New empty project</button></div>` +
+      `<p class="cap">The file holds your turbine types, farm assignments, maps, sites, site-farms and the simulation and load-case settings. Results are recomputed when you open it. Opening a file replaces what is here, so save a version first.</p></div>` +
+      `<div class="bl-g"><div class="bl-hd2"><h3>Versions</h3><span class="muted" style="font-size:0.78rem">${vs.length} saved in this browser</span></div>` +
+      `<div class="row" style="gap:6px"><input type="text" class="pj-vn" data-vn placeholder="Version name, e.g. 'pile 10.5 m'" style="flex:1;min-width:140px"><button class="btn" data-vsave>Save a version</button></div>` +
+      `<ul class="pj-vers">${vs.slice().reverse().map((v) => { const ch = projDiff(v.data, data);
+        return `<li><div><b>${v.name}</b> <span class="muted">${new Date(v.t).toLocaleString()}</span><div class="muted" style="font-size:0.74rem">${v.summary}</div>` +
+          `<details><summary>${ch.length ? ch.length + " change" + (ch.length > 1 ? "s" : "") + " since" : "same as now"}</summary>${diffList(ch)}</details></div>` +
+          `<div class="pj-va"><button class="btn sm" data-vres="${v.id}">Restore</button><button class="btn sm" data-vdl="${v.id}">Download</button><button class="btn sm" data-vdel="${v.id}" aria-label="Delete version">×</button></div></li>`; }).join("")}</ul>` +
+      (vs.length ? "" : `<p class="cap">A version is a snapshot you can go back to: save one before trying a new design.</p>`) + `</div></div>`;
+    const b = document.getElementById("pj-body"), q = (s) => b.querySelector(s);
+    q("[data-pn]").addEventListener("change", (e) => { lsSet(PROJ_META, Object.assign(projMeta(), { name: e.target.value.trim() || "Untitled project" })); projChip(); });
+    q("[data-pd]").addEventListener("change", (e) => { lsSet(PROJ_META, Object.assign(projMeta(), { note: e.target.value })); });
+    q("[data-pdl]").addEventListener("click", () => { const mm = projMeta(), d = projData(); saveFile((mm.name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "project") + ".stormtwin.json", JSON.stringify(projFile(mm, d), null, 1), "application/json");
+      lsSet(PROJ_META, Object.assign(mm, { exportedHash: hashOf(d), exportedAt: new Date().toISOString() })); projChip(); projOpen(); });
+    q("[data-pup]").addEventListener("change", (e) => { const f = e.target.files[0]; if (!f) return;
+      f.text().then((txt) => { const v = JSON.parse(txt); if (v.format !== "stormtwin-project" || !v.data) throw new Error("not a StormTwin project file");
+        if (!confirm(`Open "${v.name}" (${v.summary})? It replaces the current project in this browser.`)) return;
+        projRestore(v.data, { name: v.name, note: v.note || "", created: v.created || new Date().toISOString(), exportedHash: hashOf(v.data), exportedAt: v.saved }); })
+        .catch((err) => { alert("Could not open that file: " + err.message); }); });
+    q("[data-pnew]").addEventListener("click", () => { if (!confirm("Start an empty project? Your types, maps, sites and settings here are cleared (versions stay).")) return; projRestore({}, { name: "Untitled project", note: "", created: new Date().toISOString(), exportedHash: null, exportedAt: null }); });
+    q("[data-vsave]").addEventListener("click", () => { const d = projData(), list = lsGet(PROJ_VERS, []), name = q("[data-vn]").value.trim() || `Version ${list.length + 1}`;
+      list.push({ id: uid(), name, t: Date.now(), summary: projSummary(d), hash: hashOf(d), data: d }); while (list.length > 25) list.shift();
+      if (!lsSet(PROJ_VERS, list)) alert("The browser's storage is full: download the project file, or delete old versions."); projChip(); projOpen(); });
+    b.querySelectorAll("[data-vres]").forEach((x) => x.addEventListener("click", () => { const v = lsGet(PROJ_VERS, []).find((y) => y.id === x.dataset.vres); if (v && confirm(`Restore "${v.name}"? Unsaved changes are lost unless you save a version first.`)) projRestore(v.data); }));
+    b.querySelectorAll("[data-vdl]").forEach((x) => x.addEventListener("click", () => { const v = lsGet(PROJ_VERS, []).find((y) => y.id === x.dataset.vdl), mm = projMeta(); if (v) saveFile(`${mm.name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_")}_${v.name.replace(/[^\w\- ]+/g, "").replace(/\s+/g, "_")}.stormtwin.json`, JSON.stringify(projFile(Object.assign({}, mm, { name: mm.name + " · " + v.name }), v.data), null, 1), "application/json"); }));
+    b.querySelectorAll("[data-vdel]").forEach((x) => x.addEventListener("click", () => { lsSet(PROJ_VERS, lsGet(PROJ_VERS, []).filter((y) => y.id !== x.dataset.vdel)); projChip(); projOpen(); }));
+    projEl.hidden = false;
+  }
+  projBtn.addEventListener("click", projOpen);
+  document.getElementById("pj-close").addEventListener("click", () => { projEl.hidden = true; });
+  projEl.addEventListener("click", (e) => { if (e.target === projEl) projEl.hidden = true; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !projEl.hidden) projEl.hidden = true; });
+  projChip();
   // ---------- settings ----------
   const setEl = document.getElementById("settings");
   function rulesTable() {
