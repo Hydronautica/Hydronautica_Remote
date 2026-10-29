@@ -4956,6 +4956,14 @@ details.sec > * + * { margin-top: 8px; }
   function simWaves(o, depth, rnd) {
     const comps = [];
     if (o.sea === "regular") { const w = 2 * Math.PI / o.Tw; comps.push({ w, a: o.H / 2, ph: 0, k: wnum(w, depth) }); }
+    else if (o.sea === "record" && o.rec && o.rec.eta && o.rec.eta.length > 8) {
+      // a recorded surface (e.g. HOS-Ocean at this turbine) as Fourier components, eta(t) = sum a cos(w t' + phi), t' from the record start;
+      // the run repeats the record if it is longer than it
+      const t = o.rec.t, e = o.rec.eta, N = e.length, dt = (t[N - 1] - t[0]) / (N - 1), mu = e.reduce((a, b) => a + b, 0) / N, all = [];
+      for (let n = 1; n < N / 2; n++) { const w = 2 * Math.PI * n / (N * dt); let re = 0, im = 0; for (let j = 0; j < N; j++) { const ph = w * j * dt; re += (e[j] - mu) * Math.cos(ph); im -= (e[j] - mu) * Math.sin(ph); }
+        all.push({ w, a: 2 * Math.hypot(re, im) / N, ph: -Math.atan2(im, re) }); }
+      all.sort((x, y) => y.a - x.a).slice(0, 150).forEach((c) => comps.push(Object.assign(c, { k: wnum(c.w, depth) })));
+    }
     else if (o.sea === "irregular" && o.Hs > 0) {
       const wp = 2 * Math.PI / o.Tp, N = 60, S = [];
       for (let i = 0; i < N; i++) { const w = wp * (0.55 + 2.6 * (i + 0.5) / N), sg = w < wp ? 0.07 : 0.09; S.push([w, w ** -5 * Math.exp(-1.25 * (wp / w) ** 4) * o.gamma ** Math.exp(-((w - wp) ** 2) / (2 * sg * sg * wp * wp))]); }
@@ -5071,6 +5079,12 @@ details.sec > * + * { margin-top: 8px; }
   const simKeep = () => { try { localStorage.setItem(SIMSTORE, JSON.stringify(SIMCFG)); localStorage.setItem(SIMSTORE + "-ch", JSON.stringify(SIMOUT)); } catch (e) { /* storage unavailable */ } };
   const sel2 = (k, lab, v, opts) => `<label class="bl-f"><span>${lab}</span><span class="bl-in"><select data-o="${k}">${opts.map(([a, b]) => `<option value="${a}"${String(v) === String(a) ? " selected" : ""}>${b}</option>`).join("")}</select></span></label>`;
   const WIND_MODELS = [["steady", "Steady (no turbulence)"], ["ntm", "Normal turbulence (NTM)"], ["etm", "Extreme turbulence (ETM)"], ["eog", "Extreme operating gust (EOG)"], ["ecd", "Extreme coherent gust with direction change (ECD)"], ["ewm1", "Extreme wind, 1-year (EWM)"], ["ewm50", "Extreme wind, 50-year (EWM)"]];
+  // recorded sea surfaces (HOS-Ocean probes at the turbines), shared by Simulate and the map's Storm waves panel
+  let SEAREC = null;
+  try { SEAREC = JSON.parse(localStorage.getItem("stormtwin-searec") || "null"); } catch (e) { /* storage unavailable */ }
+  function setSeaRec(d) { SEAREC = { name: d.name, sea: d.sea, probes: d.probes.filter((p) => p.t && p.eta).map((p) => ({ name: p.name, hs: p.hs, hmax: p.hmax, t: p.t, eta: p.eta })) };
+    try { localStorage.setItem("stormtwin-searec", JSON.stringify(SEAREC)); } catch (e) { /* storage unavailable or full */ } }
+  function seaRecProbe(o, t) { if (!SEAREC || !SEAREC.probes.length) return null; return SEAREC.probes.find((p) => p.name === o.recProbe) || SEAREC.probes.find((p) => p.name === t.spec.name) || SEAREC.probes[0]; }
   function simView(preset) {
     const host = document.getElementById("bl-pane-sim"), ty = TT.get(bSel), t = T[bSite] || T[0], r = RUNS.get(bSel + ":sim");
     if (preset) { SIMCFG = Object.assign({}, SIMCFG, preset); simKeep(); }
@@ -5084,7 +5098,11 @@ details.sec > * + * { margin-top: 8px; }
       sel2("cls", "Turbine class (V<sub>ref</sub>)", o.cls, [["I", "I (50 m/s)"], ["II", "II (42.5 m/s)"], ["III", "III (37.5 m/s)"]]) + sel2("turb", "Turbulence category", o.turb, [["A", "A (I<sub>ref</sub> 0.16)"], ["B", "B (0.14)"], ["C", "C (0.12)"]]) +
       `<div data-dep="gust"${/eog|ecd/.test(o.wind) ? "" : " hidden"}>` + numIn("tGust", "Gust starts at", o.tGust, "s", 5) + `</div>` +
       `<details class="bl-more"><summary>More wind settings</summary>` + numIn("TI", "Turbulence intensity override (0 = from the model)", o.TI, "%", 0.5) + numIn("alpha", "Shear exponent", o.alpha, "", 0.01) + numIn("yaw", "Yaw misalignment", o.yaw, "°", 1) + `</details></details>` +
-      `<details class="bl-more" open><summary>Waves and current</summary>` + sel2("sea", "Sea", o.sea, [["none", "Calm"], ["regular", "Regular wave"], ["irregular", "Irregular (JONSWAP)"]]) +
+      `<details class="bl-more" open><summary>Waves and current</summary>` + sel2("sea", "Sea", o.sea, [["none", "Calm"], ["regular", "Regular wave"], ["irregular", "Irregular (JONSWAP)"], ["record", "Recorded surface (HOS-Ocean)"]]) +
+      `<div data-dep="rec"${o.sea === "record" ? "" : " hidden"}>${(() => { const pr = seaRecProbe(o, t);
+        return (SEAREC ? `<label class="bl-f"><span>Record at</span><span class="bl-in"><select data-o="recProbe">${SEAREC.probes.map((p) => `<option value="${p.name}"${pr && pr.name === p.name ? " selected" : ""}>${p.name} · H<sub>s</sub> ${fmt(p.hs, 2)} m</option>`).join("")}</select></span></label>` +
+          `<p class="cap">${SEAREC.name}: ${SEAREC.sea ? `H<sub>s</sub> ${fmt(SEAREC.sea.Hs, 1)} m, T<sub>p</sub> ${fmt(SEAREC.sea.Tp, 1)} s, from ${fmt(SEAREC.sea.direction_from, 0)}°` : ""}${pr ? `, ${fmt(pr.t[pr.t.length - 1] - pr.t[0], 0)} s of record` : ""}. ${pr && t.spec.name === pr.name ? "This turbine's own probe." : "Pick the probe at this turbine."}</p>` : `<p class="cap">No record loaded yet.</p>`) +
+          `<label class="btn sm">Load HOS-Ocean results<input type="file" accept=".json" data-recload hidden></label>`; })()}</div>` +
       `<div data-dep="irr"${o.sea === "irregular" ? "" : " hidden"}>` + numIn("Hs", "H<sub>s</sub>", o.Hs, "m", 0.1) + numIn("Tp", "T<sub>p</sub>", o.Tp, "s", 0.1) + numIn("gamma", "Peak enhancement γ", o.gamma, "", 0.1) + `</div>` +
       `<div data-dep="reg"${o.sea === "regular" ? "" : " hidden"}>` + numIn("H", "Wave height", o.H, "m", 0.1) + numIn("Tw", "Wave period", o.Tw, "s", 0.1) + `</div>` +
       `<details class="bl-more"><summary>More sea settings</summary>` + numIn("waveDir", "Waves relative to wind", o.waveDir, "°", 5) + numIn("cur", "Surface current", o.cur, "m/s", 0.1) + numIn("surge", "Water level above MSL", o.surge, "m", 0.1) + `</details></details>` +
@@ -5096,18 +5114,21 @@ details.sec > * + * { margin-top: 8px; }
       `<div class="row" style="margin-top:8px"><button class="btn bl-go" type="button" data-run>Run simulation</button><button class="btn" type="button" data-cfgsave>Save settings</button><label class="btn">Load<input type="file" accept=".json" data-cfgload hidden></label></div>` +
       `<div class="bl-run"><div class="bl-prog"><i data-bar></i></div><p class="cap" data-msg></p></div></div><div class="bl-res" data-res>${r ? "" : `<p class="muted">Set the inputs and run. Results show as an animation, time series, statistics and an export.</p>`}</div></div>`;
     const dep = () => { const v = readO(host); host.querySelector('[data-dep="U"]').hidden = /ewm/.test(v.wind); host.querySelector('[data-dep="gust"]').hidden = !/eog|ecd/.test(v.wind);
-      host.querySelector('[data-dep="irr"]').hidden = v.sea !== "irregular"; host.querySelector('[data-dep="reg"]').hidden = v.sea !== "regular"; host.querySelector('[data-dep="ev"]').hidden = v.event === "none"; };
+      host.querySelector('[data-dep="irr"]').hidden = v.sea !== "irregular"; host.querySelector('[data-dep="reg"]').hidden = v.sea !== "regular"; host.querySelector('[data-dep="rec"]').hidden = v.sea !== "record"; host.querySelector('[data-dep="ev"]').hidden = v.event === "none"; };
     host.querySelectorAll("[data-o]").forEach((x) => x.addEventListener("change", () => { SIMCFG = Object.assign({}, SIMCFG, readO(host)); simKeep(); dep(); }));
     const chs = () => { SIMOUT = [...host.querySelectorAll("[data-ch]")].filter((x) => x.checked).map((x) => x.dataset.ch); host.querySelector("[data-nch]").textContent = SIMOUT.length + " channels"; simKeep(); };
     host.querySelectorAll("[data-ch]").forEach((x) => x.addEventListener("change", chs));
     host.querySelectorAll("[data-pre]").forEach((b) => b.addEventListener("click", () => { const p = SIM_PRESETS[b.dataset.pre]; host.querySelectorAll("[data-ch]").forEach((x) => { x.checked = p.includes(x.dataset.ch); }); chs(); }));
+    const rl = host.querySelector("[data-recload]"); if (rl) rl.addEventListener("change", (e) => { const f = e.target.files[0]; if (!f) return;
+      f.text().then((txt) => { const d = JSON.parse(txt); if (!d.probes || !d.probes.some((p) => p.eta)) throw new Error(); setSeaRec(d); SIMCFG.sea = "record"; simKeep(); simView(); }).catch(() => { host.querySelector("[data-msg]").textContent = "That is not a HOS-Ocean results file (python -m nls.hos_ocean results)."; }); });
     host.querySelector("[data-cfgsave]").addEventListener("click", () => saveFile("simulation_settings.json", JSON.stringify({ input: SIMCFG, outputs: SIMOUT }, null, 2), "application/json"));
     host.querySelector("[data-cfgload]").addEventListener("change", (e) => { const f = e.target.files[0]; if (!f) return; f.text().then((txt) => { const v = JSON.parse(txt); SIMCFG = Object.assign({}, SIM0, v.input || v); if (Array.isArray(v.outputs)) SIMOUT = v.outputs; simKeep(); simView(); }).catch(() => { host.querySelector("[data-msg]").textContent = "That file is not a settings file."; }); });
     host.querySelector("[data-run]").addEventListener("click", async (e) => {
       SIMCFG = Object.assign({}, SIMCFG, readO(host)); simKeep(); e.target.disabled = true; const bar = host.querySelector("[data-bar]"), msg = host.querySelector("[data-msg]");
       if (!SIMOUT.length) { msg.textContent = "Choose at least one output channel."; e.target.disabled = false; return; }
       msg.textContent = `Running ${SIMCFG.T} s at ${SIMCFG.dt} s steps…`;
-      const res = await SOLVERS.sim(TT.get(bSel), (T[bSite] || T[0]).spec.depth, SIMCFG, (p) => { bar.style.width = (100 * p).toFixed(0) + "%"; });
+      if (SIMCFG.sea === "record" && !seaRecProbe(SIMCFG, T[bSite] || T[0])) { msg.textContent = "Load a HOS-Ocean results file first."; e.target.disabled = false; return; }
+      const res = await SOLVERS.sim(TT.get(bSel), (T[bSite] || T[0]).spec.depth, SIMCFG.sea === "record" ? Object.assign({}, SIMCFG, { rec: seaRecProbe(SIMCFG, T[bSite] || T[0]) }) : SIMCFG, (p) => { bar.style.width = (100 * p).toFixed(0) + "%"; });
       bar.style.width = "100%"; msg.textContent = `Done in ${fmt(res.ms / 1000, 1)} s of compute: ${res.nOut} output steps, first frequencies ${res.f.slice(0, 2).map((f) => fmt(f, 3)).join(", ")} Hz.`;
       RUNS.set(bSel + ":sim", { key: runKey(), input: Object.assign({}, SIMCFG), result: res }); e.target.disabled = false; simResults(host);
     });
@@ -6341,7 +6362,7 @@ details.sec > * + * { margin-top: 8px; }
         sea: { Hs: WV.Hs, Tp: WV.Tp, gamma: WV.gamma, from: +from.toFixed(1), spread: WV.spread, duration: 100, seed: WV.seed } }), "application/json");
     });
     host.querySelector("[data-hosi]").addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (!f) return;
-      f.text().then((txt) => { const d = JSON.parse(txt); if (!d.probes || !d.probes.length) throw new Error("no probes in the file"); WV.hos[m.id] = d; if (!host.querySelector("[data-wres]").children.length) host.querySelector("[data-wres]").innerHTML = ""; wvHosView(host, m); })
+      f.text().then((txt) => { const d = JSON.parse(txt); if (!d.probes || !d.probes.length) throw new Error("no probes in the file"); WV.hos[m.id] = d; if (d.probes.some((p) => p.eta)) setSeaRec(d); if (!host.querySelector("[data-wres]").children.length) host.querySelector("[data-wres]").innerHTML = ""; wvHosView(host, m); })
         .catch((err) => { host.querySelector("[data-wvmsg]").textContent = "Could not read the HOS-Ocean results: " + err.message; }); });
     host.querySelector("[data-wvdef]").addEventListener("click", () => { delete WV.line[m.id]; WV.st = null; render(); wvResults(host, m); });
     host.querySelector("[data-wvrun]").addEventListener("click", () => {

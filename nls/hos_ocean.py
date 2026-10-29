@@ -118,6 +118,9 @@ class HOSCase:
     margin: float = 0.0              # extra metres of physical domain around the map
     bathy_spacing: float = None      # m; default: a quarter of the map cell or a peak wavelength / 8
     breaking: bool = True
+    breaking_threshold: float = 2.0  # Chalikov: surface curvature (in peak wavenumbers) above which breaking dissipates
+    outputs_per_period: float = 8.0  # probe and surface output rate (per peak period); 16+ for load time series
+    surface_output: bool = True      # 3d.dat with the whole free surface (large); probes are always written
     name: str = "StormTwin map"
 
     # ----- construction from StormTwin -----
@@ -226,7 +229,7 @@ class HOSCase:
         # invbeta_cos2: D(theta) ~ cos^2(pi theta / (2 beta)) for |theta| < beta; ~1 degree stands in for long-crested
         spread = (f"  spreading: invbeta_cos2\n  beta: {math.radians(max(s.spread, 1.0)):.6f} # radians\n")
         # Chalikov's curvature-based dissipation (the Barthelemy-Tian onset criterion is 2-D only in HOS-Ocean)
-        brk = ("wave breaking:\n  Chalikov:\n    diffusion strength: 0.001\n    curvature threshold: 2.0\n\n" if self.breaking else "")
+        brk = (f"wave breaking:\n  Chalikov:\n    diffusion strength: 0.001\n    curvature threshold: {self.breaking_threshold}\n\n" if self.breaking else "")
         return (
             f"# HOS-Ocean input written by nls.hos_ocean for {self.name}\n"
             f"# Frame: x along the mean wave travel direction ({(s.direction_from + 180) % 360:.1f} deg true), y to its left.\n"
@@ -282,9 +285,9 @@ class HOSCase:
             f"    right: {self.side_ramp}\n"
             f"    left: {self.side_ramp}\n\n"
             "output:\n"
-            "  frequency: 8.0 # per peak period\n"
+            f"  frequency: {self.outputs_per_period} # per peak period\n"
             "  free surface:\n"
-            "    physical space: true\n"
+            f"    physical space: {'true' if self.surface_output else 'false'}\n"
             "    modal space: false\n"
             "  probes:\n"
             f"    activate: {'true' if self.probes else 'false'}\n"
