@@ -292,6 +292,13 @@ button.tab { font: inherit; }
 .dr-h h2 { font-size: 1.5rem; }
 .drawer .tabs { display: flex; gap: 0; padding: 0 10px; background: var(--surface); border-bottom: 1px solid var(--line); overflow-x: auto; }
 .drawer .tabs button { font: inherit; font-size: 0.86rem; padding: 8px 10px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.pw .panel-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pw-rng button { font-size: 0.74rem; padding: 3px 8px; }
+.pw-now { display: grid; gap: 2px; margin-bottom: 4px; } .pw-big { font-size: 1.7rem; font-weight: 600; color: var(--ink); }
+.pw-bar { height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; margin-top: 4px; } .pw-bar i { display: block; height: 100%; background: var(--accent); transition: width 0.6s; }
+.pw-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin: 6px 0; }
+.pw-kpi div { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; } .pw-kpi .k { display: block; font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; } .pw-kpi .v { font-size: 0.9rem; }
+.pw-card b { color: var(--accent); } .vp-pw { margin: 0 6px 0 2px; white-space: nowrap; } .vp-pw b { font-size: 0.98rem; }
 .dr-sub { display: flex; gap: 4px; padding: 6px 14px 0; flex-wrap: wrap; }
 .dr-sub button { font: inherit; font-size: 0.78rem; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); cursor: pointer; }
 .dr-sub button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
@@ -721,6 +728,7 @@ details.sec > * + * { margin-top: 8px; }
 
       <!-- farm -->
       <div class="pane" id="pane-farm" hidden>
+        <div class="panel pw" id="farm-power"></div>
         <div class="panel"><div class="panel-b live" id="farm-live" style="padding-top:12px"></div></div>
         <div class="storm" id="storm"></div>
         <div class="panel"><div class="panel-h"><h3>Turbines</h3></div><div class="panel-b">
@@ -1000,7 +1008,8 @@ details.sec > * + * { margin-top: 8px; }
         `<span class="fn">${F.name}${d.custom ? ' <span class="tag-site">custom site</span>' : ""}</span><span class="fr">${regionText(d)} · ${d.turbines.length} × ${d.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}</span>` +
         `<span class="fc">${c.red ? `<span class="pill red">${c.red} act now</span>` : ""}${c.amber ? `<span class="pill amber">${c.amber} inspect</span>` : ""}<span class="pill green">${c.green} no action</span><span class="fr">${F.storm_name} ${F.storm_peak}</span></span>` +
         (d.history ? `<span class="lu">worst life used ${fmt(worst, 1)}% · design pace ${fmt(pace, 1)}%</span>` : "") +
-        `<span class="lu">${d.turbines.filter((t) => t.modal && t.modal.alarms.length).length} turbine(s) with frequency alarms</span>`);
+        `<span class="lu">${d.turbines.filter((t) => t.modal && t.modal.alarms.length).length} turbine(s) with frequency alarms</span>` +
+        (() => { const r = farmPower(d, LIVE.now(), farmMetas(d)); return `<span class="lu pw-card"><b class="mono">${fmt(r.P, 0)} MW</b> now of ${fmt(r.cap, 0)} MW · today ${fmtE(energySince(d, midnight(LIVE.now())))}</span>`; })());
       b.addEventListener("click", () => go({ type: "farm", farm: i }));
       host.append(b);
     });
@@ -1107,6 +1116,7 @@ details.sec > * + * { margin-top: 8px; }
       fr: document.getElementById("pane-frequency"), ev: document.getElementById("pane-event") };
     Object.values(P).forEach((p) => { p.innerHTML = ""; });
     const host = P.ov;
+    const pwp = el("div", { class: "panel pw" }); host.append(pwp); powerPanel(pwp, i);
     const hst = hotspotStatus(t);
     const head = el("div", { class: `dhead ${t.status}` });
     head.style.padding = "10px 14px";
@@ -1621,6 +1631,80 @@ details.sec > * + * { margin-top: 8px; }
     if (wakeMemo.size > 400) wakeMemo.clear();
     wakeMemo.set(key, out);
     return out;
+  }
+  // ---------- wind climate and power: a closed-form wind history per farm (weather systems, sea breeze, season) ----------
+  // so live power, the power history and every live channel share one wind. Demo stand-in for SCADA and a met mast.
+  const WIND_BASE = { A: 9.7, B: 9.0, C: 8.2 };
+  const vnoise = (x, seed) => { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f), h = (n) => { const v = Math.sin(n * 127.1 + seed * 311.7) * 43758.5453; return v - Math.floor(v); }; return (h(i) * (1 - u) + h(i + 1) * u) * 2 - 1; };
+  function windAt(d, t) {
+    const id = d.custom ? (ALL.find((x) => x.meta.farm.name === d.custom.donorFarm) || d).meta.farm.id : d.meta.farm.id, Ub = WIND_BASE[id] || 10;
+    const ph = id.charCodeAt(0) * 1.37 + (d.custom ? 0.9 : 0), day = 86400, doy = (t / day) % 365.25;
+    const f = 1 + 0.4 * Math.sin(2 * Math.PI * t / (4.3 * day) + ph) + 0.2 * Math.sin(2 * Math.PI * t / (1.7 * day) + 2.1 * ph) + 0.09 * Math.sin(2 * Math.PI * t / day + 0.5 + ph)
+      + 0.07 * Math.sin(2 * Math.PI * t / (9.1 * 3600) + 3 * ph) + 0.12 * vnoise(t / 10800, ph) + 0.07 * vnoise(t / 2700, ph + 5) + 0.04 * vnoise(t / 900, ph + 9);
+    const U = Math.max(0, Ub * f * (1 + 0.16 * Math.cos(2 * Math.PI * (doy - 15) / 365.25)));
+    const dir = (232 + 42 * Math.sin(2 * Math.PI * t / (5.9 * day) + ph) + 16 * Math.sin(2 * Math.PI * t / (1.3 * day) + 1.7 * ph) + 360) % 360;
+    return { U, dir, Ub };
+  }
+  // mean power of a farm at time t with Gaussian wakes; per turbine and in free stream (no wakes)
+  function farmPower(d, t, metas) {
+    const w = windAt(d, t), U = w.U, to = rad(w.dir + 180), fx = Math.sin(to), fz = -Math.cos(to), ts = d.turbines;
+    metas = metas || ts.map(() => d.meta.turbine);
+    const P = ts.map((tt, i) => ({ i, x: tt.spec.x * 1000, z: tt.spec.y * 1000 })); P.forEach((q) => { q.s = q.x * fx + q.z * fz; });
+    [...P].sort((a, b) => a.s - b.s).forEach((p) => { let sum = 0; const Dr = metas[p.i].rotor_D;
+      P.forEach((q) => { if (q.ct === undefined || q.s >= p.s - 1) return; sum += (WAKE_ROTOR * wakeDeficit(q.ct, p.s - q.s, Math.abs((p.x - q.x) * fz - (p.z - q.z) * fx), metas[q.i].rotor_D)) ** 2; });
+      p.u = U * (1 - Math.min(0.9, Math.sqrt(sum))); const m = metas[p.i], A = Math.PI * m.rotor_D ** 2 / 4;
+      p.ct = p.u < (m.cut_in || 3) || p.u > (m.cut_out || 25) ? 0.02 : Math.max(0.02, Math.min(0.92, thrust(p.u, m) / (0.5 * 1.225 * A * p.u * p.u))); });
+    const per = P.map((p) => LIVE.power(p.u, metas[p.i])), free = metas.map((m) => LIVE.power(U, m));
+    return { U, dir: w.dir, per, free, P: per.reduce((a, b) => a + b, 0), Pfree: free.reduce((a, b) => a + b, 0), cap: metas.reduce((a, m) => a + (m.rated_P || (m.rotor_D > 220 ? 15 : 10)), 0), u: P.map((p) => p.u) };
+  }
+  const farmMetas = (d) => (d === D ? T.map((t, i) => metaFor(i)) : d.turbines.map(() => d.meta.turbine));
+  // history of mean power over a window ending now: n samples, optionally for one turbine
+  function powerSeries(d, hours, n, ti, agg = 1) {     // n bins, each the mean of agg samples (long windows average out the gusts)
+    const metas = farmMetas(d), t1 = LIVE.now(), x = [], act = [], pot = [];
+    for (let k = 0; k <= n; k++) { let a = 0, b = 0;
+      for (let j = 0; j < agg; j++) { const tt = t1 - hours * 3600 * (1 - (k - 0.5 + (j + 0.5) / agg) / n), r = farmPower(d, Math.min(t1, tt), metas); a += ti === undefined ? r.P : r.per[ti]; b += ti === undefined ? r.Pfree : r.free[ti]; }
+      x.push(-hours * (1 - k / n)); act.push(a / agg); pot.push(b / agg); }
+    return { x, act, pot, metas };
+  }
+  function energySince(d, t0, ti) {               // MWh from t0 to now, 10-minute steps
+    const metas = farmMetas(d), t1 = LIVE.now(), n = Math.max(1, Math.round((t1 - t0) / 600)); let e = 0;
+    for (let k = 0; k < n; k++) { const r = farmPower(d, t0 + (k + 0.5) * (t1 - t0) / n, metas); e += (ti === undefined ? r.P : r.per[ti]) * (t1 - t0) / n / 3600; }
+    return e;
+  }
+  const midnight = (t) => { const dt = new Date(t * 1000); dt.setHours(0, 0, 0, 0); return dt.getTime() / 1000; };
+  const fmtE = (mwh) => (mwh >= 1000 ? fmt(mwh / 1000, mwh >= 1e5 ? 0 : 1) + " GWh" : fmt(mwh, 0) + " MWh");
+  // the power panel: farm (ti undefined) or one turbine
+  const PW_RANGES = [["6h", "6 h", 6, 72, 1], ["24h", "24 h", 24, 144, 1], ["7d", "7 days", 168, 168, 2], ["30d", "30 days", 720, 120, 6], ["1y", "12 months", 8766, 104, 28]];
+  let pwRange = "24h", PWT = null;
+  function powerPanel(host, ti) {
+    if (PWT) { clearInterval(PWT); PWT = null; }
+    const d = D, one = ti !== undefined;
+    host.innerHTML = `<div class="panel-h"><h3>Power${one ? "" : " output"}</h3><span class="seg pw-rng">${PW_RANGES.map(([k, l]) => `<button type="button" data-pr="${k}" class="${k === pwRange ? "on" : ""}">${l}</button>`).join("")}</span></div>` +
+      `<div class="panel-b"><div class="pw-now" data-pnow></div><div data-pch></div><div class="pw-kpi" data-pk></div>` +
+      `<div class="bl-row" style="justify-content:space-between"><span class="cap" style="margin:0" data-pcap>10-minute mean power from the wind at the hub with wakes (accent); dashed: what the ${one ? "turbine" : "farm"} would make without wakes. Shaded: energy lost to wakes.</span><button class="btn" type="button" data-pcsv>Export CSV</button></div></div>`;
+    const q = (k) => host.querySelector(k);
+    const now = () => {
+      if (!host.isConnected) { clearInterval(PWT); return; }
+      const r = farmPower(d, LIVE.now(), farmMetas(d)), P = one ? r.per[ti] : r.P, cap = one ? (farmMetas(d)[ti].rated_P || 15) : r.cap, today = energySince(d, midnight(LIVE.now()), ti);
+      q("[data-pnow]").innerHTML = `<div><span class="pw-big mono">${fmt(P, 1)}</span> <span class="muted">MW of ${fmt(cap, 0)} MW · ${fmt(100 * P / Math.max(cap, 1e-9), 0)} %</span></div>` +
+        `<div class="muted mono">wind ${fmt(one ? r.u[ti] : r.U, 1)} m/s from ${fmt(r.dir, 0)}° · today ${fmtE(today)}</div><div class="pw-bar"><i style="width:${Math.min(100, 100 * P / Math.max(cap, 1e-9))}%"></i></div>`;
+    };
+    const draw = () => {
+      const [, lab, hours, n, ag] = PW_RANGES.find((x) => x[0] === pwRange), sr = powerSeries(d, hours, n, ti, ag), days = hours > 48, sc = days ? 1 / 24 : 1, xs = sr.x.map((v) => v * sc);
+      const yAvg = hours >= 720, agg = (a) => a;
+      q("[data-pcap]").innerHTML = `${ag > 1 ? `Mean power over ${hours / n >= 24 ? fmt(hours / n / 24, 1) + "-day" : fmt(hours / n, 0) + "-hour"} periods` : "10-minute mean power"} from the wind at the hub with wakes (accent); dashed: what the ${one ? "turbine" : "farm"} would make without wakes. Shaded: energy lost to wakes.`;
+      chart(q("[data-pch]"), { series: [{ x: xs, y: agg(sr.pot), color: "--muted", width: 1.2, dash: "4 3" }, { x: xs, y: agg(sr.act), color: "--accent", width: yAvg ? 1 : 1.8 }],
+        areas: [{ x: xs, lo: sr.act, hi: sr.pot, color: "--warn", opacity: 0.22 }], xl: days ? "days (0 = now)" : "hours (0 = now)", yl: "power (MW)", h: 210, label: `Power over the last ${lab}`, yd: [0, Math.max(...sr.pot, 1) * 1.08] });
+      const dt = hours / n, E = sr.act.reduce((a, b) => a + b, 0) * dt - (sr.act[0] + sr.act[n]) * dt / 2, Ef = sr.pot.reduce((a, b) => a + b, 0) * dt - (sr.pot[0] + sr.pot[n]) * dt / 2;
+      const cap = one ? (sr.metas[ti].rated_P || 15) : sr.metas.reduce((a, m) => a + (m.rated_P || 15), 0), atRated = sr.act.filter((v) => v >= 0.98 * cap).length / sr.act.length;
+      q("[data-pk]").innerHTML = [["Energy", fmtE(E)], ["Capacity factor", fmt(100 * E / (cap * hours), 1) + " %"], ["Wake loss", fmt(100 * Math.max(0, 1 - E / Math.max(Ef, 1e-9)), 1) + " %"]].concat(ag > 1 ? [["Best period", fmt(Math.max(...sr.act), 1) + " MW mean"]] : [["Time at rated", fmt(100 * atRated, 0) + " %"], ["Peak", fmt(Math.max(...sr.act), 1) + " MW"]])
+        .map(([k, v]) => `<div><span class="k">${k}</span><span class="v mono">${v}</span></div>`).join("");
+      host._csv = () => { const t1 = LIVE.now(); return ["time_utc,power_MW,no_wake_power_MW"].concat(sr.x.map((h, k) => `${new Date((t1 + h * 3600) * 1000).toISOString()},${sr.act[k].toFixed(3)},${sr.pot[k].toFixed(3)}`)).join("\n"); };
+    };
+    host.querySelectorAll("[data-pr]").forEach((b) => b.addEventListener("click", () => { pwRange = b.dataset.pr; host.querySelectorAll("[data-pr]").forEach((x) => x.classList.toggle("on", x === b)); draw(); }));
+    q("[data-pcsv]").addEventListener("click", () => saveFile(`${(one ? T[ti].spec.name : d.meta.farm.name).replace(/[^\w\- ]+/g, "").replace(/\s+/g, "_")}_power_${pwRange}.csv`, host._csv(), "text/csv"));
+    now(); draw(); let k = 0;
+    PWT = setInterval(() => { now(); if (++k % 30 === 0) draw(); }, 2000);
   }
   const wiIds = ["hs", "tp", "wdir", "u", "udir", "dur", "clim"];
   const units = { hs: (v) => v.toFixed(1) + " m", tp: (v) => v.toFixed(1) + " s", wdir: (v) => v + "°", u: (v) => v.toFixed(1) + " m/s", udir: (v) => v + "°", dur: (v) => v + " h", clim: (v) => (v > 0 ? "+" : "") + v + "% Hs" };
@@ -2662,7 +2746,8 @@ details.sec > * + * { margin-top: 8px; }
     function cond(ti) {
       let c;
       if (SEA === "whatif") c = { Hs: WI.hs, Tp: WI.tp, wdir: WI.wdir, U: WI.u, udir: WI.udir, dur: 1, clim: 0 };
-      else { const hs = Math.min(3.2, Math.max(1.2, (D.history ? D.history.hs_mean : 1.5) * 1.5)); c = { Hs: +hs.toFixed(1), Tp: +(tpTyp(hs) + 0.6).toFixed(1), wdir: 245, U: [13.4, 11.2, 9.6][FI] || 12, udir: 232, dur: 1, clim: 0 }; }
+      else { const w = windAt(D, now()), hs0 = Math.min(3.2, Math.max(1.2, (D.history ? D.history.hs_mean : 1.5) * 1.5)), hs = Math.min(5, Math.max(0.6, hs0 * (w.U / w.Ub) ** 1.4));
+        c = { Hs: +hs.toFixed(1), Tp: +(tpTyp(hs) + 0.6).toFixed(1), wdir: Math.round((w.dir + 13) % 360), U: +w.U.toFixed(1), udir: Math.round(w.dir), dur: 1, clim: 0 }; }
       if (ti === undefined) return c;
       const p = wakeField(c.U, c.udir).P[ti];
       return Object.assign({}, c, { Ufree: c.U, U: p.u, def: p.def });
@@ -3942,7 +4027,7 @@ details.sec > * + * { margin-top: 8px; }
         ti.innerHTML += `<div class="site-note">${ICO.farm}<span>Custom site from the builder. Layout, water depths and turbine types are yours; the storm replay, screening and service history are carried over from the ${D.custom.donorFarm} turbines of the nearest depth.</span><button type="button" class="btn" data-editsite>Edit the site</button></div>`;
         ti.querySelector("[data-editsite]").addEventListener("click", () => { sbSel = D.custom.siteId; sbPick = null; openBuilder(); bShowMode("site"); });
       }
-      drawStorm(); drawList(-1); farmHistory(); showPane("farm"); farmLive(document.getElementById("farm-live"));
+      drawStorm(); drawList(-1); farmHistory(); showPane("farm"); farmLive(document.getElementById("farm-live")); powerPanel(document.getElementById("farm-power"));
     } else if (NAV.type === "turbine") {
       const t = T[NAV.t];
       ey.innerHTML = `${F.name} · <button type="button" class="ey-type" title="Change this turbine's type">${TT.typeOf(NAV.t).name}</button>`; ey.querySelector(".ey-type").addEventListener("click", () => openBuilder(NAV.t)); ti.innerHTML = t.spec.name + ` <span class="pill ${t.status}">${statusText[t.status]}</span>`;
@@ -4059,10 +4144,13 @@ details.sec > * + * { margin-top: 8px; }
     const F = D.meta.farm, c = { red: 0, amber: 0, green: 0 }; T.forEach((t) => c[t.status]++);
     const lc = LIVE.cond(), md = { live: "Live", whatif: "What-if", storm: "Storm replay" }[SEA];
     let wl = "";
-    if (SEA !== "storm") { const W = wakeField(lc.U, lc.udir); let a = 0, b = 0; W.P.forEach((p, i) => { const mi = metaFor(i); a += LIVE.power(p.u, mi); b += LIVE.power(lc.U, mi); }); wl = b > 0 ? ` · wake loss ${fmt(100 * Math.max(0, 1 - a / b), 1)}%` : " · turbines idling"; }
-    document.getElementById("vp-farm").innerHTML = `<b>${F.name}</b>${SEA === "live" ? '<span class="live-dot"></span>' : ""}<span class="muted">${md} · H<sub>s</sub> ${fmt(SEA === "storm" ? Math.max(...T.map((t) => t.Hs)) : lc.Hs, 1)} m · wind ${fmt(SEA === "storm" ? 32 : lc.U, 1)} m/s from ${SEA === "storm" ? 260 : lc.udir}°${wl}</span>` +
+    if (SEA !== "storm") { const W = wakeField(lc.U, lc.udir); let a = 0, b = 0, cap = 0; W.P.forEach((p, i) => { const mi = metaFor(i); a += LIVE.power(p.u, mi); b += LIVE.power(lc.U, mi); cap += mi.rated_P || 15; });
+      wl = (b > 0 ? ` · wake loss ${fmt(100 * Math.max(0, 1 - a / b), 1)}%` : " · turbines idling") + ` · <b class="mono" title="farm power now">${fmt(a, 0)} MW</b> <span class="muted">of ${fmt(cap, 0)} MW</span>`; }
+    const pw = wl.includes(" MW") ? wl.slice(wl.indexOf(" · <b")) : ""; wl = pw ? wl.slice(0, wl.indexOf(" · <b")) : wl;
+    document.getElementById("vp-farm").innerHTML = `<b>${F.name}</b>${SEA === "live" ? '<span class="live-dot"></span>' : ""}${pw ? `<span class="vp-pw">${pw.replace(" · ", "")}</span>` : ""}<span class="muted">${md} · H<sub>s</sub> ${fmt(SEA === "storm" ? Math.max(...T.map((t) => t.Hs)) : lc.Hs, 1)} m · wind ${fmt(SEA === "storm" ? 32 : lc.U, 1)} m/s from ${SEA === "storm" ? 260 : lc.udir}°${wl}</span>` +
       (c.red ? `<span class="pill red">${c.red} act now</span>` : "") + (c.amber ? `<span class="pill amber">${c.amber} inspect</span>` : "") + `<span class="pill green">${c.green} ok</span>`;
   }
+  setInterval(() => { if (SEA === "live") farmChip(); }, 10000);      // the wind drifts; keep the farm's power current
   function renderAll() {
     farmChip();
     if (S3) S3.theme();
