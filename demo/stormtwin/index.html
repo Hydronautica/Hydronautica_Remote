@@ -474,6 +474,11 @@ details.sec > * + * { margin-top: 8px; }
 .mb-pal button.on { border-color: var(--accent); background: var(--accent-soft); }
 .mb-pal i { width: 14px; height: 14px; border-radius: 3px; flex: none; }
 .sb-pal { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; font-size: 0.78rem; }
+.sb-go { background: var(--accent); border-color: var(--accent); color: #fff; }
+.sb-farm .bl-row { flex-wrap: wrap; gap: 6px; } .sb-farm .btn svg { width: 14px; height: 14px; vertical-align: -2px; }
+.tag-site { display: inline-block; font: 600 0.62rem/1.4 var(--font-mono, monospace); text-transform: uppercase; letter-spacing: 0.04em; padding: 0 5px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); vertical-align: 1px; }
+.site-note { display: flex; gap: 8px; align-items: center; margin-top: 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--accent-soft); font-family: var(--font-body); font-size: 0.8rem; font-weight: 400; line-height: 1.35; }
+.site-note svg { width: 16px; height: 16px; flex: none; color: var(--accent); } .site-note .btn { margin-left: auto; flex: none; }
 .sb-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); cursor: grab; font-size: 0.78rem; user-select: none; }
 .sb-chip:hover { border-color: var(--accent); color: var(--accent); }
 .sb-canvas canvas { cursor: default; }
@@ -843,11 +848,30 @@ details.sec > * + * { margin-top: 8px; }
 (function () {
   const ALL = JSON.parse(document.getElementById("data").textContent).farms;
   let FI = 0, D = ALL[0], T = D.turbines;
+  const FK = () => D.meta.farm.id + (D.custom ? "." + D.custom.rev : "");      // cache key of the open farm
   let S3 = null;                                   // 3D scene (null when WebGL is unavailable)
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const statusVar = { red: "--crit", amber: "--warn", green: "--ok", rbi: "--accent" };
   const statusText = { red: "Act now", amber: "Inspect", green: "No action", rbi: "Update RBI" };
   const fmt = (v, d = 1) => (v === null || v === undefined || !isFinite(v)) ? "–" : Number(v).toFixed(d);
+  // Sites from the builder opened as farms. The layout, water depths and turbine types are the site's; the storm
+  // replay, screening results and service history come from the built-in farm turbine of the nearest water depth.
+  const N_BUILTIN = ALL.length, LIVESITES_KEY = "stormtwin-livesites-v1";
+  let LIVESITES = [];
+  try { const v = JSON.parse(localStorage.getItem(LIVESITES_KEY) || "[]"); if (Array.isArray(v)) LIVESITES = v.filter((x) => x && Array.isArray(x.turbines) && x.turbines.length); } catch (e) { /* storage unavailable */ }
+  const saveLiveSites = () => { try { localStorage.setItem(LIVESITES_KEY, JSON.stringify(LIVESITES)); } catch (e) { /* storage unavailable or full */ } };
+  function siteFarm(sn) {
+    const dn = ALL[Math.min(Math.max(0, sn.donor | 0), N_BUILTIN - 1)], pool = dn.turbines, ds = sn.turbines.map((t) => t.depth);
+    const donorOf = sn.turbines.map((t) => pool.reduce((b, q, i) => (Math.abs(q.spec.depth - t.depth) < Math.abs(pool[b].spec.depth - t.depth) ? i : b), 0));
+    const farm = Object.assign({}, dn.meta.farm, { id: "S" + sn.siteId, name: sn.name, region: `Custom site, ${fmt(Math.min(...ds), 0)}–${fmt(Math.max(...ds), 0)} m`,
+      storm_name: dn.meta.farm.storm_name, donor: dn.meta.farm.name });
+    const meta = Object.assign({}, dn.meta, { farm, turbine: Object.assign({}, dn.meta.turbine, { label: sn.label || dn.meta.turbine.label }) });
+    const turbines = sn.turbines.map((t, i) => { const q = pool[donorOf[i]];
+      return Object.assign({}, q, { spec: Object.assign({}, q.spec, { name: t.name, x: t.x, y: t.y, depth: t.depth, scour: 0, typeId: t.typeId }),
+        z_mudline_weld: q.z_mudline_weld - (t.depth - q.spec.depth), donor: q.spec.name }); });
+    return Object.assign({}, dn, { meta, turbines, custom: { siteId: sn.siteId, rev: sn.rev || 0, donorFarm: dn.meta.farm.name, donorOf } });
+  }
+  LIVESITES.forEach((sn) => { try { ALL.push(siteFarm(sn)); } catch (e) { /* a stale snapshot is skipped */ } });
   const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (html) e.innerHTML = html; return e; };
   const NS = "http://www.w3.org/2000/svg";
   const svg = (tag, attrs = {}) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
@@ -928,7 +952,7 @@ details.sec > * + * { margin-top: 8px; }
         d.turbines.forEach((t) => { if (t.history) HOTS.forEach((k) => { worst = Math.max(worst, t.history.hot[k].total); }); });
       }
       const b = el("button", { class: "farmcard" + (i === FI ? " on" : ""), type: "button" },
-        `<span class="fn">${F.name}</span><span class="fr">${F.region} · ${d.turbines.length} × ${d.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}</span>` +
+        `<span class="fn">${F.name}${d.custom ? ' <span class="tag-site">custom site</span>' : ""}</span><span class="fr">${F.region} · ${d.turbines.length} × ${d.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}</span>` +
         `<span class="fc">${c.red ? `<span class="pill red">${c.red} act now</span>` : ""}${c.amber ? `<span class="pill amber">${c.amber} inspect</span>` : ""}<span class="pill green">${c.green} no action</span><span class="fr">${F.storm_name} ${F.storm_peak}</span></span>` +
         (d.history ? `<span class="lu">worst life used ${fmt(worst, 1)}% · design pace ${fmt(pace, 1)}%</span>` : "") +
         `<span class="lu">${d.turbines.filter((t) => t.modal && t.modal.alarms.length).length} turbine(s) with frequency alarms</span>`);
@@ -1456,7 +1480,7 @@ details.sec > * + * { margin-top: 8px; }
   // wake at a turbine for wind from `dir` at free-stream U: added turbulence factor (same models as the builder) and speed deficit
   const WAKECFG = { model: "frandsen", k: 0.04 }, wakeTIMemo = new Map();
   function wakeAt(ti, dir, U) {
-    const key = FI + ":" + WAKECFG.model + ":" + WAKECFG.k + ":" + Math.round(dir) + ":" + U.toFixed(1);
+    const key = FK() + ":" + WAKECFG.model + ":" + WAKECFG.k + ":" + Math.round(dir) + ":" + U.toFixed(1);
     if (!wakeTIMemo.has(key)) {
       const I0 = 0.05 + 0.4 / Math.max(U, 2), Ct = operating(U) ? ctOf(U) : 0.05, F = wakeTIField(WAKECFG, dir, Math.max(U, 0.5), I0, Ct, D.meta.turbine.rotor_D, T.map((t) => [t.spec.x * 1000, t.spec.y * 1000]));
       const W = wakeField(U, dir); if (wakeTIMemo.size > 600) wakeTIMemo.clear();
@@ -1542,7 +1566,7 @@ details.sec > * + * { margin-top: 8px; }
   }
   const wakeMemo = new Map();
   function wakeField(U, from) {                     // effective hub wind per turbine for free stream U from `from`
-    const key = FI + ":" + U.toFixed(2) + ":" + from;
+    const key = FK() + ":" + U.toFixed(2) + ":" + from;
     if (wakeMemo.has(key)) return wakeMemo.get(key);
     const Dr = D.meta.turbine.rotor_D, to = rad(from + 180), fx = Math.sin(to), fz = -Math.cos(to);
     const P = T.map((t, i) => ({ i, x: t.spec.x * 1000, z: t.spec.y * 1000 }));
@@ -2365,7 +2389,7 @@ details.sec > * + * { margin-top: 8px; }
     const all = () => BUILTIN.concat(store.types);
     const get = (id) => all().find((t) => t.id === id);
     const farmDefault = () => (D.meta.turbine.rotor_D > 220 ? "asbuilt-15" : "asbuilt-10");
-    const typeOf = (ti) => get((store.assign[D.meta.farm.name] || {})[T[ti].spec.name]) || get(farmDefault());
+    const typeOf = (ti) => get((store.assign[D.meta.farm.name] || {})[T[ti].spec.name]) || get(T[ti].spec.typeId) || get(farmDefault());
     const ver = new Map();               // bumps when a type is edited, so caches keyed on it refresh
     const key = (ty) => ty.id + "#" + (ver.get(ty.id) || 0);
     function derived(ty) {
@@ -2389,7 +2413,7 @@ details.sec > * + * { margin-top: 8px; }
     const gmCache = new WeakMap(), gm = (ty) => { if (!gmCache.has(ty)) gmCache.set(ty, TFE.geom(ty)); return gmCache.get(ty); };
     function f1Ratio(ty) {
       const ab = get(farmDefault()); if (ty.id === ab.id) return 1;
-      const dep = T.reduce((s, t) => s + t.spec.depth, 0) / T.length, k = key(ty) + "@" + FI;
+      const dep = T.reduce((s, t) => s + t.spec.depth, 0) / T.length, k = key(ty) + "@" + FK();
       if (!ratioCache.has(k)) ratioCache.set(k, TFE.modal(TFE.build(ty, dep, 0), 1, 1).f1 / TFE.modal(TFE.build(ab, dep, 0), 1, 1).f1);
       return ratioCache.get(k);
     }
@@ -2403,7 +2427,8 @@ details.sec > * + * { margin-top: 8px; }
     }
     function assign(ti, id) { const f = D.meta.farm.name; store.assign[f] = store.assign[f] || {}; store.assign[f][T[ti].spec.name] = id; changed(); }
     const isAsBuilt = (ti) => typeOf(ti).id === farmDefault();
-    return { all, get, typeOf, meta, derived, f1Ratio, norm, key, upsert, remove, assign, isAsBuilt, farmDefault, onChange: (f) => listeners.push(f), raw: () => store };
+    const clearFarm = (name) => { if (store.assign[name]) { delete store.assign[name]; changed(); } };
+    return { all, get, typeOf, meta, derived, f1Ratio, norm, key, upsert, remove, assign, isAsBuilt, farmDefault, clearFarm, onChange: (f) => listeners.push(f), raw: () => store };
   })();
   const metaFor = (ti) => TT.meta(TT.typeOf(ti));
   // ---------- turbine meshes, in metres: shared by the farm view and the builder ----------
@@ -2515,7 +2540,7 @@ details.sec > * + * { margin-top: 8px; }
       return U < ci || U > co ? 0 : Pr * Math.min(1, ((U - ci) / (m.rated_U - ci)) ** 3);
     }
     function model(ti) {
-      const c = cond(ti), key = FI + ":" + ti + ":" + TT.key(TT.typeOf(ti)) + ":" + [c.Hs, c.Tp, c.wdir, c.U.toFixed(2), c.udir].join(",");
+      const c = cond(ti), key = FK() + ":" + ti + ":" + TT.key(TT.typeOf(ti)) + ":" + [c.Hs, c.Tp, c.wdir, c.U.toFixed(2), c.udir].join(",");
       if (cache.has(key)) return cache.get(key);
       if (cache.size > 300) cache.clear();
       const t = T[ti], m = metaFor(ti), r = rng(1000 + FI * 97);
@@ -2880,7 +2905,7 @@ details.sec > * + * { margin-top: 8px; }
   // per-turbine closed-form turbulence the rotor sees blade by blade (seeded, so all views agree)
   const rnaGen = new Map();
   function rnaTurb(ti) {
-    const key = FI + ":" + ti; if (rnaGen.has(key)) return rnaGen.get(key);
+    const key = FK() + ":" + ti; if (rnaGen.has(key)) return rnaGen.get(key);
     let s = 7919 + FI * 131 + ti * 17; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
     const band = (fc, bw, sd) => { const c = []; for (let i = 0; i < 12; i++) c.push([2 * Math.PI * Math.max(0.003, fc + bw * (2 * rnd() - 1)), 2 * Math.PI * rnd()]); const k = sd * Math.sqrt(2 / 12); return (t) => { let a = 0; for (const [w, p] of c) a += Math.cos(w * t + p); return a * k; }; };
     const g = { a: band(0.02, 0.02, 1), b: band(0.02, 0.02, 1), own: [0, 1, 2].map(() => band(0.25, 0.2, 1)), lat: band(0.02, 0.02, 1), mp: [0, 1, 2].map(() => band(0.2, 0.15, 1)), q: band(0.02, 0.02, 1), ay: band(0.5, 0.3, 1) };
@@ -3185,12 +3210,20 @@ details.sec > * + * { margin-top: 8px; }
   // first natural frequency. Every few seconds the last two minutes are re-sampled backwards
   // (forward filter, backward sample) to give damage distributions at the hot spots.
   let LVD = null;
-  function liveFarm() { if (!LVD) LVD = JSON.parse(document.getElementById("livedata").textContent); return LVD[D.meta.farm.name]; }
+  function liveFarm() {
+    if (!LVD) LVD = JSON.parse(document.getElementById("livedata").textContent);
+    const nm = D.meta.farm.name;
+    if (!LVD[nm] && D.custom) {                      // the donor farm's live data, moved to this site's depths
+      const src = LVD[D.custom.donorFarm];
+      LVD[nm] = Object.assign({}, src, { turbines: T.map((t, i) => Object.assign({}, src.turbines[D.custom.donorOf[i]], { name: t.spec.name, depth: t.spec.depth, scour: 0 })) });
+    }
+    return LVD[nm];
+  }
   const structCache = new Map();
-  const structKey = (ti) => FI + ":" + ti + ":" + TT.key(TT.typeOf(ti));
+  const structKey = (ti) => FK() + ":" + ti + ":" + TT.key(TT.typeOf(ti));
   function turbStruct(ti) {
     const key = structKey(ti); if (structCache.has(key)) return structCache.get(key);
-    if (!TT.isAsBuilt(ti)) { const S = typeStruct(ti); structCache.set(key, S); return S; }
+    if (!TT.isAsBuilt(ti) || D.custom) { const S = typeStruct(ti); structCache.set(key, S); return S; }
     const F = liveFarm(), tt = F.turbines[ti], n = tt.z.length, nzc = tt.zc.length, ng = F.grid.length, ne = F.n_est, np = F.n_plant;
     const f32 = (s) => Float64Array.from(b64(s, Float32Array));
     const S = Object.assign({}, tt, { n, nzc, ng, ne, np, grid: F.grid, hot: F.hot,
@@ -3697,7 +3730,7 @@ details.sec > * + * { margin-top: 8px; }
     const farms = () => ALL.map((d, fi) => {
       const c = { red: 0, amber: 0 }; d.turbines.forEach((t) => { if (c[t.status] !== undefined) c[t.status]++; });
       const n = { type: "farm", farm: fi };
-      return [`f${fi}`, { name: d.meta.farm.name, ic: ICO.farm, cls: "farm-n", nav: n, on: isOn(n),
+      return [`f${fi}`, { name: d.meta.farm.name + (d.custom ? ' <span class="tag-site">site</span>' : ""), ic: ICO.farm, cls: "farm-n", nav: n, on: isOn(n),
         meta: (c.red ? `<span class="sd" style="background:var(--crit)"></span>${c.red}` : "") + (c.amber ? `<span class="sd" style="background:var(--warn)"></span>${c.amber}` : "") + (!c.red && !c.amber ? `<span class="sd" style="background:var(--ok)"></span>` : ""),
         kids: () => d.turbines.map((t, ti) => {
           const n2 = { type: "turbine", farm: fi, t: ti };
@@ -3755,6 +3788,10 @@ details.sec > * + * { margin-top: 8px; }
     } else if (NAV.type === "farm") {
       ey.textContent = `${F.region} · ${T.length} × ${D.meta.turbine.label} · since ${F.commissioned.slice(0, 4)}`;
       ti.innerHTML = `${F.name}<div class="muted" style="font-family:var(--font-body);font-size:0.86rem;font-weight:400;margin-top:2px">After the ${F.storm_name.toLowerCase()} of ${F.storm_peak}</div>`;
+      if (D.custom) {
+        ti.innerHTML += `<div class="site-note">${ICO.farm}<span>Custom site from the builder. Layout, water depths and turbine types are yours; the storm replay, screening and service history are carried over from the ${D.custom.donorFarm} turbines of the nearest depth.</span><button type="button" class="btn" data-editsite>Edit the site</button></div>`;
+        ti.querySelector("[data-editsite]").addEventListener("click", () => { sbSel = D.custom.siteId; sbPick = null; openBuilder(); bShowMode("site"); });
+      }
       drawStorm(); drawList(-1); farmHistory(); showPane("farm"); farmLive(document.getElementById("farm-live"));
     } else if (NAV.type === "turbine") {
       const t = T[NAV.t];
@@ -5005,7 +5042,7 @@ details.sec > * + * { margin-top: 8px; }
     let builtins = null;
     function makeBuiltins() {
       builtins = { maps: [], sites: [] };
-      ALL.forEach((d, fi) => {
+      ALL.slice(0, N_BUILTIN).forEach((d, fi) => {
         const ts = d.turbines.map((t) => t.spec), xs = ts.map((t) => t.x), ys = ts.map((t) => t.y), x0 = Math.min(...xs) - 2.5, y0 = Math.min(...ys) - 2.5, W = Math.max(...xs) - x0 + 2.5, H = Math.max(...ys) - y0 + 2.5;
         const m = blank(d.meta.farm.name + " (from the farm)", +W.toFixed(1), +H.toFixed(1), 40); m.id = "map-" + d.meta.farm.id; m.builtin = true;
         m.meta = Object.assign({}, META0, { hs: d.history ? d.history.hs_mean : 1.6, windDir: 232, waveDir: 245 });
@@ -5297,7 +5334,7 @@ details.sec > * + * { margin-top: 8px; }
       if (!drag) return; const t = s.turbines.find((q) => q.id === drag.id); t.x = +Math.min(m.W, Math.max(0, x)).toFixed(3); t.y = +Math.min(m.H, Math.max(0, y)).toFixed(3); drag.moved = true; draw(); });
     const up2 = () => { if (drag && drag.moved) { MB.saveSite(MB.site(sbSel)); drag = null; sbOpen(); } drag = null; };
     cv.addEventListener("pointerup", up2); cv.addEventListener("pointercancel", up2);
-    host.querySelector("[data-sn]").addEventListener("change", (e) => { const ss = sbEditable(); ss.name = e.target.value.trim() || "Unnamed site"; MB.saveSite(ss); sbList(); });
+    host.querySelector("[data-sn]").addEventListener("change", (e) => { const ss = sbEditable(); ss.name = e.target.value.trim() || "Unnamed site"; MB.saveSite(ss); sbList(); sbSide(); });
     host.querySelector("[data-smap]").addEventListener("change", (e) => { const ss = sbEditable(); ss.mapId = e.target.value; MB.saveSite(ss); sbOpen(); });
     host.querySelector("[data-swk]").addEventListener("change", (e) => { sbShowWake = e.target.checked; draw(); });
     host.querySelector("[data-ssoil]").addEventListener("change", (e) => { sbShowSoil = e.target.checked; draw(); });
@@ -5317,8 +5354,14 @@ details.sec > * + * { margin-top: 8px; }
           kv([["Position", `${fmt(t.x, 2)}, ${fmt(t.y, 2)} km`], ["Water depth", fmt(ck.d, 1) + " m"], ["Soil", SOIL_PROFILES[soilIdx(m, t.x, t.y)][0]], ["Nearest turbine", isFinite(ck.nn) ? fmt(ck.nn, 1) + " D" : "–"], ["Rotor · hub", `${fmt(ty.rotor_D, 0)} m · +${fmt(ty.z_hub, 0)} m`]]) +
           (ck.list.length ? `<ul class="sb-ck">${ck.list.map(([c, txt]) => `<li class="${c}">${txt}</li>`).join("")}</ul>` : `<p class="cap" style="color:var(--ok)">No issues at this position.</p>`) +
           `<div class="bl-row"><button class="btn" type="button" data-topen>Open the type in the turbine builder</button><button class="btn" type="button" data-tdel>Remove</button></div><hr class="sb-hr">`; }
-      html += `<h4 class="bl-h"${t ? "" : ' style="margin-top:0"'}>Site</h4><div data-sum><p class="muted">Computing the energy yield…</p></div>`;
+      html += `<h4 class="bl-h"${t ? "" : ' style="margin-top:0"'}>Site</h4><div class="sb-farm" data-sfarm>${sbFarmHTML(ss)}</div><div data-sum><p class="muted">Computing the energy yield…</p></div>`;
       side.innerHTML = html;
+      side.querySelectorAll("[data-sfa]").forEach((b) => b.addEventListener("click", () => {
+        const a = b.dataset.sfa;
+        if (a === "open") sbToFarm(MB.site(sbSel), m);
+        else if (a === "go") { bldEl.hidden = true; go({ type: "farm", farm: sbFarmIdx(ss) }); }
+        else if (a === "remove") { sbRemoveFarm(ss.id); sbSide(); }
+      }));
       if (t) {
         side.querySelector("[data-tn]").addEventListener("change", (e) => { const s2 = sbEditable(), q = s2.turbines.find((x) => x.name === t.name) || s2.turbines.find((x) => x.id === t.id); q.name = e.target.value.trim() || q.name; MB.saveSite(s2); sbOpen(); });
         side.querySelector("[data-tty]").addEventListener("change", (e) => { const s2 = sbEditable(), q = s2.turbines.find((x) => x.name === t.name); q.typeId = e.target.value; MB.saveSite(s2); sbPick = q.id; sbOpen(); });
@@ -5337,10 +5380,54 @@ details.sec > * + * { margin-top: 8px; }
       }, 60);
     }
   }
+  // ---- a site as a live farm in the explorer ----
+  const sbSig = (ss) => JSON.stringify([ss.name, ss.mapId, ss.turbines.map((t) => [t.name, t.typeId, t.x, t.y])]);
+  function sbFarmIdx(ss) {
+    if (ss.builtin) return ALL.findIndex((d, i) => i < N_BUILTIN && "site-" + d.meta.farm.id === ss.id);
+    return ALL.findIndex((d) => d.custom && d.custom.siteId === ss.id);
+  }
+  function sbFarmHTML(ss) {
+    const i = sbFarmIdx(ss);
+    if (ss.builtin) return `<div class="bl-row"><button class="btn" type="button" data-sfa="go">${ICO.farm} Show the farm in StormTwin</button></div>`;
+    if (!ss.turbines.length) return `<p class="cap">Place turbines, then open the site as a farm in StormTwin.</p>`;
+    if (i < 0) return `<div class="bl-row"><button class="btn sb-go" type="button" data-sfa="open">${ICO.farm} Open as a farm in StormTwin</button></div>` +
+      `<p class="cap">Adds the site to the explorer with live views, what-if conditions with wakes, the whole-turbine filter and fatigue. Your layout, depths and turbine types are used; the storm replay and service history come from the built-in farm turbine of the nearest depth.</p>`;
+    const sn = LIVESITES.find((x) => x.siteId === ss.id), stale = !sn || sn.sig !== sbSig(ss);
+    return `<div class="bl-row"><button class="btn" type="button" data-sfa="go">${ICO.farm} Go to the farm</button>` +
+      `<button class="btn${stale ? " sb-go" : ""}" type="button" data-sfa="open">Update the farm</button><button class="btn" type="button" data-sfa="remove">Remove from StormTwin</button></div>` +
+      `<p class="cap">${stale ? "The site has changed since it was opened. Update the farm to bring the changes across." : `In the explorer as <b>${ALL[i].meta.farm.name}</b>, storm and history from ${ALL[i].custom.donorFarm}.`}</p>`;
+  }
+  function sbToFarm(ss, m) {
+    const tys = ss.turbines.map((t) => TT.get(t.typeId) || TT.get(TT.farmDefault())), ds = ss.turbines.map((t) => depthAt(m, t.x, t.y)), mean = ds.reduce((a, b) => a + b, 0) / ds.length;
+    const big = tys.filter((ty) => ty.rotor_D > 220).length * 2 >= tys.length, cnt = {};
+    tys.forEach((ty) => { cnt[ty.name] = (cnt[ty.name] || 0) + 1; });
+    const label = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0].replace(/ \(as built\)$/, "") + (Object.keys(cnt).length > 1 ? " (mixed)" : "");
+    let donor = 0, best = Infinity;                 // same turbine class first, then the closest mean depth
+    for (let i = 0; i < N_BUILTIN; i++) { const d = ALL[i], md = d.turbines.reduce((a, t) => a + t.spec.depth, 0) / d.turbines.length, sc = ((d.meta.turbine.rotor_D > 220) === big ? 0 : 1e3) + Math.abs(md - mean); if (sc < best) { best = sc; donor = i; } }
+    const old = sbFarmIdx(ss);
+    let name = ss.name; while (ALL.some((d, i) => i !== old && d.meta.farm.name === name)) name += " (site)";
+    const sn = { siteId: ss.id, name, donor, label, rev: Date.now(), sig: sbSig(ss), turbines: ss.turbines.map((t, i) => ({ name: t.name, typeId: t.typeId, x: t.x, y: t.y, depth: +ds[i].toFixed(2) })) };
+    const k = LIVESITES.findIndex((x) => x.siteId === ss.id); if (k >= 0) LIVESITES[k] = sn; else LIVESITES.push(sn);
+    saveLiveSites();
+    if (old >= 0) { const on = ALL[old].meta.farm.name; TT.clearFarm(on); if (LVD) delete LVD[on]; }
+    TT.clearFarm(name); if (LVD) delete LVD[name];
+    const f = siteFarm(sn); if (old >= 0) ALL[old] = f; else ALL.push(f);
+    const idx = sbFarmIdx(ss); if (idx === FI) FI = -1;             // reload the open farm
+    bldEl.hidden = true; go({ type: "farm", farm: idx });
+  }
+  function sbRemoveFarm(siteId) {
+    const i = ALL.findIndex((d) => d.custom && d.custom.siteId === siteId); LIVESITES = LIVESITES.filter((x) => x.siteId !== siteId); saveLiveSites();
+    if (i < 0) return;
+    const nm = ALL[i].meta.farm.name, wasOpen = i === FI; TT.clearFarm(nm); if (LVD) delete LVD[nm];
+    const keep = D; ALL.splice(i, 1);
+    if (wasOpen) { FI = -1; loadFarm(0); NAV = { type: "portfolio" }; } else { FI = ALL.indexOf(keep); if (NAV.farm !== undefined) NAV.farm = FI; }
+    expanded.forEach((k) => { if (/^f\d/.test(k)) expanded.delete(k); });
+    drawTree(); drawCrumbs(); drawDrawer();
+  }
   let sbShowWake = false, sbShowSoil = false;
   document.getElementById("sb-new").addEventListener("click", () => { const s = { id: uid(), name: "New site", mapId: mbSel && MB.map(mbSel) ? mbSel : MB.maps()[0].id, turbines: [] }; MB.saveSite(s); sbSel = s.id; sbPick = null; sbOpen(); });
   document.getElementById("sb-dup").addEventListener("click", () => { const s = clone(MB.site(sbSel)); s.id = uid(); s.builtin = false; s.name = s.name.replace(/ \(as built\)$/, "") + " (copy)"; s.turbines.forEach((t) => { t.id = uid(); }); MB.saveSite(s); sbSel = s.id; sbOpen(); });
-  document.getElementById("sb-del").addEventListener("click", () => { const s = MB.site(sbSel); if (!s || s.builtin) return; MB.removeSite(s.id); sbSel = null; sbOpen(); });
+  document.getElementById("sb-del").addEventListener("click", () => { const s = MB.site(sbSel); if (!s || s.builtin) return; sbRemoveFarm(s.id); MB.removeSite(s.id); sbSel = null; sbOpen(); });
   document.getElementById("sb-export").addEventListener("click", () => { const s = clone(MB.site(sbSel)), m = MB.map(s.mapId); delete s.builtin;
     const rows = ["name,type,x_km,y_km,depth_m"].concat(s.turbines.map((t) => `${t.name},${(TT.get(t.typeId) || {}).name || t.typeId},${t.x},${t.y},${fmt(depthAt(m, t.x, t.y), 2)}`));
     saveFile((s.name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "site") + "_layout.csv", rows.join("\n"), "text/csv"); });
