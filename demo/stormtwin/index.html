@@ -520,6 +520,9 @@ details.sec > * + * { margin-top: 8px; }
 .mb-canvas canvas { width: 100%; display: block; border-radius: 8px; cursor: crosshair; touch-action: none; }
 .mb-canvas .bl-3dp { height: 460px; }
 .mb-side { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.ff-ffat { display: grid; grid-template-columns: minmax(240px, 340px) 1fr; gap: 12px; margin-top: 8px; align-items: start; }
+.ff-farmmap { width: 100%; height: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+@media (max-width: 720px) { .ff-ffat { grid-template-columns: 1fr; } }
 .ff-yaw { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 4px 8px; font-size: 0.8rem; }
 .ff-yaw label { display: flex; align-items: center; gap: 4px; } .ff-yaw input { width: 3.4rem; }
 .ff-key i { display: inline-block; width: 90px; height: 8px; border-radius: 4px; vertical-align: middle; margin-right: 4px; }
@@ -1111,10 +1114,7 @@ details.sec > * + * { margin-top: 8px; }
       for (const [qy, qz, w] of RP) { const nn2 = P[i].n + qy * R, ua = uAmb(P[i].s, nn2, t); u += w * ua * (W && W.length ? 1 - deficitFrom(W, nn2, qz * R) : 1); }
       return [u, W ? addedFrom(W, P[i].n) : 0];
     }
-    function movePlanes(t, dt) {
-      for (let j = 0; j < n; j++) {
-        const pl = planes[j];
-        for (const p of pl) {
+    function stepPlane(p, t, dt) {
           const sg = sigmaOf(p, p.x), amp = ampOf(p, sg), rm = c.Cm * sg;
           let ua = 0, va = 0; const K = [[0, 0], [rm, 0], [-rm, 0], [0, rm], [0, -rm]];
           for (const [ds, dn] of K) { ua += uAmb(p.s + ds, p.n + dn, t); if (c.meander) va += vAmb(p.s + ds, p.n + dn, t); }
@@ -1123,19 +1123,36 @@ details.sec > * + * { margin-top: 8px; }
           let vy = 0; if (p.yaw) { const k = 0.3837 * p.ti + 0.003678, xi0 = 0.3 * p.yaw * D2R / Math.cos(p.yaw * D2R) * (1 - Math.sqrt(Math.max(0, 1 - p.ct))); vy = ua * Math.tan(xi0 * (p.D / (p.D + 2 * k * p.x)) ** 2); }
           const uc = ua * (1 - 0.5 * amp);
           p.s += uc * dt; p.n += (va + vy) * dt; p.x += uc * dt;
-        }
+    }
+    function movePlanes(t, dt) {
+      for (let j = 0; j < n; j++) {
+        const pl = planes[j];
+        for (const p of pl) stepPlane(p, t, dt);
         while (pl.length && pl[0].s > sMax) pl.shift();
       }
     }
 
     // ----- time loop -----
     const sub = Math.max(1, Math.round(c.dt / c.dtT)), dtT = c.dt / sub;
-    const spinT = c.spin ? Math.min(2400, (sMax - sMin) / Math.max(U, 2) * 1.05) : 0;
+    // spin-up: long enough for the wakes to cross the farm (all of the domain when frames are wanted)
+    const spinT = c.spinT !== undefined ? c.spinT : c.prefill ? 60 : c.spin ? Math.min(2400, ((c.frames === false ? s1 - s0 + 4 * Dmax : sMax - sMin)) / Math.max(0.7 * U, 2)) : 0;
     const dEmit = 0.5 * Dmax / Math.max(U, 2);
     const nOut = Math.floor(c.T / c.outDt) + 1, out = { t: new Float32Array(nOut), Pfarm: new Float32Array(nOut), Pfree: new Float32Array(nOut) };
     const per = tb.map(() => ({ u: new Float32Array(nOut), P: new Float32Array(nOut), Th: new Float32Array(nOut), ti: new Float32Array(nOut), def: new Float32Array(nOut), rpm: new Float32Array(nOut), pitch: new Float32Array(nOut), Pfree: new Float32Array(nOut), ufree: new Float32Array(nOut) }));
     const [FW, FH] = c.frameN, frames = [], fs = [sMin, sMax], fn = [nMin, nMax];
     let lastEmit = -1e9, k = 0, kOut = 0;
+    if (c.prefill) {                                 // statistics runs: warm the controllers up in free wind, then lay every wake out straight
+      for (let q = 0; q < Math.round(60 / dtT); q++) for (let i = 0; i < n; i++) { stepNoise(i, dtT); stepT(M[i], U, yaw[i], dtT, 0); stepT(F0[i], U, 0, dtT, 0); }
+      // each plane is released at the time it would have left its rotor and carried through the frozen field up to t = 0,
+      // so the wakes start out meandered
+      for (let i = 0; i < n; i++) for (let te = -Math.ceil((sMax - P[i].s) / (0.85 * U) / dEmit) * dEmit; te < 0; te += dEmit) {
+        const p = { s: P[i].s, n: P[i].n, se: P[i].s, ct: Math.max(0.02, M[i].ct), ti: c.TI, D: tb[i].ty.D, yaw: yaw[i], x: 0 };
+        for (let tt = te; tt < 0; tt += 2) stepPlane(p, tt, Math.min(2, -tt));
+        if (p.s <= sMax) planes[i].push(p);
+      }
+      // waked turbines shed wakes with their raised turbulence (faster recovery): two passes so deeper rows see the change
+      for (let it = 0; it < 2; it++) for (let i = 0; i < n; i++) { const dI = rotorInflow(i, 0, true)[1], ti = Math.sqrt(c.TI * c.TI + dI * dI); M[i].tiEff = ti; planes[i].forEach((p) => { p.ti = ti; }); }
+    }
     const nSteps = Math.round((spinT + c.T) / c.dt);
     for (let st = 0; st <= nSteps; st++) {
       const t = st * c.dt - spinT, tf = t + spinT;  // tf: time for the frozen field (starts at 0)
@@ -1152,7 +1169,7 @@ details.sec > * + * { margin-top: 8px; }
         for (let i = 0; i < n; i++) { const m = M[i], o = per[i]; o.u[kOut] = m.u; o.P[kOut] = m.P / 1e6; o.Th[kOut] = m.Th / 1e6; o.ti[kOut] = m.tiEff; o.rpm[kOut] = m.Om * 30 / Math.PI; o.pitch[kOut] = m.beta; o.Pfree[kOut] = F0[i].P / 1e6; o.ufree[kOut] = F0[i].u; pf += m.P; pr += F0[i].P; }
         out.Pfarm[kOut] = pf / 1e6; out.Pfree[kOut] = pr / 1e6; kOut++;
       }
-      if (t >= frames.length * c.frameDt - 1e-6 && frames.length * c.frameDt <= c.T + 1e-6) {
+      if (c.frames !== false && t >= frames.length * c.frameDt - 1e-6 && frames.length * c.frameDt <= c.T + 1e-6) {
         const fr = new Float32Array(FW * FH);
         for (let ii = 0; ii < FW; ii++) { const sx = sMin + (ii + 0.5) / FW * (sMax - sMin), W = wakesAtS(sx, -1);
           for (let jj = 0; jj < FH; jj++) { const nn2 = nMin + (jj + 0.5) / FH * (nMax - nMin); fr[jj * FW + ii] = uAmb(sx, nn2, tf) * (1 - (W.length ? deficitFrom(W, nn2, 0) : 0)) / U; } }
@@ -5580,11 +5597,18 @@ details.sec > * + * { margin-top: 8px; }
       sel2("src", "Site conditions", c.src || "map", [["map", "From the farm's map"], ["manual", "Enter by hand"]]) + sel2("fsea", "Fatigue sea states (DLC 1.2)", c.fsea || "site", [["site", "Site's joint wind–wave climate (from the map)"], ["iec", "Simplified: Weibull wind, H<sub>s</sub> from the wind, 0/±30°"]]) + sel2("fti", "Turbulence for fatigue (DLC 1.2)", c.fti || "site", [["site", "Site: offshore TI table, plus wakes here"], ["charnock", "Site: Charnock sea surface, plus wakes here"], ["class", "Turbine class (conservative)"]]) + numD("hs50", "50-year H<sub>s</sub>", c.hs50, "m", 0.1) + numD("wA", "Weibull A at hub", c.wA, "m/s", 0.1) + numD("wk", "Weibull k", c.wk, "", 0.05) + numIn("T", "Length of each run", c.T, "s", 10) + numIn("binStep", "Fatigue wind bins every", c.binStep, "m/s", 1) +
       `</div><p class="cap" style="margin:4px 0 0">The standards ask for 10-minute runs (1 hour for some sea states) and six seeds per bin; shorter runs keep the placeholder engine quick. With "From the farm's map", the 50-year wave height and the wind distribution come from the Map builder's metocean settings, scaled to hub height.</p></details></div>` +
       `<div class="dlc-pos bl-g"><div class="row" style="justify-content:space-between"><span><b>Which position?</b> <span class="muted">Loads depend on water depth and wake turbulence. Screen the farm to find the worst position, then run the full set there.</span></span><button class="btn" type="button" data-screen>Screen all ${T.length} positions</button></div><div data-scr></div></div>` +
+      `<div class="dlc-pos bl-g"><div class="row" style="justify-content:space-between;gap:10px;flex-wrap:wrap"><span><b>Farm fatigue</b> <span class="muted">DLC 1.2 at all ${T.length} positions with each wind direction and speed's wake slowdown and added turbulence from the farm flow, against the same position without wakes.</span></span>` +
+      `<span class="row" style="gap:6px"><select data-ffatT aria-label="Length of each run"><option value="300">300 s runs (quick)</option><option value="600">600 s runs</option></select><button class="btn" type="button" data-ffat>Run farm fatigue</button></span></div><p class="muted" data-ffatmsg style="font-size:0.8rem;margin:4px 0 0"></p><div data-ffatres></div></div>` +
       `<div class="tbl-wrap"><table class="list bl-ltt dlc-tbl"><thead><tr><th></th><th>DLC</th><th>Design situation</th><th>Wind</th><th>Sea</th><th>Type</th><th class="r">γ<sub>f</sub></th><th class="r">Runs</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` +
       `<div class="row" style="margin-top:8px"><button class="btn bl-go" style="margin:0" data-drun>Run ${total} simulations</button><span class="muted" data-dmsg></span></div><div class="bl-prog" style="margin-top:6px"><i data-dbar></i></div><div data-dres></div>`;
     host.querySelectorAll("[data-o]").forEach((x) => x.addEventListener("change", () => { const v = readO(host.querySelector(".dlc-set")); if (fromMap && v.src !== "manual") { delete v.hs50; delete v.wA; delete v.wk; } Object.assign(DLCCFG, v); dlcKeep(); dlcView(); }));
     host.querySelector("[data-screen]").addEventListener("click", async (e) => { e.target.disabled = true; const res = await dlcScreen(host, ty); e.target.disabled = false; DLCSCR = { key: TT.key(ty), res }; dlcScrTable(host); });
     if (DLCSCR && DLCSCR.key === TT.key(ty)) dlcScrTable(host);
+    host.querySelector("[data-ffat]").addEventListener("click", async (e) => { e.target.disabled = true; const msg = host.querySelector("[data-ffatmsg]"), t0 = performance.now();
+      try { const R = await farmFatigue(host, +host.querySelector("[data-ffatT]").value, (m) => { msg.textContent = m; }); FARMFAT = { key: FK() + ":" + JSON.stringify(DLCCFG), R };
+        msg.textContent = `Done in ${fmt((performance.now() - t0) / 1000, 0)} s.`; farmFatView(host.querySelector("[data-ffatres]"), R); }
+      catch (err) { msg.textContent = "Farm fatigue failed: " + err.message; } e.target.disabled = false; });
+    if (FARMFAT && FARMFAT.key === FK() + ":" + JSON.stringify(DLCCFG)) farmFatView(host.querySelector("[data-ffatres]"), FARMFAT.R);
     host.querySelectorAll("[data-dsel]").forEach((x) => x.addEventListener("change", () => { DLCCFG.sel = [...host.querySelectorAll("[data-dsel]")].filter((y) => y.checked).map((y) => y.dataset.dsel); dlcKeep(); dlcView(); }));
     host.querySelector("[data-drun]").addEventListener("click", async (e) => {
       e.target.disabled = true; const defs = DLC_DEFS.filter((d) => c.sel.includes(d.id)), all = []; defs.forEach((d) => dlcRuns(ty, d, c).forEach((inp) => all.push([d, inp])));
@@ -5659,10 +5683,10 @@ details.sec > * + * { margin-top: 8px; }
     return runs.map((x) => wb(x.inp.U) / n[x.inp.U]);
   }
   const fatLife = (runs, w, k, m = 4) => Math.pow(runs.reduce((a, x, i) => a + w[i] * x.stats[k].del ** m, 0) / Math.max(1e-12, w.reduce((a, b) => a + b, 0)), 1 / m);
-  function dlcFatigue(ty, r) {
+  function dlcFatigue(ty, r, ti) {
     if (!r || !r.result["1.2"]) return null;
     const c = r.input, runs = r.result["1.2"], w = fatWeights(c, runs);
-    const t = T[bSite] || T[0], B = TFE.build(ty, t.spec.depth, 0), hs = TFE.hotSpots(ty, B, t.spec.depth), L = 25, secs = L * 365.25 * 86400;
+    const t = T[ti !== undefined ? ti : bSite] || T[0], B = TFE.build(ty, t.spec.depth, 0), hs = TFE.hotSpots(ty, B, t.spec.depth), L = 25, secs = L * 365.25 * 86400;
     const life = (k) => fatLife(runs, w, k);
     return [["Tower base weld", "TwrBsMyt", hs.tower_base, 2, "air"], ["Door frame", "TwrBsMyt", hs.door, 2, "air"], ["Monopile weld at the mudline", "MudMy", hs.mudline, 3, "sea"]].map(([lab, k, h, dff, env]) => {
       const scf = Math.max(1, h.scf), tk = Math.pow(Math.max(1, h.t * 1e3 / 25), 0.2), curve = SN_DLC[env]; let dmg = 0, dsMax = 0;
@@ -7015,6 +7039,106 @@ details.sec > * + * { margin-top: 8px; }
       const head = ["time_s", "farm_MW", "farm_nowake_MW"].concat(...st.map((s) => [s.name + "_u_ms", s.name + "_P_MW", s.name + "_thrust_MN", s.name + "_TIeff"]));
       const rows = [head.join(",")]; for (let q = 0; q < res.out.n; q++) rows.push([res.out.t[q], res.out.Pfarm[q].toFixed(3), res.out.Pfree[q].toFixed(3)].concat(...res.per.map((p) => [p.u[q].toFixed(3), p.P[q].toFixed(3), p.Th[q].toFixed(3), p.ti[q].toFixed(4)])).join(","));
       saveFile("farm_flow.csv", `# ${res._title}: U ${res.cfg.U} m/s from ${res.cfg.dir} deg, TI ${(100 * res.cfg.TI).toFixed(1)} %, seed ${res.cfg.seed}\n` + rows.join("\n"), "text/csv"); });
+  }
+
+  // ----- farm fatigue: DLC 1.2 at every position, each wind direction and speed's wake deficit and added turbulence from the farm flow -----
+  let FARMFAT = null;
+  function farmFatTable(c, ty) {               // the site's joint table, or one made from the Weibull wind, a rose round the prevailing direction and Hs(U)
+    if (c.ftab) return c.ftab;
+    const sm = siteMetocean(ty), dir0 = sm ? sm.windDir : 240, hubF = Math.pow(ty.z_hub / 10, 0.11), A10 = c.wA / hubF, k = c.wk, rows = [];
+    const ws = Array.from({ length: 12 }, (_, i) => Math.exp(1.2 * Math.cos(rad(i * 30 - dir0)))), wt = ws.reduce((a, b) => a + b, 0);
+    for (let si = 0; si < 12; si++) for (let ui = 0; ui < 36; ui++) { const F = (v) => 1 - Math.exp(-((Math.max(0, v) / A10) ** k)), p = (F(ui + 1) - F(ui)) * ws[si] / wt; if (p < 1e-7) continue;
+      const hs = hsNSS((ui + 0.5) * hubF); rows.push([si, ui, 0, p, hs, tpOf(hs), 0]); }
+    return { sector_deg: 30, u_step: 1, height_m: 10, rows, synthetic: true };
+  }
+  // cells {U, ti, Uw, tiw, mi, p, hs, tp, mm} -> lumped cases (as siteFatCases), grouped by the free-stream wind so that every case
+  // has a free and a waked version (same sea, same seed) and the comparison sees only the wake
+  function farmLump(cells, ty, step) {
+    const byK = {}, add = (t, e) => ["p", "hs2", "tp", "mm", "ti4", "u", "tw4", "uw"].forEach((f) => { t[f] += e[f]; });
+    cells.forEach((x) => { const b = x.U < ty.cut_in ? -1 : x.U > ty.cut_out ? 999 : Math.floor((x.U - ty.cut_in) / step), k = b + "|" + x.mi;
+      const e = byK[k] || (byK[k] = { b, mi: x.mi, parked: b < 0 || b === 999, p: 0, hs2: 0, tp: 0, mm: 0, ti4: 0, u: 0, tw4: 0, uw: 0 });
+      e.p += x.p; e.hs2 += x.p * x.hs * x.hs; e.tp += x.p * x.tp; e.mm += x.p * x.mm; e.ti4 += x.p * x.ti ** 4; e.u += x.p * x.U; e.tw4 += x.p * x.tiw ** 4; e.uw += x.p * x.Uw; });
+    const byB = {}; Object.values(byK).forEach((e) => (byB[e.b] = byB[e.b] || []).push(e));
+    let cases = [];
+    Object.values(byB).forEach((arr) => { const P = arr.reduce((a, e) => a + e.p, 0); arr.sort((a, b) => b.p - a.p); const keep = arr.filter((e, i) => i === 0 || e.p >= 0.08 * P).slice(0, 2);
+      arr.forEach((e) => { if (!keep.includes(e)) add(keep.reduce((a, k) => (Math.abs(k.mi - e.mi) < Math.abs(a.mi - e.mi) ? k : a)), e); }); cases = cases.concat(keep); });
+    const main = cases.filter((e) => e.p >= 1e-3), gap = (k, e) => (k.parked !== e.parked ? 1e4 : 0) + Math.abs(Math.max(-2, Math.min(k.b, 60)) - Math.max(-2, Math.min(e.b, 60))) + (k.mi !== e.mi ? 0.5 : 0);
+    cases.filter((e) => e.p < 1e-3).forEach((e) => add(main.reduce((a, k) => (gap(k, e) < gap(a, e) ? k : a)), e));
+    return main.map((e) => ({ U: e.u / e.p, p: e.p, Hs: Math.sqrt(e.hs2 / e.p), Tp: e.tp / e.p, mis: e.mm / e.p, TI: Math.pow(e.ti4 / e.p, 0.25), Uw: e.uw / e.p, TIw: Math.pow(e.tw4 / e.p, 0.25), mode: e.parked ? "parked" : "power" }));
+  }
+  async function farmFatigue(box, T_run, onMsg) {
+    const n = T.length, tys = T.map((_, i) => TT.typeOf(i)), ty0 = tys[0], { c } = dlcSite(ty0), F = farmFatTable(c, ty0), step = c.binStep;
+    const hubF = Math.pow(ty0.z_hub / 10, 0.11), siteTI = tiFun({ model: c.fti === "charnock" ? "charnock" : "table" }, ty0.z_hub);
+    const tbFF = T.map((t, i) => ({ name: t.spec.name, x: t.spec.x * 1000, y: -t.spec.y * 1000, ty: ffTy(tys[i]) }));
+    // sector and wind-bin probabilities (operating time)
+    const ns = Math.round(360 / F.sector_deg), pS = new Array(ns).fill(0); F.rows.forEach((r) => { pS[r[0]] += r[3]; });
+    // farm-flow speeds: below rated, near rated and above (wakes weaken as the thrust coefficient falls)
+    const bins = [6, 10, 14].filter((u) => u > ty0.cut_in && u < ty0.cut_out);
+    const secs = pS.map((p, si) => si).filter((si) => pS[si] >= 0.01), W = {}, Pw = {};
+    let k = 0; const total = secs.length * bins.length;
+    for (const si of secs) { W[si] = []; for (let b = 0; b < bins.length; b++) {
+      onMsg(`Farm flow: wind from ${si * F.sector_deg}° at ${fmt(bins[b], 1)} m/s (${++k} of ${total})`); await new Promise((r) => setTimeout(r, 0));
+      // directions every 5 degrees across the sector, averaged (thin wakes would be missed or overcounted by one direction)
+      const acc = T.map(() => ({ ru: 0, ti: 0, P: 0, Pf: 0 })), dds = []; for (let dd = -F.sector_deg / 2 + 2.5; dd < F.sector_deg / 2; dd += 5) dds.push(dd);
+      for (const dd of dds) {
+        const res = FarmFlow.run({ turbines: tbFF, U: bins[b], dir: si * F.sector_deg + dd, TI: c.fti === "class" ? IEC_IREF[c.turb] * (0.75 * bins[b] + 5.6) / bins[b] : siteTI(bins[b] / hubF), T: 180, frames: false, prefill: true, seed: 17 + si * 31 + b });
+        res.stats.forEach((s, i) => { const a = acc[i], q = 1 / dds.length; a.ru += q * s.u / Math.max(0.1, s.ufree); a.ti += q * s.TIeff ** 4; a.P += q * s.P; a.Pf += q * s.Pfree; });
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      acc.forEach((a) => { a.ti = Math.pow(a.ti, 0.25); });   // turbulence averaged with the Wohler exponent 4, as for an effective TI
+      W[si][b] = acc; } }
+    const nearestSec = (si) => secs.reduce((a, s) => (Math.min(Math.abs(s - si), ns - Math.abs(s - si)) < Math.min(Math.abs(a - si), ns - Math.abs(a - si)) ? s : a), secs[0]);
+    const binOf = (U) => bins.reduce((bi, u, j) => (Math.abs(u - U) < Math.abs(bins[bi] - U) ? j : bi), 0);
+    // per turbine: move every climate cell into this turbine's inflow, then lump into cases
+    const perT = T.map((t, i) => {
+      const ty = tys[i], hf = Math.pow(ty.z_hub / 10, 0.11), cells = []; let E = 0, Ef = 0, tiW = 0, pw = 0;
+      F.rows.forEach(([si, ui, mi, p, hs, tp, mm]) => {
+        const u10 = (ui + 0.5) * F.u_step, U = u10 * hf, ti0 = c.fti === "class" ? IEC_IREF[c.turb] * (0.75 * U + 5.6) / Math.max(U, 1) : siteTI(u10);
+        if (U >= ty.cut_in && U <= ty.cut_out) { const w = W[nearestSec(si)][binOf(U)][i], Uw = U * w.ru, tw = Math.max(ti0, w.ti);
+          cells.push({ U, ti: 100 * ti0, Uw, tiw: 100 * tw, mi, p, hs, tp, mm }); E += p * LIVE.power(Uw, TT.meta(ty)); Ef += p * LIVE.power(U, TT.meta(ty)); tiW += p * tw; pw += p; }
+        else cells.push({ U, ti: 100 * ti0, Uw: U, tiw: 100 * ti0, mi, p, hs, tp, mm });
+      });
+      const cs = farmLump(cells, ty, step);
+      return { i, ty, cases: cs.map((k) => Object.assign({}, k, { U: k.Uw, TI: k.TIw })), free: cs, eLoss: Ef > 0 ? 1 - E / Ef : 0, tiEff: pw > 0 ? tiW / pw : 0 };
+    });
+    // simulations, cached on everything that changes the response
+    const cache = new Map(), nSims = perT.reduce((a, x) => a + x.cases.length + x.free.length, 0); let done = 0;
+    const runCase = async (ty, depth, kk) => {
+      const inp = Object.assign({}, SIM0, { T: T_run, tTrans: c.tTrans, dt: 0.1, outDt: 0.2, nm: 3, seed: 300, wind: "ntm", U: +kk.U.toFixed(1), cls: c.cls, turb: c.turb, yaw: 0, TI: +kk.TI.toFixed(1), sea: "irregular",
+        Hs: +kk.Hs.toFixed(2), Tp: +Math.max(2.5, kk.Tp).toFixed(1), gamma: 2, waveDir: Math.round(kk.mis / 5) * 5, cur: 0.5, mode: kk.mode, event: "none", tEvent: 1e9, tGust: 1e9 });
+      const key = [TT.key(ty), depth.toFixed(1), inp.U, inp.TI, inp.Hs, inp.Tp, inp.waveDir, inp.mode, T_run].join("|");
+      if (!cache.has(key)) { onMsg(`Loads: simulation ${++done} of about ${nSims}`); cache.set(key, (await SOLVERS.sim(ty, depth, inp)).stats); } else done++;
+      return { inp: Object.assign(inp, { pw: kk.p }), stats: cache.get(key) };
+    };
+    const rows = [];
+    for (const x of perT) {
+      const depth = T[x.i].spec.depth, runsW = [], runsF = [];
+      for (const kk of x.cases) runsW.push(await runCase(x.ty, depth, kk));
+      for (const kk of x.free) runsF.push(await runCase(x.ty, depth, kk));
+      const dw = dlcFatigue(x.ty, { input: c, result: { "1.2": runsW } }, x.i), df = dlcFatigue(x.ty, { input: c, result: { "1.2": runsF } }, x.i);
+      rows.push({ i: x.i, name: T[x.i].spec.name, depth, ty: x.ty.name, eLoss: x.eLoss, tiEff: x.tiEff, dw, df, nCases: runsW.length });
+    }
+    return { rows, synthetic: !!F.synthetic, secs: secs.length, bins: bins.length, nSims: cache.size, T_run, dir0: (siteMetocean(ty0) || {}).windDir || 240 };
+  }
+  function farmFatView(box, R) {
+    const hot = R.rows[0].dw.map((h) => h.lab), worst = R.rows.reduce((a, b) => (b.dw[2].dmg > a.dw[2].dmg ? b : a));
+    const pill = (v) => `<span class="pill ${v < 0.8 ? "green" : v < 1 ? "amber" : "red"}">${fmt(v, 2)}</span>`, pen = (a, b) => (b > 0 ? `${a >= b ? "+" : ""}${fmt(100 * (a / b - 1), 0)} %` : "–");
+    const xs = T.map((t) => t.spec.x), ys = T.map((t) => t.spec.y), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), Wd = 320, Ht = 220, pad = 24;
+    const scl = Math.min((Wd - 2 * pad) / Math.max(0.1, x1 - x0), (Ht - 2 * pad) / Math.max(0.1, y1 - y0)), mx = Math.max(...R.rows.map((r) => r.dw[2].dmg / Math.max(1e-9, r.df[2].dmg)));
+    const dotC = (r) => { const f = Math.min(1, Math.max(0, (r.dw[2].dmg / Math.max(1e-9, r.df[2].dmg) - 1) / Math.max(0.05, mx - 1))); return `rgb(${Math.round(60 + 175 * f)},${Math.round(150 - 90 * f)},${Math.round(180 - 140 * f)})`; };
+    const th = rad(R.dir0), ax = Wd - 30, ay = 30;
+    const map = `<svg viewBox="0 0 ${Wd} ${Ht}" class="ff-farmmap" role="img" aria-label="Wake penalty on mudline fatigue across the farm">` +
+      `<line x1="${ax + 16 * Math.sin(th)}" y1="${ay - 16 * Math.cos(th)}" x2="${ax - 12 * Math.sin(th)}" y2="${ay + 12 * Math.cos(th)}" stroke="currentColor" stroke-width="2"/><circle cx="${ax - 12 * Math.sin(th)}" cy="${ay + 12 * Math.cos(th)}" r="3" fill="currentColor"/><text x="${ax - 26}" y="${ay + 30}" font-size="9" fill="var(--muted)">prevailing</text>` +
+      R.rows.map((r) => { const t = T[r.i], cx = pad + (t.spec.x - x0) * scl, cy = pad + (t.spec.y - y0) * scl; return `<circle cx="${cx}" cy="${cy}" r="8" fill="${dotC(r)}" stroke="var(--line)"><title>${r.name}: mudline damage ${pen(r.dw[2].dmg, r.df[2].dmg)} from wakes</title></circle><text x="${cx + 10}" y="${cy + 3}" font-size="9" fill="currentColor">${r.name}</text>`; }).join("") + `</svg>`;
+    box.innerHTML = `<div class="ff-ffat"><div>${map}<p class="cap">Colour: how much the wakes raise each position's mudline fatigue (blue none, red most).</p></div>` +
+      `<div class="wv-sum" style="align-content:start">${[["Positions", `${R.rows.length}`], ["Worst mudline damage", `${worst.name}: ${fmt(worst.dw[2].dmg, 2)}`], ["Farm-flow runs", `${R.secs * 6} directions × ${R.bins} speeds`], ["Load simulations", `${R.nSims} × ${R.T_run} s`]].map(([a, b]) => `<div><span class="muted">${a}</span><b class="mono">${b}</b></div>`).join("")}</div></div>` +
+      `<div class="tbl-wrap"><table class="list ff-tbl"><thead><tr><th>Position</th><th class="r">Depth</th><th class="r">Energy lost to wakes</th><th class="r">Effective TI</th>${hot.map((h) => `<th class="r">${h.replace("Monopile weld at the mudline", "Mudline weld")}, damage 25 y</th><th class="r">from wakes</th>`).join("")}<th class="r">Mudline life</th></tr></thead><tbody>` +
+      R.rows.map((r) => `<tr${r === worst ? ' style="font-weight:600"' : ""}><td>${r.name}</td><td class="r mono">${fmt(r.depth, 1)} m</td><td class="r mono">${fmt(100 * r.eLoss, 1)} %</td><td class="r mono">${fmt(100 * r.tiEff, 1)} %</td>${r.dw.map((h, q) => `<td class="r">${pill(h.dmg)}</td><td class="r mono">${pen(h.dmg, r.df[q].dmg)}</td>`).join("")}<td class="r mono">${r.dw[2].life > 200 ? "> 200" : fmt(r.dw[2].life, 0)} y</td></tr>`).join("") + `</tbody></table></div>` +
+      `<p class="cap">For every wind direction and speed in the ${R.synthetic ? "Weibull wind and prevailing-direction rose (no joint site climate on this map)" : "site's joint wind–wave climate"}, the farm flow gives each turbine's wind-speed ratio and effective turbulence (ambient plus the dominant wake). Each climate cell is moved into that turbine's waked inflow and the cells are lumped into fatigue cases, so a waked turbine spends more time at lower, more turbulent winds. The cases run on the turbine model at the position's depth, as do the same cases without wakes; damage is DNV-RP-C203 curve D with DFF, as in the single-position check. "From wakes" compares the two.</p>` +
+      `<div class="bl-row"><button class="btn sm" type="button" data-ffatcsv>Export CSV</button></div>`;
+    box.querySelector("[data-ffatcsv]").addEventListener("click", () => {
+      const head = ["position", "depth_m", "energy_loss", "TI_eff"].concat(...hot.map((h) => [h + " damage", h + " damage no wakes"]));
+      saveFile("farm_fatigue.csv", [head.map((h) => `"${h}"`).join(",")].concat(R.rows.map((r) => [r.name, r.depth.toFixed(2), r.eLoss.toFixed(4), r.tiEff.toFixed(4)].concat(...r.dw.map((h, q) => [h.dmg.toFixed(4), r.df[q].dmg.toFixed(4)])).join(","))).join("\n"), "text/csv"); });
   }
 
   // ----- site builder -----

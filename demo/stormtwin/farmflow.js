@@ -165,10 +165,7 @@
       for (const [qy, qz, w] of RP) { const nn2 = P[i].n + qy * R, ua = uAmb(P[i].s, nn2, t); u += w * ua * (W && W.length ? 1 - deficitFrom(W, nn2, qz * R) : 1); }
       return [u, W ? addedFrom(W, P[i].n) : 0];
     }
-    function movePlanes(t, dt) {
-      for (let j = 0; j < n; j++) {
-        const pl = planes[j];
-        for (const p of pl) {
+    function stepPlane(p, t, dt) {
           const sg = sigmaOf(p, p.x), amp = ampOf(p, sg), rm = c.Cm * sg;
           let ua = 0, va = 0; const K = [[0, 0], [rm, 0], [-rm, 0], [0, rm], [0, -rm]];
           for (const [ds, dn] of K) { ua += uAmb(p.s + ds, p.n + dn, t); if (c.meander) va += vAmb(p.s + ds, p.n + dn, t); }
@@ -177,19 +174,36 @@
           let vy = 0; if (p.yaw) { const k = 0.3837 * p.ti + 0.003678, xi0 = 0.3 * p.yaw * D2R / Math.cos(p.yaw * D2R) * (1 - Math.sqrt(Math.max(0, 1 - p.ct))); vy = ua * Math.tan(xi0 * (p.D / (p.D + 2 * k * p.x)) ** 2); }
           const uc = ua * (1 - 0.5 * amp);
           p.s += uc * dt; p.n += (va + vy) * dt; p.x += uc * dt;
-        }
+    }
+    function movePlanes(t, dt) {
+      for (let j = 0; j < n; j++) {
+        const pl = planes[j];
+        for (const p of pl) stepPlane(p, t, dt);
         while (pl.length && pl[0].s > sMax) pl.shift();
       }
     }
 
     // ----- time loop -----
     const sub = Math.max(1, Math.round(c.dt / c.dtT)), dtT = c.dt / sub;
-    const spinT = c.spin ? Math.min(2400, (sMax - sMin) / Math.max(U, 2) * 1.05) : 0;
+    // spin-up: long enough for the wakes to cross the farm (all of the domain when frames are wanted)
+    const spinT = c.spinT !== undefined ? c.spinT : c.prefill ? 60 : c.spin ? Math.min(2400, ((c.frames === false ? s1 - s0 + 4 * Dmax : sMax - sMin)) / Math.max(0.7 * U, 2)) : 0;
     const dEmit = 0.5 * Dmax / Math.max(U, 2);
     const nOut = Math.floor(c.T / c.outDt) + 1, out = { t: new Float32Array(nOut), Pfarm: new Float32Array(nOut), Pfree: new Float32Array(nOut) };
     const per = tb.map(() => ({ u: new Float32Array(nOut), P: new Float32Array(nOut), Th: new Float32Array(nOut), ti: new Float32Array(nOut), def: new Float32Array(nOut), rpm: new Float32Array(nOut), pitch: new Float32Array(nOut), Pfree: new Float32Array(nOut), ufree: new Float32Array(nOut) }));
     const [FW, FH] = c.frameN, frames = [], fs = [sMin, sMax], fn = [nMin, nMax];
     let lastEmit = -1e9, k = 0, kOut = 0;
+    if (c.prefill) {                                 // statistics runs: warm the controllers up in free wind, then lay every wake out straight
+      for (let q = 0; q < Math.round(60 / dtT); q++) for (let i = 0; i < n; i++) { stepNoise(i, dtT); stepT(M[i], U, yaw[i], dtT, 0); stepT(F0[i], U, 0, dtT, 0); }
+      // each plane is released at the time it would have left its rotor and carried through the frozen field up to t = 0,
+      // so the wakes start out meandered
+      for (let i = 0; i < n; i++) for (let te = -Math.ceil((sMax - P[i].s) / (0.85 * U) / dEmit) * dEmit; te < 0; te += dEmit) {
+        const p = { s: P[i].s, n: P[i].n, se: P[i].s, ct: Math.max(0.02, M[i].ct), ti: c.TI, D: tb[i].ty.D, yaw: yaw[i], x: 0 };
+        for (let tt = te; tt < 0; tt += 2) stepPlane(p, tt, Math.min(2, -tt));
+        if (p.s <= sMax) planes[i].push(p);
+      }
+      // waked turbines shed wakes with their raised turbulence (faster recovery): two passes so deeper rows see the change
+      for (let it = 0; it < 2; it++) for (let i = 0; i < n; i++) { const dI = rotorInflow(i, 0, true)[1], ti = Math.sqrt(c.TI * c.TI + dI * dI); M[i].tiEff = ti; planes[i].forEach((p) => { p.ti = ti; }); }
+    }
     const nSteps = Math.round((spinT + c.T) / c.dt);
     for (let st = 0; st <= nSteps; st++) {
       const t = st * c.dt - spinT, tf = t + spinT;  // tf: time for the frozen field (starts at 0)
@@ -206,7 +220,7 @@
         for (let i = 0; i < n; i++) { const m = M[i], o = per[i]; o.u[kOut] = m.u; o.P[kOut] = m.P / 1e6; o.Th[kOut] = m.Th / 1e6; o.ti[kOut] = m.tiEff; o.rpm[kOut] = m.Om * 30 / Math.PI; o.pitch[kOut] = m.beta; o.Pfree[kOut] = F0[i].P / 1e6; o.ufree[kOut] = F0[i].u; pf += m.P; pr += F0[i].P; }
         out.Pfarm[kOut] = pf / 1e6; out.Pfree[kOut] = pr / 1e6; kOut++;
       }
-      if (t >= frames.length * c.frameDt - 1e-6 && frames.length * c.frameDt <= c.T + 1e-6) {
+      if (c.frames !== false && t >= frames.length * c.frameDt - 1e-6 && frames.length * c.frameDt <= c.T + 1e-6) {
         const fr = new Float32Array(FW * FH);
         for (let ii = 0; ii < FW; ii++) { const sx = sMin + (ii + 0.5) / FW * (sMax - sMin), W = wakesAtS(sx, -1);
           for (let jj = 0; jj < FH; jj++) { const nn2 = nMin + (jj + 0.5) / FH * (nMax - nMin); fr[jj * FW + ii] = uAmb(sx, nn2, tf) * (1 - (W.length ? deficitFrom(W, nn2, 0) : 0)) / U; } }

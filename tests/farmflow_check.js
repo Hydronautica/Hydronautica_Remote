@@ -29,7 +29,11 @@ for (const TI of [0.06, 0.10]) { r = FF.run({ turbines: row(5, 7), U: 8, dir: 27
 // 4) yaw deflection
 r = FF.run({ turbines: row(1, 7), U: 8, dir: 270, TI: 1e-4, T: 400, meander: false, seed: 1, yaw: [25], frameN: [240, 160] });
 p = profile(r, 7); j0 = p.def.indexOf(Math.max(...p.def)); out.yaw = { nAtMax: p.n[j0] / ty.D };
-// 5) speed
+// 5) pre-filled statistics runs agree with full spin-up (aligned 12-turbine grid, average of 3 seeds)
+{ const grid = []; for (let j = 0; j < 3; j++) for (let i = 0; i < 4; i++) grid.push({ name: "g", x: i * 1800, y: -j * 1600, ty });
+  let a = 0, b = 0; for (let seed = 1; seed <= 3; seed++) { a += FF.run({ turbines: grid, U: 9, dir: 270, TI: 0.077, T: 240, frames: false, seed }).farm.loss / 3; b += FF.run({ turbines: grid, U: 9, dir: 270, TI: 0.077, T: 240, frames: false, prefill: true, seed }).farm.loss / 3; }
+  out.prefill = { spin: a, prefill: b }; }
+// 6) speed
 const t0 = Date.now(); const tb = []; for (let j = 0; j < 3; j++) for (let i = 0; i < 4; i++) tb.push({ name: "x", x: i * 7 * 240, y: j * 5 * 240, ty });
 FF.run({ turbines: tb, U: 9, dir: 260, TI: 0.07, T: 600, seed: 2 }); out.ms12x600 = Date.now() - t0;
 console.log(JSON.stringify(out));

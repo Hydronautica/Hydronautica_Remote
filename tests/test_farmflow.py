@@ -51,5 +51,9 @@ def test_yaw_deflects_the_wake_to_the_left(res):
     assert 0.3 <= res["yaw"]["nAtMax"] <= 0.7                    # Jimenez: about half a diameter at 7 D for 25 degrees
 
 
+def test_prefilled_runs_match_spin_up(res):
+    assert res["prefill"]["prefill"] == pytest.approx(res["prefill"]["spin"], abs=0.025)
+
+
 def test_speed(res):
     assert res["ms12x600"] < 15000
