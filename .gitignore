@@ -15,3 +15,4 @@ demo/rna/fe_chain.npz
 demo/stormtwin/rna_chain.json
 demo/stormtwin/whole_replay.json
 demo/stormtwin/live_struct_*.json
+demo/windsim/windsim_single.html
