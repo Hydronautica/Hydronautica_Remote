@@ -10,6 +10,8 @@
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } }
   function toast(msg, kind = "info") { const el = document.createElement("div"); el.className = kind; el.textContent = msg; $("toast").prepend(el); setTimeout(() => el.remove(), 5000); while ($("toast").children.length > 4) $("toast").lastChild.remove(); }
   function act(err) { if (err) toast(err, "warn"); save(); render(); }
+  // click twice to confirm (popups are often blocked in embedded pages)
+  function twice(btn, label, fn) { if (btn.dataset.arm) { fn(); return; } const old = btn.textContent; btn.dataset.arm = 1; btn.textContent = label; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.arm; btn.textContent = old; } }, 3000); }
 
   // ---------- HUD ----------
   function hud() {
@@ -21,7 +23,7 @@
       `<div class="fc" title="Forecast for the next three days">${S.forecast.map((f, k) => `<div>${["Tmrw", "+2", "+3"][k]}<br>${f.storm ? '<span class="storm">storm</span>' : `${fmt(f.U * (1 - f.spread), 0)}–${fmt(f.U * (1 + f.spread), 0)} m/s`}<br>${fmt(f.Hs * (1 - f.spread), 1)}–${fmt(f.Hs * (1 + f.spread), 1)} m</div>`).join("")}</div>` +
       `<span class="spacer"></span><button class="primary" id="next">Next day ▸</button><button id="auto">${UI.auto ? "❚❚ Pause" : "▶ Auto"}</button><button id="newg" title="Start again">New game</button>`;
     $("next").onclick = () => step(); $("auto").onclick = () => { UI.auto = UI.auto ? 0 : 1; clearInterval(UI.timer); if (UI.auto) UI.timer = setInterval(step, 900); hud(); };
-    $("newg").onclick = () => { if (confirm("Start a new game? Your farm will be lost.")) { S = W.newGame((Date.now() % 100000) + 1); UI.sel = null; UI.design = null; save(); render(); } };
+    $("newg").onclick = (e) => twice(e.currentTarget, "Click again: lose this farm", () => { S = W.newGame((Date.now() % 100000) + 1); UI.sel = null; UI.design = null; save(); render(); });
   }
   const chip = (a, b) => `<div class="chip"><small>${a}</small><b>${b}</b></div>`;
   function step() {
@@ -96,7 +98,7 @@
     const on = (a, fn) => el.querySelectorAll(`[data-a="${a}"]`).forEach((b) => (b.onclick = () => fn(b)));
     on("lease", () => act(W.buyPlot(S, p.id))); on("survey", () => act(W.survey(S, p.id)));
     on("design", () => { UI.plotB = p.id; UI.design = null; UI.tab = "build"; render(); });
-    on("insp", (b) => act(W.inspect(S, t.id, b.dataset.m))); on("rep", (b) => act(W.repair(S, t.id, b.dataset.c))); on("sens", () => act(W.fitSensors(S, t.id))); on("decom", () => { if (confirm(`Take ${t.name} down for scrap?`)) act(W.decommission(S, t.id)); });
+    on("insp", (b) => act(W.inspect(S, t.id, b.dataset.m))); on("rep", (b) => act(W.repair(S, t.id, b.dataset.c))); on("sens", () => act(W.fitSensors(S, t.id))); on("decom", (b) => twice(b, `Click again to scrap ${t.name}`, () => act(W.decommission(S, t.id))));
   }
   function summaryCard() { const st = S.stats; return `<div class="card"><h3>So far</h3><div class="small">Energy ${fmt(st.energy / 1000, 1)} GWh · earned ${fmt(st.revenue)} · spent ${fmt(st.spent)}<br>Breakdowns ${st.failures} · turbines lost ${st.lost}</div></div>`; }
   function turbineCard(t) {
